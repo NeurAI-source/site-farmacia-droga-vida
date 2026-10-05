@@ -20,3 +20,8 @@ supabase/functions/_shared/
 .vercel/
 
 .wrangler/
+# Browser verification output
+test-results/
+playwright-report/
+
+/node_modules

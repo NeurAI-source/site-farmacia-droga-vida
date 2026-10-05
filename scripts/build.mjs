@@ -5,7 +5,7 @@ import { validateCatalog } from '../catalog-validation.js';
 const root = new URL('../', import.meta.url), dist = new URL('dist/', root);
 await rm(dist, { recursive: true, force: true }); await mkdir(dist, { recursive: true });
 // Copy only public assets. Never copy the checkout or environment files.
-for (const file of ['index.html','robots.txt','sitemap.xml','styles.css','app.js','analytics.js','catalog-utils.js','catalog-validation.js','assets','admin']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
+for (const file of ['index.html','robots.txt','sitemap.xml','styles.css','app.js','analytics.js','campaign-utils.js','campaign-viewer.js','campaigns.js','campaigns.css','catalog-utils.js','catalog-validation.js','assets','admin']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
 const url = process.env.SUPABASE_URL || '', key = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 if (!!url !== !!key) throw Error('Configure both public Supabase values.');
 if (url && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) throw Error('Invalid Supabase URL.');

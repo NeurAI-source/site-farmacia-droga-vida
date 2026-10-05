@@ -1,5 +1,9 @@
 [functions.admin-api]
 verify_jwt = false
-# admin-api validates every bearer token with Auth.getUser before any operation.
+# User actions validate bearer tokens with Auth.getUser and active membership.
+# dispatch-next accepts only the server-side service key from the publication workflow.
 [functions.page-view]
 verify_jwt = false
+[functions.campaign-api]
+verify_jwt = false
+# Public GET is read-only. All POST actions validate Auth.getUser and active membership.

@@ -1,0 +1,28 @@
+/* Independent campaign surfaces. Existing hero and catalog rules are untouched. */
+.campaign-section[hidden],.campaign-section [hidden]{display:none!important}
+.campaign-section{padding-top:42px;padding-bottom:20px}
+.campaign-section .campaign-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}
+.campaign-section .campaign-heading h2{font-size:clamp(24px,3vw,34px);line-height:1.2;margin:6px 0;color:#252525}
+.campaign-section .campaign-eyebrow{font-size:11px;font-weight:800;letter-spacing:1.7px;color:#b61923;margin:0}
+.campaign-shell{border:1px solid #eee4df;border-radius:20px;overflow:hidden;background:#fffaf5;box-shadow:0 8px 28px #77221b08}
+.campaign-slide{height:clamp(300px,44vw,540px);padding:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(120deg,#fffaf2,#fff0ee)}
+.campaign-art{display:flex;justify-content:center;align-items:center;width:100%;height:100%;border:0;background:transparent;padding:0;cursor:pointer}
+.campaign-art img{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
+.campaign-caption{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:17px 24px;background:#fff}
+.campaign-name{font-size:17px;display:block;margin-bottom:4px}.campaign-hint{font-size:13px;color:#69605d}
+.campaign-controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.campaign-controls button,.campaign-heading button,.campaign-viewer button{border:1px solid #e8dcd8;border-radius:9px;background:white;color:#a91822;padding:9px 13px;font:inherit;font-size:13px;cursor:pointer}
+.campaign-controls button:disabled,.campaign-viewer button:disabled{opacity:.35;cursor:default}
+.campaign-dots{display:flex;gap:7px;align-items:center;max-width:240px;overflow:auto;padding:6px}
+.campaign-dots button{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:#d9ccca;flex-shrink:0}
+.campaign-dots button[aria-current=true]{background:#bc1d29;outline:3px solid #fde5e6}
+.campaign-section button:focus-visible,.campaign-art:focus-visible,.campaign-viewer button:focus-visible{outline:3px solid #c47d00;outline-offset:4px}
+.campaign-viewer{width:min(1100px,96vw);max-width:96vw;height:94dvh;max-height:94dvh;padding:0;border:0;border-radius:16px;background:#fff;color:#2e2927;box-shadow:0 20px 90px #0004}
+.campaign-viewer::backdrop{background:#211717c9}.campaign-viewer[open]{display:flex;flex-direction:column}
+.campaign-viewer header,.campaign-viewer footer{position:static;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;margin:0;background:white;border:0;flex-shrink:0;box-shadow:none}
+.campaign-viewer header h2{font:700 19px/1.3 Arial,sans-serif;margin:0;overflow-wrap:anywhere}.campaign-viewer header button{font-size:25px;line-height:1;padding:6px 12px}
+.campaign-viewer footer{justify-content:center;border-top:1px solid #eee;font:14px Arial,sans-serif;flex-wrap:wrap}
+.campaign-viewer-stage{flex:1;min-height:0;overflow:auto;background:#f3f0ed;text-align:center;padding:12px}
+.campaign-viewer-stage img{display:block;margin:0 auto;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+.campaign-viewer-stage img.zoomed{max-width:none;max-height:none;margin:0;height:auto}
+@media(max-width:600px){.campaign-section{padding-top:28px}.campaign-section .campaign-heading{align-items:flex-start;gap:10px}.campaign-heading button{white-space:nowrap}.campaign-caption{padding:15px;flex-direction:column;align-items:flex-start}.campaign-controls{align-self:center}.campaign-slide{height:390px;padding:8px}.campaign-viewer header,.campaign-viewer footer{padding:12px}.campaign-viewer header h2{font-size:16px}}

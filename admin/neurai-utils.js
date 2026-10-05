@@ -16,6 +16,8 @@ export function analyzePrices(input, products) {
     if (matches.length === 1) {
       row.productId = matches[0].id;
       row.name = matches[0].name;
+      row.detail = matches[0].detail;
+      if (matches[0].variants?.length) row.error = 'Este código tem tamanhos com preço compartilhado. Revise no cadastro individual.';
       row.previousCents = matches[0].priceCents;
     }
     return row;

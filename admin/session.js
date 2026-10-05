@@ -1,4 +1,4 @@
-import { client, adminAction } from './backend.js?v=20260929';
+import { client, adminAction } from './backend.js?v=20261002';
 const $ = s => document.querySelector(s);
 export let membership;
 export async function authorize() {
@@ -15,7 +15,7 @@ export async function authorize() {
     await client.auth.signOut();
     return false;
   }
-  membership = data;
+  membership = { ...data, userId: session.user.id };
   document.body.classList.remove('locked');
   $('#login-screen').hidden = true;
   $('.mode').textContent = ({ admin: 'Administrador', editor: 'Editor', owner: 'Proprietário(a)', manager: 'Gerente' })[data.role] || 'Usuário';
@@ -91,7 +91,7 @@ export async function refreshPublication() {
   const { data, error } = await client.from('publications').select('id,status,created_at').order('created_at', { ascending: false }).limit(1);
   if (error) { $('#publication-status').textContent = 'Não foi possível consultar a publicação.'; return; }
   const last = data[0];
-  const labels = { pending: 'Publicação na fila do GitHub.', building: 'Publicando o site…', published: 'Publicação concluída.', failed: 'A publicação falhou. Confira o GitHub Actions.' };
+  const labels = { queued: 'Aguardando a publicação anterior.', pending: 'Publicação na fila do GitHub.', building: 'Publicando o site…', published: 'Publicação concluída.', failed: 'A publicação falhou. Confira o GitHub Actions.' };
   $('#publication-status').textContent = last ? `${labels[last.status]} ${new Date(last.created_at).toLocaleString('pt-BR')}` : 'Nenhuma publicação pelo painel ainda.';
-  $('#publish').disabled = !!last && ['pending','building'].includes(last.status);
+  $('#publish').disabled = !!last && ['queued','pending','building'].includes(last.status);
 }

@@ -26,3 +26,5 @@
 .neur-issues p{margin:4px 0;color:#626976}
 .form-grid label small{font-weight:400;line-height:1.5;color:#626976}
 @media(max-width:600px){.neur-launcher{right:16px;bottom:16px}.neur-dialog .editor-body{padding:18px}.neur-dialog .panel-heading{flex-wrap:wrap;gap:10px}.neur-issues li{gap:10px}}
+
+.neur-auto{display:flex;align-items:center;gap:10px;margin:20px 0 8px;font-weight:700}.neur-auto input{width:auto;accent-color:#c91d2c}.neur-history{border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:10px 0}.neur-history summary{cursor:pointer}.neur-history small{display:block;color:#64748b;margin-top:5px;overflow-wrap:anywhere}.neur-dialog .table-scroll{overflow-x:auto}.neur-history button{margin:8px 12px 0 0}

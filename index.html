@@ -24,6 +24,8 @@
   <link rel="icon" href="assets/favicon.png" type="image/png"><link rel="stylesheet" href="styles.css?v=20260929-instagram-footer-fix">
   <link rel="preload" as="image" href="assets/family.webp">
   <script type="module" src="app.js"></script>
+  <link rel="stylesheet" href="campaigns.css?v=20261001">
+  <script type="module" src="campaigns.js?v=20261001"></script>
 <script type="module" src="analytics.js"></script></head>
 <body>
 <svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs><filter id="footer-logo-blend" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 1 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/></filter></defs></svg>
@@ -43,6 +45,10 @@
     <img class="hero-photo" src="assets/family.webp" alt="Família reunida, sorrindo em uma farmácia" width="1536" height="1024" fetchpriority="high">
     <div class="hero-shade"></div><div class="wrap hero-inner"><div class="hero-copy"><p class="eyebrow">SAÚDE PARA TODOS OS MOMENTOS</p><h1 id="hero-title">Mais saúde,<br>mais economia,<br><em>mais pra você.</em></h1><p>Na Droga Vida, você encontra cuidado para o seu bem-estar e o da sua família. Com preços que cabem no bolso e atendimento de perto.</p><a href="#ofertas" class="button yellow">Confira as ofertas <i data-icon="arrow"></i></a><div class="hero-perks"><span><i data-icon="truck"></i> Teleentrega<br>consulte sua região</span><span><i data-icon="tag"></i> Economia para<br>o seu dia a dia</span><span><i data-icon="heart"></i> Cuidado que<br>faz a diferença</span></div></div></div>
     <div class="hero-note"><i data-icon="heart"></i><strong>Cuidar<br>da sua saúde<br>também é<br>viver melhor.</strong></div>
+  </section>
+  <section id="campaign-carousel" class="wrap campaign-section" aria-labelledby="campaign-title" aria-roledescription="carrossel" hidden>
+    <div class="campaign-heading"><div><p class="campaign-eyebrow">NOVIDADES PARA CUIDAR DE VOCÊ</p><h2 id="campaign-title">Confira nossas ofertas e novidades</h2></div><button type="button" data-campaign-pause>Ⅱ Pausar</button></div>
+    <div class="campaign-shell"><div class="campaign-slide"></div><div class="campaign-caption"><div><strong class="campaign-name"></strong><span class="campaign-hint"></span></div><div class="campaign-controls"><button type="button" data-campaign-prev aria-label="Oferta anterior">←</button><div class="campaign-dots" aria-label="Escolher oferta"></div><button type="button" data-campaign-next aria-label="Próxima oferta">→</button></div></div></div>
   </section>
   <section class="wrap categories" aria-label="Encontre por categoria">
     <button data-category="Medicamentos" class="cat pink"><i data-icon="pill"></i><strong>Medicamentos <span>›</span></strong></button>

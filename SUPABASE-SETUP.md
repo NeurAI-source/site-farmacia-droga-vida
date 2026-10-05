@@ -1,5 +1,11 @@
 # Ativação do painel Droga Vida
 
+## Atualização do projeto existente
+
+Para instalar Neur.AI + Carrossel/Encartes, use exclusivamente o projeto existente `bzhsnoqlbhjaaheugpku` e os procedimentos de `docs/NEURAI-PUBLICACAO.md` e `docs/CARROSSEL-ENCARTES.md`. Confira a estrutura real e o histórico antes de aplicar as duas novas migrações. Não crie outro projeto, não execute `seed`, não recrie usuários e não repita as migrações iniciais. A publicação no domínio principal depende de aprovação final.
+
+As seções de instalação inicial abaixo documentam a configuração original e não são o procedimento desta atualização.
+
 Integração ativada no projeto `bzhsnoqlbhjaaheugpku`. GitHub Pages usa Actions, o cadastro público está desativado e o administrador da farmácia é autorizado por `team_members`. As instruções abaixo servem para reinstalação; não repita migrações já aplicadas. O token de publicação no Supabase expira em 27/12/2026 e precisará ser renovado antes dessa data.
 
 Validação em 28/09/2026: login, perfis admin/editor/sem autorização, RLS, conflito de edição, cadastro de usuário, envio de imagem, registro de acessos e publicação completa pelo painel aprovados. Contas temporárias de teste são removidas após a verificação.
@@ -37,7 +43,7 @@ supabase functions deploy admin-api
 supabase functions deploy page-view
 ```
 
-Cadastre nos Secrets de Edge Functions: `SITE_ORIGIN=https://neurai-source.github.io`, `GITHUB_REPOSITORY=NeurAI-source/site-farma-droga-vida.com` e `GITHUB_DEPLOY_TOKEN`. URL e service role são fornecidas pelo próprio Supabase às funções. Nunca colocar token em argumentos de terminal, logs ou arquivos versionados.
+Cadastre nos Secrets de Edge Functions: `SITE_ORIGIN=https://neurai-source.github.io`, `GITHUB_REPOSITORY=NeurAI-source/site-farmacia-droga-vida` e `GITHUB_DEPLOY_TOKEN`. URL e service role são fornecidas pelo próprio Supabase às funções. Nunca colocar token em argumentos de terminal, logs ou arquivos versionados.
 
 O token GitHub deve ser fine-grained, limitado a este repositório, com **Actions: write**, prazo de validade e autorização da organização quando exigida. Ele serve apenas para disparar `publish.yml`; não use um token amplo de sua conta.
 
@@ -79,3 +85,13 @@ O workflow existente recebe a publicação do ADM e envia dist/ ao Cloudflare qu
 As funções admin-api e page-view aceitam SITE_ORIGINS, lista de origens HTTPS separadas por vírgula. A origem antiga e o domínio próprio podem coexistir durante a migração. Autenticação e cargos continuam validados no Supabase. Nenhuma chave administrativa do Supabase é enviada para a hospedagem pública.
 
 Ativação depende da criação do projeto e da credencial, da troca de nameservers no Registro.br, da associação dos domínios no Pages e da validação do HTTPS e do DNSSEC.
+
+## Carrossel e encartes
+
+A extensão de campanhas tem migração, bucket privado e Edge Function próprios. Consulte
+[docs/CARROSSEL-ENCARTES.md](docs/CARROSSEL-ENCARTES.md) para revisar permissões, testes e
+aplicação após aprovação. Não repita a carga inicial do catálogo para instalar essa extensão.
+
+## Publicação automática do Neur.AI
+
+Consulte `docs/NEURAI-PUBLICACAO.md` para a migração adicional, implantação coordenada e recuperação de falhas. Não execute seed nem recrie o banco.
