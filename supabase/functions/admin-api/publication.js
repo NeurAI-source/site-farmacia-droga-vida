@@ -40,7 +40,7 @@ export async function reconcilePublication(db, env, job, fetcher = fetch) {
 }
 export async function neuraiAction({ body, db, user, env, fetcher = fetch }) {
   if (body.action === 'price-batch') {
-    const batch = checked(await db.rpc('neurai_save_batch', { actor_id: user.id, batch_id: body.batchId, expected_version: body.version, changes: body.rows, auto_publish: body.autoPublish === true, restores_id: body.restoresId || null }));
+    const batch = checked(await db.rpc('neurai_save_batch', { actor_id: user.id, batch_id: body.batchId, expected_version: body.version, changes: body.rows, auto_publish: body.autoPublish === true, restores_id: body.restoresId || null, actor_email: user.email || null }));
     let delivery = {};
     if (batch.publication_id) {
       try { delivery = await dispatchNext(db, env, fetcher); } catch { delivery = { notice: 'Preços salvos. Não foi possível consultar a publicação; tente novamente pelo histórico.' }; }

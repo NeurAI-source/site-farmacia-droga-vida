@@ -2,6 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {dispatchNext,reconcilePublication,neuraiAction} from '../supabase/functions/admin-api/publication.js';
 const env=k=>({GITHUB_DEPLOY_TOKEN:'server-only-test',GITHUB_REPOSITORY:'test/repo'})[k]||'';
+test('audit identity comes from verified Auth user, never browser input',async()=>{
+ let captured;
+ await neuraiAction({body:{action:'price-batch',batchId:'b',version:1,rows:[],autoPublish:false,actor_email:'spoof@test.invalid',actor_id:'spoof'},user:{id:'verified-user',email:'verified@test.invalid'},env,db:{rpc:async(name,args)=>{captured={name,args};return {data:{id:'b',publication_id:null}};}}});
+ assert.equal(captured.name,'neurai_save_batch');assert.equal(captured.args.actor_id,'verified-user');assert.equal(captured.args.actor_email,'verified@test.invalid');
+});
 function fakeDb(){const updates=[],calls=[];let job={id:'job-1'};return {updates,calls,setJob:v=>job=v,rpc:async(name,args)=>{calls.push({name,args});return {data:name==='catalog_dispatch_claim'?job:{id:'batch-1',publication_id:'job-1'},error:null};},from(){const query={update(v){updates.push(v);return query;},eq(){return query;},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};return query;}};}
 test('dispatch uses one ID and server-side token; accepted does not mean published',async()=>{const db=fakeDb();let count=0;const result=await dispatchNext(db,env,async(url,init)=>{count++;assert.match(url,/workflows\/publish.yml\/dispatches$/);assert.equal(JSON.parse(init.body).inputs.publication_id,'job-1');assert.equal(init.headers.Authorization,'Bearer server-only-test');return {ok:true};});assert.equal(count,1);assert.match(result.notice,/Aguardando/);assert.equal(db.updates[0].dispatch_state,'accepted');assert.ok(!db.updates.some(u=>u.status==='published'));});
 test('running publication prevents duplicate dispatch and missing credentials retain queued prices',async()=>{const db=fakeDb();db.setJob(null);let requests=0;await dispatchNext(db,env,async()=>{requests++;});assert.equal(requests,0);await dispatchNext(db,()=>'',async()=>{requests++;});assert.equal(requests,0);});

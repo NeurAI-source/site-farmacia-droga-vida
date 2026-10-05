@@ -47,7 +47,7 @@ begin
   return result_id;
 end $$;
 
-create function public.neurai_save_batch(actor_id uuid,batch_id uuid,expected_version bigint,changes jsonb,auto_publish boolean,restores_id uuid default null) returns jsonb
+create function public.neurai_save_batch(actor_id uuid,batch_id uuid,expected_version bigint,changes jsonb,auto_publish boolean,restores_id uuid default null,actor_email text default null) returns jsonb
 language plpgsql security invoker set search_path = '' as $$
 declare draft public.catalog_draft; previous public.price_batches; original public.price_batches;
   item jsonb; product jsonb; position integer; next_catalog jsonb; audit_rows jsonb := '[]';
@@ -91,7 +91,9 @@ begin
   end loop;
   update public.catalog_draft set catalog=next_catalog,version=version+1,updated_at=now() where id=1;
   if auto_publish then publication := public.catalog_request_publication(actor_id,draft.version+1); end if;
-  select coalesce(email,actor_id::text) into actor_name from auth.users where id=actor_id;
+  -- Identity is supplied only by the backend after Auth.getUser verification.
+  -- Do not grant service_role access to the private auth.users table for auditing.
+  actor_name := coalesce(nullif(left(btrim(actor_email),254),''),actor_id::text);
   insert into public.price_batches(id,actor_id,actor_label,before_version,after_version,changes,request,auto_publish,publication_id,restores_id)
     values(batch_id,actor_id,coalesce(actor_name,actor_id::text),draft.version,draft.version+1,audit_rows,req,auto_publish,publication,restores_id) returning * into previous;
   return to_jsonb(previous)-'request';
@@ -148,6 +150,6 @@ begin
   update public.publications set status='queued',finished_at=null,run_id=null,dispatch_state=null,dispatched_at=null,error_message=null where id=publication_id;
 end $$;
 
-revoke all on function public.catalog_request_publication(uuid,bigint),public.neurai_save_batch(uuid,uuid,bigint,jsonb,boolean,uuid),public.catalog_dispatch_claim(boolean),public.catalog_publication_start(uuid,text),public.catalog_publication_finish(uuid,text,text),public.catalog_retry_publication(uuid,uuid) from public,anon,authenticated;
-grant execute on function public.catalog_request_publication(uuid,bigint),public.neurai_save_batch(uuid,uuid,bigint,jsonb,boolean,uuid),public.catalog_dispatch_claim(boolean),public.catalog_publication_start(uuid,text),public.catalog_publication_finish(uuid,text,text),public.catalog_retry_publication(uuid,uuid) to service_role;
+revoke all on function public.catalog_request_publication(uuid,bigint),public.neurai_save_batch(uuid,uuid,bigint,jsonb,boolean,uuid,text),public.catalog_dispatch_claim(boolean),public.catalog_publication_start(uuid,text),public.catalog_publication_finish(uuid,text,text),public.catalog_retry_publication(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.catalog_request_publication(uuid,bigint),public.neurai_save_batch(uuid,uuid,bigint,jsonb,boolean,uuid,text),public.catalog_dispatch_claim(boolean),public.catalog_publication_start(uuid,text),public.catalog_publication_finish(uuid,text,text),public.catalog_retry_publication(uuid,uuid) to service_role;
 commit;

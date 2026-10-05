@@ -11,7 +11,7 @@ async function fixture(){
  create table auth.users(id uuid primary key,email text);create function auth.uid() returns uuid language sql as $$ select null::uuid $$;
  create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(bucket_id text,name text);
  create function storage.foldername(text) returns text[] language sql as $$ select string_to_array($1,'/') $$;
- grant usage on schema public,auth to service_role;grant select on auth.users to service_role;
+ grant usage on schema public,auth to service_role;
  insert into auth.users values('${admin}','admin@test.invalid'),('${other}','other@test.invalid'),('${editor}','editor@test.invalid'),('${outsider}','outsider@test.invalid');`);
  await db.exec(await readFile(new URL('../supabase/migrations/202609270000_team.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/202609270001_admin.sql',import.meta.url),'utf8'));
@@ -20,12 +20,13 @@ async function fixture(){
  await db.exec(await readFile(new URL('../supabase/migrations/20261001190410_carousel_campaigns.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/20261002113649_neurai_auto_publication.sql',import.meta.url),'utf8'));
  const rpc=async(name,args)=>{await db.exec('set role service_role');try{return (await db.query(`select public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) result`,args)).rows[0].result;}finally{await db.exec('reset role');}};
- const save=({actor=admin,id=crypto.randomUUID(),version=1,rows=[change()],auto=false,restore=null}={})=>rpc('neurai_save_batch',[actor,id,version,JSON.stringify(rows),auto,restore]);
+ const save=({actor=admin,id=crypto.randomUUID(),version=1,rows=[change()],auto=false,restore=null,email='admin@test.invalid'}={})=>rpc('neurai_save_batch',[actor,id,version,JSON.stringify(rows),auto,restore,email]);
  return {db,rpc,save,close:()=>db.close(),draft:async()=>(await db.query('select * from public.catalog_draft')).rows[0],jobs:async()=>(await db.query('select * from public.publications order by draft_version')).rows};
 }
 test('atomic multi-product save, audit identity, idempotent response-loss recovery and manual publishing',async()=>{
  const f=await fixture();try{const id=crypto.randomUUID();const request={id,rows:[change(),change(2,'1',800,700)]};const saved=await f.save(request);
  assert.equal(saved.after_version,2);assert.equal(saved.actor_label,'admin@test.invalid');assert.equal(saved.changes.length,2);assert.equal((await f.jobs()).length,0);
+ assert.equal((await f.db.query("select has_table_privilege('service_role','auth.users','SELECT') allowed")).rows[0].allowed,false);
  const draft=await f.draft();assert.deepEqual(draft.catalog.products.map(p=>p.priceCents),[500,700]);assert.equal(draft.catalog.products[0].stockQuantity,17);assert.equal(draft.catalog.products[0].imageUrl,base.products[0].imageUrl);
  assert.deepEqual(await f.save(request),saved);assert.equal((await f.draft()).version,2);assert.equal((await f.db.query('select count(*) n from public.price_batches')).rows[0].n,1);
  await assert.rejects(()=>f.save({...request,rows:[change()]}),/já utilizado/);
