@@ -19,6 +19,7 @@ async function fixture(){
  await db.query('insert into public.catalog_draft(id,catalog) values(1,$1)',[JSON.stringify(base)]);
  await db.exec(await readFile(new URL('../supabase/migrations/20261001190410_carousel_campaigns.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/20261002113649_neurai_auto_publication.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261006103000_variant_short_codes.sql',import.meta.url),'utf8'));
  const rpc=async(name,args)=>{await db.exec('set role service_role');try{return (await db.query(`select public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) result`,args)).rows[0].result;}finally{await db.exec('reset role');}};
  const save=({actor=admin,id=crypto.randomUUID(),version=1,rows=[change()],auto=false,restore=null,email='admin@test.invalid'}={})=>rpc('neurai_save_batch',[actor,id,version,JSON.stringify(rows),auto,restore,email]);
  return {db,rpc,save,close:()=>db.close(),draft:async()=>(await db.query('select * from public.catalog_draft')).rows[0],jobs:async()=>(await db.query('select * from public.publications order by draft_version')).rows};
@@ -34,15 +35,25 @@ test('atomic multi-product save, audit identity, idempotent response-loss recove
  const p=await f.rpc('catalog_request_publication',[admin,2]);assert.equal(await f.rpc('catalog_request_publication',[admin,2]),p);assert.equal((await f.jobs()).length,1);
  }finally{await f.close();}
 });
-test('all malformed/unknown/duplicate/ambiguous/variant codes reject every row and never queue',async()=>{
+test('all malformed, unknown, duplicate and ambiguous codes reject every row and never queue',async()=>{
  const f=await fixture();try{
  for(const row of [change(2,'missing'),change(2,'001'),change(1,'001',999),change(1,'001',600,0),change(1,'001',600,-1),change(1,'001',600,1.5),change(1,'001',600,'500'),change(1,'001',600,100000001)]){
   await assert.rejects(()=>f.save({rows:[change(2,'1',800,700),row],auto:true}));assert.equal((await f.draft()).version,1);assert.equal((await f.jobs()).length,0);
  }
  await assert.rejects(()=>f.save({rows:[change(),change()],auto:true}),/repetido/);
  await f.db.query("update public.catalog_draft set catalog=jsonb_set(catalog,'{products,1,shortCode}','\"001\"')");await assert.rejects(()=>f.save(),/duplicado/);
- await f.db.query('update public.catalog_draft set catalog=$1',[JSON.stringify({...base,products:[{...base.products[0],variants:[{id:33,size:'P'}]},base.products[1]]})]);await assert.rejects(()=>f.save(),/compartilhado/);
  assert.equal((await f.jobs()).length,0);assert.equal((await f.draft()).version,1);
+ }finally{await f.close();}
+});
+test('size codes update independent diaper variant prices without changing the general product price',async()=>{
+ const f=await fixture();try{
+  const catalog={...base,products:[{...base.products[0],shortCode:'',variants:[{id:33,size:'P',packageQuantity:20,stockQuantity:1,shortCode:'0007P',priceCents:550},{id:34,size:'M',packageQuantity:18,stockQuantity:1,shortCode:'0007M',priceCents:null}]},base.products[1]]};
+  await f.db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(catalog)]);
+  const rows=[{productId:1,variantId:33,code:'0007P',previousCents:550,priceCents:525},{productId:1,variantId:34,code:'0007M',previousCents:600,priceCents:575}];
+  const saved=await f.save({rows});assert.equal(saved.changes.length,2);
+  const draft=await f.draft();assert.equal(draft.catalog.products[0].priceCents,600);assert.deepEqual(draft.catalog.products[0].variants.map(v=>v.priceCents),[525,575]);
+  assert.deepEqual(saved.changes.map(c=>c.variantSize),['P','M']);
+  const publication=await f.rpc('catalog_request_publication',[admin,2]);assert.ok(publication);assert.equal((await f.jobs()).length,1);
  }finally{await f.close();}
 });
 test('optimistic concurrency: one reviewed version wins and the other administrator cannot overwrite it',async()=>{

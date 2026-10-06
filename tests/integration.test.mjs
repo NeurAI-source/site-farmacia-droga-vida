@@ -40,6 +40,9 @@ test('reduced codes preserve leading zeros, allow old catalogs, and reject dupli
   copy.products[0].shortCode = 'Ab12'; copy.products[1].shortCode = 'aB12';
   assert.throws(() => validateCatalog(copy), /repetido/);
   copy.products[1].shortCode = '';
+  const withVariant=structuredClone(copy);withVariant.products[0].shortCode='';withVariant.products[0].variants=[{id:900,size:'P',packageQuantity:20,stockQuantity:0,shortCode:'00077',priceCents:599}];
+  assert.equal(validateCatalog(withVariant).products[0].variants[0].shortCode,'00077');
+  withVariant.products[1].shortCode='00077';assert.throws(()=>validateCatalog(withVariant),/repetido/);
   for (const bad of [1234, ' 1234', '<script>', 'x'.repeat(41)]) {
     copy.products[0].shortCode = bad;
     assert.throws(() => validateCatalog(copy), /Código reduzido inválido/);
