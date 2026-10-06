@@ -23,8 +23,14 @@ if (action === 'seed') {
   console.log('Catálogo inicial preparado; rascunhos existentes preservados.');
 } else if (action === 'fetch') {
   let catalog;
-  if (PUBLICATION_ID) {
-    catalog = await rpc('catalog_publication_start', { publication_id: PUBLICATION_ID, worker_run: process.env.GITHUB_RUN_ID });
+  let publicationId = PUBLICATION_ID;
+  if (!publicationId) {
+    const claimed = await rpc('catalog_dispatch_claim', { retry_pending: false });
+    publicationId = claimed?.id || '';
+    if (publicationId && process.env.GITHUB_ENV) await appendFile(process.env.GITHUB_ENV, `PUBLICATION_ID=${publicationId}\n`);
+  }
+  if (publicationId) {
+    catalog = await rpc('catalog_publication_start', { publication_id: publicationId, worker_run: process.env.GITHUB_RUN_ID });
     if (!catalog) {
       if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, 'skip=true\n');
       console.log('Publicação já assumida ou encerrada; execução duplicada ignorada.');
