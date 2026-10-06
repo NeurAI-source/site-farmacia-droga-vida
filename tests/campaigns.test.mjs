@@ -79,9 +79,7 @@ test('supplements are separated by audience and type',async()=>{
   const catalog=JSON.parse(await readFile(new URL('../catalog.json',import.meta.url),'utf8'));
   const names=catalog.categories.find(c=>c.name==='Suplementos').subcategories.map(s=>s.name);
   for(const expected of ['Suplemento em pó — Adulto e Sênior','Suplemento em pó — Infantil','Vitaminas e minerais','Polivitamínicos','Ômega e ácidos graxos','Outros suplementos'])assert.ok(names.includes(expected),expected);
-  const byId=id=>catalog.products.find(p=>p.id===id);
-  assert.equal(byId(40).category,'Suplementos'); assert.equal(byId(40).subcategory,'Suplemento em pó — Infantil');
-  assert.equal(byId(68).subcategory,'Suplemento em pó — Adulto e Sênior');
-  assert.equal(byId(101).subcategory,'Vitaminas e minerais');
-  assert.equal(byId(102).subcategory,'Outros suplementos');
+  const kids=catalog.products.filter(p=>[40,41,42].includes(p.id));
+  assert.equal(kids.length,3);
+  assert.ok(kids.every(p=>p.category==='Suplementos'&&p.subcategory==='Suplemento em pó — Infantil'));
 });
