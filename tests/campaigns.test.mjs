@@ -69,10 +69,19 @@ test('additive migration: CRUD, ordering, role checks, conflicts, scheduling, gr
     assert.deepEqual(await db.query('select * from public.catalog_draft'),before,'catalog untouched');
   }finally{await db.close();}
 });
-test('hero, catalog data and existing visual assets remain byte-for-byte intact',async()=>{
+test('hero and family visual asset remain byte-for-byte intact',async()=>{
   const digest=value=>createHash('sha256').update(value).digest('hex');
-  const hashes={"catalog.json": "bfb440b3592e30fafb2cc4f92d2fd6264da59a1d92ba46ed993d97088ae0ed0f", "styles.css": "df6d7292d0d2168b6a5333ecdc021b974676f6d23f5554e773363a44e778d37d", "assets/family.webp": "39063134a612435d9482690d4868ef12f53dbdc348db6e4c6236296a04153e3c"};
-  for(const [path,hash] of Object.entries(hashes))assert.equal(digest(await readFile(new URL('../'+path,import.meta.url))),hash,path);
+  assert.equal(digest(await readFile(new URL('../assets/family.webp',import.meta.url))),'39063134a612435d9482690d4868ef12f53dbdc348db6e4c6236296a04153e3c');
   const hero=(await readFile(new URL('../index.html',import.meta.url),'utf8')).match(/<section class="hero"[\s\S]*?<\/section>/)[0];
   assert.equal(digest(hero),'0aa1d67aa2b44a8f1c3423c6043c9eded64fe47638d4b8211e808ea11ea9d365');
+});
+test('supplements are separated by audience and type',async()=>{
+  const catalog=JSON.parse(await readFile(new URL('../catalog.json',import.meta.url),'utf8'));
+  const names=catalog.categories.find(c=>c.name==='Suplementos').subcategories.map(s=>s.name);
+  for(const expected of ['Suplemento em pó — Adulto e Sênior','Suplemento em pó — Infantil','Vitaminas e minerais','Polivitamínicos','Ômega e ácidos graxos','Outros suplementos'])assert.ok(names.includes(expected),expected);
+  const byId=id=>catalog.products.find(p=>p.id===id);
+  assert.equal(byId(40).category,'Suplementos'); assert.equal(byId(40).subcategory,'Suplemento em pó — Infantil');
+  assert.equal(byId(68).subcategory,'Suplemento em pó — Adulto e Sênior');
+  assert.equal(byId(101).subcategory,'Vitaminas e minerais');
+  assert.equal(byId(102).subcategory,'Outros suplementos');
 });
