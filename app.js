@@ -30,7 +30,7 @@ const $ = s => document.querySelector(s);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const save = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The catalog also works without browser storage. */ } };
-let products = [], cart = [], favorites = [], category = 'Todos', subcategory = '', query = '', favoriteOnly = false, all = false, limit = 12, toastTimer;
+let products = [], categories = [], cart = [], favorites = [], category = 'Todos', subcategory = '', query = '', favoriteOnly = false, all = false, limit = 12, toastTimer;
 
 const whatsapp = text => `https://wa.me/5517996630482?text=${encodeURIComponent(text)}`;
 function toast(message) { $('#toast').textContent = message; $('#toast').classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 3000); }
@@ -48,9 +48,19 @@ function productCard(p) {
   const variantPrices=p.variants.length?p.variants.map(v=>unitPrice(p,v.size)):[];
   const displayPrice=variantPrices.length?Math.min(...variantPrices):p.priceCents;
   const discount = !p.variants.length && p.oldPriceCents > p.priceCents ? Math.round((1-p.priceCents/p.oldPriceCents)*100) : 0;
-  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p><div class="product-price">${p.variants.length?'<small>A partir de</small>':p.oldPriceCents > p.priceCents ? `<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(displayPrice)}</strong></div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
+  const categoryLabel = p.subcategory ? `${p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category} · ${p.subcategory}` : (p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category);
+  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(categoryLabel)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p><div class="product-price">${p.variants.length?'<small>A partir de</small>':p.oldPriceCents > p.priceCents ? `<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(displayPrice)}</strong></div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
+}
+function renderSubfilters() {
+  const host = $('#subfilters'); if (!host) return;
+  const selected = categories.find(c => c.name === category);
+  const subs = selected?.subcategories?.filter(s => s.active !== false) || [];
+  host.hidden = category === 'Todos' || !subs.length;
+  if (host.hidden) { host.innerHTML = ''; return; }
+  host.innerHTML = `<button data-category="${escape(category)}" aria-pressed="${!subcategory}">Todos</button>` + subs.map(s => `<button data-category="${escape(category)}" data-subcategory="${escape(s.name)}" aria-pressed="${subcategory === s.name}">${escape(s.name)}</button>`).join('');
 }
 function renderProducts() {
+  renderSubfilters();
   const filtered = filterProducts(products, { category, subcategory, query, favorites: favoriteOnly ? favorites : null });
   const displayed = all || category !== 'Todos' || query || favoriteOnly ? filtered : filtered.filter(p => p.featured);
   $('#products-title').textContent = favoriteOnly ? 'Seus favoritos' : query ? 'Resultado da busca' : category !== 'Todos' ? (subcategory || category) : all ? 'Todos os produtos' : 'Produtos em destaque';
@@ -59,6 +69,7 @@ function renderProducts() {
   $('#load-more').hidden = displayed.length <= limit; $('#clear-filters').hidden = category === 'Todos' && !query && !favoriteOnly && !subcategory;
   $('#show-all').hidden = all;
   document.querySelectorAll('#filters [data-category]').forEach(el => el.setAttribute('aria-pressed',String(el.dataset.category === category)));
+  document.querySelectorAll('#subfilters [data-subcategory]').forEach(el => el.setAttribute('aria-pressed',String(el.dataset.subcategory === subcategory)));
   updateCounts();
 }
 function selectCategory(name, sub = '') { category=name; subcategory=sub; all=true; query=''; $('#search').value=''; favoriteOnly=false; limit=12; renderProducts(); $('#ofertas').scrollIntoView({behavior:'smooth'}); }
@@ -127,7 +138,7 @@ $('#contact-form').addEventListener('submit',event=>{event.preventDefault();cons
 $('#privacy').onclick=()=>openDialog($('#privacy-dialog')); $('#clear-data').onclick=()=>{cart=[];favorites=[];renderProducts();renderCart();toast('Carrinho e favoritos apagados deste navegador.');};
 $('#year').textContent=new Date().getFullYear();
 try {
-  const catalogUrl=new URL('catalog.json',import.meta.url); catalogUrl.searchParams.set('v','20261006-mobile-cache-fix-1'); const response=await fetch(catalogUrl,{cache:'no-store'}); if(!response.ok) throw new Error('Catálogo indisponível'); const data=await response.json(); products=data.products;
+  const catalogUrl=new URL('catalog.json',import.meta.url); catalogUrl.searchParams.set('v','20261006-mobile-cache-fix-1'); const response=await fetch(catalogUrl,{cache:'no-store'}); if(!response.ok) throw new Error('Catálogo indisponível'); const data=await response.json(); products=data.products; categories=data.categories;
   cart=sanitizeCart(read('dv-cart',[]),products); const storedFavorites=read('dv-favorites',[]); favorites=Array.isArray(storedFavorites)?[...new Set(storedFavorites)].filter(id=>products.some(p=>p.id===id)):[];
   $('#filters').innerHTML=['Todos',...data.categories.map(c=>c.name)].map(c=>`<button data-category="${escape(c)}" aria-pressed="${c==='Todos'}">${escape(c==='Perfumaria e Cuidados Pessoais'?'Beleza e cuidados':c)}</button>`).join('');
   renderProducts();
