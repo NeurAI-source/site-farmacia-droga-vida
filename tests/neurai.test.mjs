@@ -54,7 +54,8 @@ test('stale preview never overwrites changed product or variant prices/codes', (
 });
 test('checkup reports missing codes per size and potential duplicate presentations without changing products', () => {
   const duplicate = {...products[0],id:4,shortCode:''};
-  const result = catalogCheckup([...products,duplicate]);
+  const sized=structuredClone(products[2]);sized.variants[1].shortCode='';
+  const result = catalogCheckup([products[0],products[1],sized,duplicate]);
   assert.ok(result.find(p=>p.id===4).issues.includes('Sem código reduzido'));
   assert.ok(result.find(p=>p.id===3).issues.some(x=>x.includes('Tamanhos sem código reduzido: M')));
   assert.equal(duplicate.shortCode,'');

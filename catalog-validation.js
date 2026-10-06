@@ -25,13 +25,11 @@ export function validateCatalog(data) {
       || (p.updatedAt != null && !text(p.updatedAt, 80))
       || !['active','featured','availableStore1','availableStore2'].every(k => typeof p[k] === 'boolean')) fail();
     ids.add(p.id);
-    if (p.shortCode != null && !text(p.shortCode, 40)) fail();
     registerCode(p.shortCode || '');
     for (const k of ['brand','detail','badge','subcategory']) if (!text(p[k], 200)) fail();
     const sizes = new Set();
     for (const v of p.variants) {
       if (!Number.isSafeInteger(v.id) || v.id < 0 || !text(v.size, 15) || !v.size.trim() || sizes.has(v.size.toUpperCase()) || !count(v.packageQuantity) || v.packageQuantity < 1 || !count(v.stockQuantity)) fail();
-      if (v.shortCode != null && !text(v.shortCode, 40)) fail();
       registerCode(v.shortCode || '');
       if (v.priceCents != null && (!count(v.priceCents) || v.priceCents < 1)) fail();
       sizes.add(v.size.toUpperCase());
