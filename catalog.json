@@ -1870,8 +1870,8 @@
     },
     {
       "id": 40,
-      "category": "Área Infantil",
-      "subcategory": "Fórmulas infantis",
+      "category": "Suplementos",
+      "subcategory": "Suplemento em pó — Infantil",
       "name": "SUSTAGEN KIDS 350G BAU",
       "brand": "Reckitt Benckiser",
       "activeIngredient": "",
@@ -1900,8 +1900,8 @@
     },
     {
       "id": 41,
-      "category": "Área Infantil",
-      "subcategory": "Fórmulas infantis",
+      "category": "Suplementos",
+      "subcategory": "Suplemento em pó — Infantil",
       "name": "SUSTAGEN KIDS 380G MOR",
       "brand": "RECKITT BENCKISER",
       "activeIngredient": "",
@@ -1930,8 +1930,8 @@
     },
     {
       "id": 42,
-      "category": "Área Infantil",
-      "subcategory": "Fórmulas infantis",
+      "category": "Suplementos",
+      "subcategory": "Suplemento em pó — Infantil",
       "name": "SUSTAGEN KIDS 380G BAU",
       "brand": "RECKITT BENCKISER",
       "activeIngredient": "",
@@ -2125,49 +2125,76 @@
       "updatedAt": "2026-08-19 23:54:48",
       "subcategories": [
         {
-          "id": 7,
+          "id": 27,
           "categoryId": 2,
-          "name": "Polivitamínicos",
+          "name": "Suplemento em pó — Adulto e Sênior",
           "active": true,
           "sortOrder": 10,
-          "createdAt": "2026-08-19 23:54:48",
-          "updatedAt": "2026-08-19 23:54:48"
+          "createdAt": "2026-10-06T19:38:49.963Z",
+          "updatedAt": "2026-10-06T19:38:49.963Z"
         },
         {
-          "id": 8,
+          "id": 28,
           "categoryId": 2,
-          "name": "Cabelo, pele e unhas",
+          "name": "Suplemento em pó — Infantil",
           "active": true,
           "sortOrder": 20,
-          "createdAt": "2026-08-19 23:54:48",
-          "updatedAt": "2026-08-19 23:54:48"
-        },
-        {
-          "id": 9,
-          "categoryId": 2,
-          "name": "Ômega e ácidos graxos",
-          "active": true,
-          "sortOrder": 30,
-          "createdAt": "2026-08-19 23:54:48",
-          "updatedAt": "2026-08-19 23:54:48"
+          "createdAt": "2026-10-06T19:38:49.963Z",
+          "updatedAt": "2026-10-06T19:38:49.963Z"
         },
         {
           "id": 10,
           "categoryId": 2,
           "name": "Vitaminas e minerais",
           "active": true,
+          "sortOrder": 30,
+          "createdAt": "2026-08-19 23:54:48",
+          "updatedAt": "2026-10-06T19:38:49.963Z"
+        },
+        {
+          "id": 7,
+          "categoryId": 2,
+          "name": "Polivitamínicos",
+          "active": true,
           "sortOrder": 40,
           "createdAt": "2026-08-19 23:54:48",
-          "updatedAt": "2026-08-19 23:54:48"
+          "updatedAt": "2026-10-06T19:38:49.963Z"
+        },
+        {
+          "id": 9,
+          "categoryId": 2,
+          "name": "Ômega e ácidos graxos",
+          "active": true,
+          "sortOrder": 50,
+          "createdAt": "2026-08-19 23:54:48",
+          "updatedAt": "2026-10-06T19:38:49.963Z"
+        },
+        {
+          "id": 8,
+          "categoryId": 2,
+          "name": "Cabelo, pele e unhas",
+          "active": true,
+          "sortOrder": 60,
+          "createdAt": "2026-08-19 23:54:48",
+          "updatedAt": "2026-10-06T19:38:49.963Z"
         },
         {
           "id": 11,
           "categoryId": 2,
           "name": "Nutrição esportiva",
           "active": true,
-          "sortOrder": 50,
+          "sortOrder": 70,
           "createdAt": "2026-08-19 23:54:48",
-          "updatedAt": "2026-08-19 23:54:48"
+          "updatedAt": "2026-10-06T19:38:49.963Z"
+        },
+        {
+          "id": 29,
+          "categoryId": 2,
+          "name": "Outros suplementos",
+          "active": true,
+          "sortOrder": 80,
+          "createdAt": "2026-10-06T19:38:49.963Z",
+          "updatedAt": "2026-10-06T19:38:49.963Z"
         }
       ]
     },
