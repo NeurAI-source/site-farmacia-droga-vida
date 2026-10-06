@@ -75,6 +75,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - name: Iniciar próxima publicação da fila
         if: always() && steps.snapshot.outputs.skip != 'true'
+        continue-on-error: true
         run: node scripts/cloud-catalog.mjs dispatch-next
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
