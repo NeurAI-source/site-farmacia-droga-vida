@@ -47,12 +47,13 @@ test('all malformed, unknown, duplicate and ambiguous codes reject every row and
 });
 test('size codes update independent diaper variant prices without changing the general product price',async()=>{
  const f=await fixture();try{
-  const catalog={...base,products:[{...base.products[0],shortCode:'',variants:[{id:33,size:'P',packageQuantity:20,stockQuantity:1,shortCode:'0007P',priceCents:550},{id:34,size:'M',packageQuantity:18,stockQuantity:1,shortCode:'0007M'}]},base.products[1]]};
+  const catalog={...base,products:[{...base.products[0],shortCode:'',variants:[{id:33,size:'P',packageQuantity:20,stockQuantity:1,shortCode:'0007P',priceCents:550},{id:34,size:'M',packageQuantity:18,stockQuantity:1,shortCode:'0007M',priceCents:null}]},base.products[1]]};
   await f.db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(catalog)]);
   const rows=[{productId:1,variantId:33,code:'0007P',previousCents:550,priceCents:525},{productId:1,variantId:34,code:'0007M',previousCents:600,priceCents:575}];
   const saved=await f.save({rows});assert.equal(saved.changes.length,2);
   const draft=await f.draft();assert.equal(draft.catalog.products[0].priceCents,600);assert.deepEqual(draft.catalog.products[0].variants.map(v=>v.priceCents),[525,575]);
   assert.deepEqual(saved.changes.map(c=>c.variantSize),['P','M']);
+  const publication=await f.rpc('catalog_request_publication',[admin,2]);assert.ok(publication);assert.equal((await f.jobs()).length,1);
  }finally{await f.close();}
 });
 test('optimistic concurrency: one reviewed version wins and the other administrator cannot overwrite it',async()=>{

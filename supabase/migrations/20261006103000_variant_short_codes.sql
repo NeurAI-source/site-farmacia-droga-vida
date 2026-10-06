@@ -29,7 +29,7 @@ begin
               (coalesce(c->>'variantId','') <> '' and exists(
                 select 1 from jsonb_array_elements(coalesce(p->'variants','[]'::jsonb)) v
                 where v->'id'=c->'variantId' and upper(v->>'shortCode')=c->>'code'
-                  and coalesce(v->'priceCents',p->'priceCents')=c->'priceCents'
+                  and coalesce(v->>'priceCents',p->>'priceCents')=c->>'priceCents'
               ))
             )
         )
