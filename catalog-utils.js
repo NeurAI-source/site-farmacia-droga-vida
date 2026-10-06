@@ -17,7 +17,16 @@ export function sanitizeCart(value, products) {
   }
   return [...merged.values()];
 }
-export function cartTotal(cart, products) { return cart.reduce((sum, item) => sum + products.find(p => p.id === item.id).priceCents * item.qty, 0); }
+export function unitPrice(product, variantSize = '') {
+  const variant = variantSize ? product.variants?.find(v => v.size === variantSize) : null;
+  return variant?.priceCents ?? product.priceCents;
+}
+export function cartTotal(cart, products) {
+  return cart.reduce((sum, item) => {
+    const product = products.find(p => p.id === item.id);
+    return sum + unitPrice(product, item.variant) * item.qty;
+  }, 0);
+}
 export function orderMessage(cart, products, customer = {}) {
   const delivery = customer.receipt !== 'retirada';
   const name = String(customer.name || '').trim();
@@ -26,7 +35,7 @@ export function orderMessage(cart, products, customer = {}) {
     'Nome: ' + name + (delivery ? '\nBairro para entrega: ' + neighborhood : '') + '\n\n' + cart.map(item => {
       const p = products.find(p => p.id === item.id);
       const v = p.variants.find(v => v.size === item.variant);
-      return '· ' + item.qty + 'x ' + p.name + (v ? ' — tamanho ' + v.size + ', pacote com ' + v.packageQuantity + (p.subcategory === 'Fraldas' ? ' fraldas' : ' unidades') : '') + ' — ' + money(p.priceCents * item.qty);
+      return '· ' + item.qty + 'x ' + p.name + (v ? ' — tamanho ' + v.size + ', pacote com ' + v.packageQuantity + (p.subcategory === 'Fraldas' ? ' fraldas' : ' unidades') : '') + ' — ' + money(unitPrice(p, item.variant) * item.qty);
     }).join('\n') + '\n\nSubtotal estimado dos produtos: ' + money(cartTotal(cart, products)) +
     '\nForma de recebimento: ' + (delivery ? 'entrega.' : 'retirada na loja.') +
     (delivery ? '\nTaxa de entrega: consultar com os atendentes.' : '') +
