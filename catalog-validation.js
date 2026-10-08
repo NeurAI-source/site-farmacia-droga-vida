@@ -11,7 +11,7 @@ export function validateCatalog(data) {
     try { const u=new URL(v); const host=u.hostname.toLowerCase();
       return u.protocol==='https:'&&!u.username&&!u.password&&host!=='localhost'
         && !host.endsWith('.localhost')&&!host.endsWith('.local')
-        && !host.endsWith('.internal')&&!/^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(host)&&!host.includes(':');
+        && !host.endsWith('.internal')&&!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host)&&!host.includes(':');
     } catch { return false; }
   };
   const ids = new Set();
