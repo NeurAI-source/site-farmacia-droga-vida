@@ -35,7 +35,16 @@ function syncVariantMode(){
   }
 }
 function variantRow(v={}){const row=document.createElement('div');row.className='variant';row.innerHTML=`<label>Tamanho<input data-field="size" value="${esc(v.size||'')}" required maxlength="15"></label><label>Qtd. por pacote<input data-field="packageQuantity" type="number" min="1" step="1" required value="${v.packageQuantity||1}"></label><label>Código reduzido<input data-field="shortCode" value="${esc(v.shortCode||'')}" maxlength="40" autocomplete="off" placeholder="Ex.: 001234"></label><label>Preço do tamanho (R$)<input data-field="price" type="number" min="0.01" step="0.01" value="${v.priceCents!=null?v.priceCents/100:''}" placeholder="Usa preço geral"></label><label>Estoque<input data-field="stockQuantity" type="number" min="0" step="1" required value="${v.stockQuantity||0}"></label><button type="button" aria-label="Remover tamanho">×</button>`;row.dataset.id=v.id||'';row.querySelector('button').onclick=()=>row.remove();$('#variants').append(row);syncVariantMode()}
-function edit(id,suggestion=null){editing=data.products.find(p=>p.id===id)||null;const p=editing||{name:'',brand:'',detail:'',priceCents:0,oldPriceCents:0,stockQuantity:0,badge:'',imageUrl:'',category:data.categories[0].name,subcategory:'',active:true,featured:false,availableStore1:true,availableStore2:true,variants:[]};form.reset();$('#form-error').textContent='';$('#editor-title').textContent=editing?'Editar produto':'Novo produto';for(const n of ['name','shortCode','brand','detail','ean','stockQuantity','badge','imageUrl','category'])field(n).value=p[n]??'';for(const n of ['Description','Purpose','Benefits','Usage','Warnings','Specifications'])field('content'+n).value=p.content?.[n.charAt(0).toLowerCase()+n.slice(1)]??'';$('#content-history-list').innerHTML='';$('#content-history-status').textContent='';field('contentSources').value=(p.contentSources||[]).join('\n');
+function edit(id,suggestion=null){
+ if(suggestion?.content&&editing?.id===id&&$('#editor').open){
+  for(const n of ['Description','Purpose','Benefits','Usage','Warnings','Specifications']){
+   const key=n.charAt(0).toLowerCase()+n.slice(1);
+   field('content'+n).value=suggestion.content[key]??field('content'+n).value;
+  }
+  field('contentSources').value=[...new Set([...parseEvidence(field('contentSources').value),...(suggestion.sources||[])])].join('\n');
+  return;
+ }
+ editing=data.products.find(p=>p.id===id)||null;const p=editing||{name:'',brand:'',detail:'',priceCents:0,oldPriceCents:0,stockQuantity:0,badge:'',imageUrl:'',category:data.categories[0].name,subcategory:'',active:true,featured:false,availableStore1:true,availableStore2:true,variants:[]};form.reset();$('#form-error').textContent='';$('#editor-title').textContent=editing?'Editar produto':'Novo produto';for(const n of ['name','shortCode','brand','detail','ean','stockQuantity','badge','imageUrl','category'])field(n).value=p[n]??'';for(const n of ['Description','Purpose','Benefits','Usage','Warnings','Specifications'])field('content'+n).value=p.content?.[n.charAt(0).toLowerCase()+n.slice(1)]??'';$('#content-history-list').innerHTML='';$('#content-history-status').textContent='';field('contentSources').value=(p.contentSources||[]).join('\n');
 if(suggestion?.content){
  for(const n of ['Description','Purpose','Benefits','Usage','Warnings','Specifications']){
  const key=n.charAt(0).toLowerCase()+n.slice(1);
