@@ -2,8 +2,12 @@ import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 const original=JSON.parse(readFileSync(new URL('../../catalog.json',import.meta.url)));
 const id='11111111-1111-4111-8111-111111111111';
-async function setup(page,{role='admin',lost=false}={}){
+async function setup(page,{role='admin',lost=false,seedContent=false}={}){
  const catalog=structuredClone(original);catalog.products=catalog.products.slice(0,2).map((p,i)=>({...p,shortCode:i?'1':'001',variants:[],priceCents:i?800:600}));
+ if(seedContent){
+  catalog.products[0].content={description:'Descrição histórica preservada',warnings:'Advertência conferida'};
+  catalog.products[0].contentSources=['https://fabricante.com.br/produto'];
+ }
  const state={catalog,version:7,batches:[],calls:[],status:'pending',lost};
  await page.route('**/public-config.js',r=>r.fulfill({contentType:'text/javascript',body:'export const config={url:"https://neurai-test.supabase.co",key:"sb_publishable_test"};'}));
  const user={id,email:'admin@example.test',aud:'authenticated',role:'authenticated'};const token=`e30.${Buffer.from(JSON.stringify({sub:id,role:'authenticated',exp:4102444800})).toString('base64url')}.test`;
@@ -13,6 +17,7 @@ async function setup(page,{role='admin',lost=false}={}){
   if(url.pathname.endsWith('/user'))data=user;
   else if(url.pathname.includes('/team_members'))data={role,active:true};
   else if(url.pathname.includes('/catalog_draft'))data={catalog:state.catalog,version:state.version};
+  else if(url.pathname.endsWith('/save_catalog')){const body=r.request().postDataJSON();state.calls.push(body);state.catalog=body.payload;state.version++;data=state.version;}
   else if(url.pathname.includes('/publications')||url.pathname.includes('/traffic_summary'))data=[];
   else if(url.pathname.endsWith('/admin-api')){
    const b=r.request().postDataJSON();state.calls.push(b);
@@ -67,5 +72,26 @@ test('Neur.AI permanece com remarcação e check-up, sem gerador de descrições
  await expect(page.locator('#content-ai-dialog')).toHaveCount(0);
  await expect(page.locator('#open-neur-content')).toHaveCount(0);
  await expect(page.locator('#open-neur-editor')).toHaveCount(0);
+ expect(errors).toEqual([]);
+});
+
+test('editor de produto nao mostra informacoes detalhadas e preserva textos antigos ao salvar',async({page})=>{
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ const state=await setup(page,{seedContent:true});
+ await page.getByRole('button',{name:'Fechar',exact:true}).click();
+ const id=state.catalog.products[0].id;
+ await page.locator('#recent-products [data-edit="'+id+'"]').click();
+ await expect(page.locator('#editor')).toBeVisible();
+ await expect(page.locator('#editor .content-editor')).toHaveCount(0);
+ await expect(page.getByText('Informações para a página individual')).toHaveCount(0);
+ await expect(page.locator('#show-content-history')).toHaveCount(0);
+ await page.locator('#product-form [name="badge"]').fill('Oferta');
+ await page.locator('#product-form [type="submit"]').click();
+ await expect(page.locator('#editor')).not.toBeVisible();
+ const product=state.catalog.products.find(p=>p.id===id);
+ expect(product.content).toEqual({description:'Descrição histórica preservada',warnings:'Advertência conferida'});
+ expect(product.contentSources).toEqual(['https://fabricante.com.br/produto']);
+ expect(product.badge).toBe('Oferta');
+ expect(state.calls.some(x=>x.payload?.products?.length)).toBe(true);
  expect(errors).toEqual([]);
 });
