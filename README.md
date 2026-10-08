@@ -36,17 +36,11 @@ O cadastro aceita EAN e campos editoriais opcionais: descrição completa, para 
 
 O pré-pedido permanece no WhatsApp; o estoque não é integrado a sistemas externos e deve ser confirmado por atendentes.
 
-## Neur.AI — Conteúdo inteligente e auditável
+## Edição manual de informações dos produtos
 
-No painel administrativo, abra **Neur.AI — Descrições** ou use **Editar produto → Sugerir textos com a Neur.AI**.
+O painel mantém campos editoriais e histórico de versões para permitir conferência e restauração manual, sem alterar o catálogo ou preços. A área de **Descrição Inteligente da Neur.AI foi removida**: não há botões de geração em massa, pesquisa automática de descrições ou consultas pagas de IA pela interface. As páginas públicas de produto não exibem esses blocos de texto.
 
-- **Base gratuita:** organiza nome, marca, apresentação e categoria sem inventar alegações de saúde. Ao colar o texto do rótulo ou ficha oficial com títulos, a Neur.AI extrai trechos correspondentes a descrição, finalidade, benefícios, modo de uso, advertências e características técnicas. O responsável deve conferir os trechos antes de salvar.
-- **Pesquisa com IA:** integrada à Edge Function autenticada `product-content-ai`. Usa pesquisa na web com fontes, limita a oito solicitações/hora por administrador, exclui medicamentos do fluxo automático e **não salva nem publica** por conta própria. A pesquisa só fica disponível se o administrador configurar a secret `OPENAI_API_KEY` em Supabase → Edge Functions → Secrets; o uso pode gerar custos no serviço externo. Nunca coloque essa chave no navegador, GitHub ou repositório.
-- **Em lote:** permite preparar até dez descrições básicas pendentes, revisar e salvar somente os itens escolhidos no rascunho.
-- **Fontes:** links HTTPS podem ser registrados no produto e exibidos com as informações; a pessoa responsável confere se a fonte se refere à apresentação correta antes de publicar.
-- **Reversão:** histórico de textos permanece disponível no painel. Restaurar limpa links antigos para evitar citações incorretas. A nova página pode ser desligada no painel sem apagar cadastros.
-
-**Importante:** não há integração com a Trier, coleta automática de bula ou pesquisa sem uma chave de IA configurada. No modo gratuito, campos clínicos sem rótulo permanecem em branco; não devem ser preenchidos com suposições.
+As funções tradicionais da Neur.AI (remarcação, histórico de preços e check-up do catálogo) permanecem disponíveis.
 
 ## Verificação
 

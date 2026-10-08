@@ -39,7 +39,6 @@
 .history-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #eee;font-size:11px}
 @media(max-width:760px){.product-page-settings{align-items:stretch;flex-direction:column}.product-page-settings button{width:100%}}
 
-/* Neur.AI: controls embedded in the product editor and dashboard */
+/* Cabeçalho do catálogo */
 .admin-heading-buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.content-editor #open-neur-editor{margin-top:16px}
 @media(max-width:760px){.admin-heading-buttons{justify-content:flex-end}.admin-heading-buttons .button{font-size:10px;white-space:normal}.heading{flex-wrap:wrap}}
