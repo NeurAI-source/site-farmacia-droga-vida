@@ -5,7 +5,7 @@ import { authorize, membership, refreshTraffic, refreshPublication } from './ses
 import { validateCatalog } from '../catalog-validation.js';
 import { parseEvidence,validEvidenceUrl } from '../content-generator.js';
 import { mountContentAI } from './content-ai.js?v=20261008';
-import { productDetailMarkup } from '../product-detail.js?v=20261008-neur-content';
+import { productDetailMarkup } from '../product-detail.js?v=20261008-sem-detalhes-v1';
 import {money,normalize} from '../catalog-utils.js';
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let campaignManager;
