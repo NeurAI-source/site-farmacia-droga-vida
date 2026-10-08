@@ -4,17 +4,12 @@ import { client, adminAction } from './backend.js?v=20261002';
 import { authorize, membership, refreshTraffic, refreshPublication } from './session.js?v=20261002';
 import { validateCatalog } from '../catalog-validation.js';
 import { parseEvidence,validEvidenceUrl } from '../content-generator.js';
-import { mountContentAI } from './content-ai.js?v=20261008';
 import { productDetailMarkup } from '../product-detail.js?v=20261008-sem-detalhes-v1';
 import {money,normalize} from '../catalog-utils.js';
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let campaignManager;
 let data,version,view='dashboard',editing=null,timer,saving=false;
 const neur = mountNeurAI({ getCatalog:()=>data, getVersion:()=>version, reloadCatalog, action:adminAction, onSaved:()=>render(), onEdit:edit });
-const contentAi=mountContentAI({getCatalog:()=>data,getVersion:()=>version,reloadCatalog,save,onEdit:edit,notify});
-const neurDialog=document.querySelector('.neur-dialog');
-neurDialog?.querySelector('.editor-body')?.insertAdjacentHTML('beforeend','<section class="neur-checkup"><h3>Descrições inteligentes</h3><p>Gere informações para produtos com a Neur.AI, confira fontes e aprove antes de publicar.</p><button type="button" class="button white" data-content-ai-launch>✦ Abrir central de descrições</button></section>');
-neurDialog?.querySelector('[data-content-ai-launch]')?.addEventListener('click',()=>{neurDialog.close();contentAi.open();});
 async function reloadCatalog(){const {data:row,error}=await client.from('catalog_draft').select('*').eq('id',1).single();if(error||!row)throw Error('Não foi possível recarregar o catálogo. Confira sua conexão.');data=validateCatalog(row.catalog);version=row.version;render();}
 const imageUrl=p=>/^https:\/\//.test(p.imageUrl)?p.imageUrl:'../'+p.imageUrl;
 const validImage=url=>/^https:\/\/[^\s]+$/.test(url)||/^assets\/[\w./-]+\.(png|jpe?g|webp|svg)$/i.test(url)&&!url.includes('..');
@@ -61,8 +56,6 @@ if(evidenceLines.length!==evidences.length||evidenceLines.some(link=>!validEvide
 const next=structuredClone(data);const id=editing?.id??Math.max(0,...data.products.map(p=>p.id))+1;const p={...(editing||{id,createdAt:new Date().toISOString(),sortOrder:0,tone:'amber'}),name,shortCode:isDiaper()&&variants.length?'':field('shortCode').value.trim().toUpperCase(),imageUrl:image,category:field('category').value,subcategory:field('subcategory').value,brand:field('brand').value.trim(),detail:field('detail').value.trim(),ean:field('ean').value.trim(),contentSources:evidences,content:Object.fromEntries(['Description','Purpose','Benefits','Usage','Warnings','Specifications'].map(n=>[n.charAt(0).toLowerCase()+n.slice(1),field('content'+n).value.trim()])),priceCents:Math.round(Number(field('price').value)*100),oldPriceCents:Math.round(Number(field('oldPrice').value||0)*100),stockQuantity:Number(field('stockQuantity').value),badge:field('badge').value.trim(),variants:variants.map(v=>({...v,productId:id})),updatedAt:new Date().toISOString()};for(const n of ['active','featured','availableStore1','availableStore2'])p[n]=field(n).checked;const index=next.products.findIndex(x=>x.id===id);if(index<0)next.products.push(p);else next.products[index]=p;const button=form.querySelector('[type=submit]');button.disabled=true;try{if(await save(next)){$('#editor').close();render();notify('Produto salvo no rascunho. O site público não foi alterado.')}}catch(error){$('#form-error').textContent=error.message}finally{button.disabled=false}};
 document.addEventListener('click',e=>{const nav=e.target.closest('[data-view]');if(nav)setView(nav.dataset.view);const editor=e.target.closest('[data-edit]');if(editor)edit(Number(editor.dataset.edit));const cat=e.target.closest('[data-category]');if(cat){$('#category-filter').value=cat.dataset.category;setView('products')}});for(const id of ['search','category-filter','status-filter'])$('#'+id).addEventListener('input',renderTable);
 $('#save-product-page-mode').onclick=async()=>{const button=$('#save-product-page-mode');button.disabled=true;try{const next=structuredClone(data);next.expandedProductPage=$('#expanded-product-page').checked;await save(next);render();notify('Configuração salva no rascunho. Para aplicar ao site use Publicar no site.')}catch(error){notify(error.message);render()}finally{button.disabled=false}};
-$('#open-neur-content').onclick=()=>contentAi.open();
-$('#open-neur-editor').onclick=()=>{if(!editing){$('#form-error').textContent='Salve o produto antes de pedir a sugestão.';return}contentAi.open(editing.id);};
 $('#preview-product-page').onclick=()=>{if(!editing){notify('Salve o produto antes de visualizar.');return}const product=data.products.find(p=>p.id===editing.id);if(!product)return;$('#product-page-preview-body').innerHTML=productDetailMarkup({...product,imageUrl:imageUrl(product)});$('#product-page-preview').showModal()};
 $('#close-product-page-preview').onclick=()=>$('#product-page-preview').close();
 $('#show-content-history').onclick=async()=>{
