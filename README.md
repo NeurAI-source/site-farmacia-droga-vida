@@ -1,6 +1,6 @@
 # Droga Vida Popular
 
-Site responsivo baseado no mockup fornecido. Catálogo com 41 produtos, imagens, preços, tamanhos, busca, categorias, favoritos e carrinho. O cliente revisa o pedido e conclui o atendimento pelo WhatsApp da loja.
+Site responsivo da Droga Vida Popular, com catálogo atualizado pelo painel, imagens, preços, tamanhos, busca, categorias, favoritos e pré-pedido. O cliente revisa o pré-pedido e conclui o atendimento pelo WhatsApp da loja.
 
 ## Executar
 
@@ -27,6 +27,14 @@ Abra http://127.0.0.1:4173. `dist/` contém o site estático para hospedagem, in
 O catálogo inicial foi importado da fonte indicada. A integração Supabase permite editar rascunhos e publicar pelo painel depois da ativação descrita em [SUPABASE-SETUP.md](SUPABASE-SETUP.md). Não há pagamento online. Carrinho e favoritos ficam no navegador; falhas de armazenamento não impedem o uso.
 
 As alegações do mockup sobre entrega nacional, parcelamento em 12 vezes e mais de 20 anos não foram usadas porque não constam na fonte real. Categorias sem produtos oferecem consulta à equipe, sem inventar itens ou preços.
+
+## Página individual de produto (reversível)
+
+A página individual `produto.html?id=<ID>` pode ser ativada e desativada no painel administrativo em **Visão geral → Nova página individual de produto**. A flag `expandedProductPage` no catálogo publicado controla o comportamento; quando desligada, o modal antigo continua funcionando. O catálogo e os dados dos produtos são preservados.
+
+O cadastro aceita EAN e campos editoriais opcionais: descrição completa, para que serve, benefícios, modo de uso, advertências e características técnicas. Campos sem informação verificada ficam ocultos no site. Textos anteriores podem ser restaurados pelo histórico no painel, sem reverter preço ou estoque.
+
+O pré-pedido permanece no WhatsApp; o estoque não é integrado a sistemas externos e deve ser confirmado por atendentes.
 
 ## Verificação
 
