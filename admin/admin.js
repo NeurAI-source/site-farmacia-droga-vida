@@ -74,11 +74,11 @@ $('#show-content-history').onclick=async()=>{
    await reloadCatalog();
    const next=structuredClone(data);
    const p=next.products.find(p=>p.id===editing.id);if(!p)throw Error('Produto não encontrado.');
-   p.content=revision.previous_content||{};p.ean=revision.previous_ean||'';p.updatedAt=new Date().toISOString();
+   p.content=revision.previous_content||{};p.ean=revision.previous_ean||'';p.contentSources=[];p.updatedAt=new Date().toISOString();
    await save(next);
    editing=next.products.find(q=>q.id===editing.id);
    for(const n of ['Description','Purpose','Benefits','Usage','Warnings','Specifications'])field('content'+n).value=editing.content?.[n.charAt(0).toLowerCase()+n.slice(1)]||'';
-   field('ean').value=editing.ean||'';render();notify('Textos restaurados no rascunho. Publique quando aprovar.');list.innerHTML='';
+   field('ean').value=editing.ean||'';field('contentSources').value='';render();notify('Textos restaurados no rascunho. As fontes antigas foram limpas; revise antes de publicar.');list.innerHTML='';
   }catch(e){status.textContent=e.message}finally{button.disabled=false}
  };
 };
