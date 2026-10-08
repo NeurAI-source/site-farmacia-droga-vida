@@ -3,7 +3,7 @@ import { mountNeurAI } from './neurai.js?v=20261002';
 import { client, adminAction } from './backend.js?v=20261002';
 import { authorize, membership, refreshTraffic, refreshPublication } from './session.js?v=20261002';
 import { validateCatalog } from '../catalog-validation.js';
-import { parseEvidence,validEvidenceUrl } from '../content-generator.js';
+import { parseEvidence,validEvidenceUrl } from '../content-evidence.js';
 import { productDetailMarkup } from '../product-detail.js?v=20261008-sem-detalhes-v1';
 import {money,normalize} from '../catalog-utils.js';
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
