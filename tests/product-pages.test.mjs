@@ -13,9 +13,7 @@ test('Campos editoriais opcionais são validados e não inventam informações',
  const p={...raw.products[0],ean:'7891234567890',content:{description:'Descrição verificada',purpose:'',warnings:'Leia o rótulo.'}};
  assert.doesNotThrow(()=>validateCatalog({...raw,products:[p,...raw.products.slice(1)]}));
  const html=productDetailMarkup(p);
- assert.match(html,/Descrição verificada/);
- assert.match(html,/Leia o rótulo/);
- assert.doesNotMatch(html,/Para que serve/);
+ assert.doesNotMatch(html,/Descrição verificada|Leia o rótulo|Descrição completa|Para que serve|Benefícios|Modo de uso|Advertências|Características técnicas|Informações sobre o produto|Fontes das informações/);
  assert.match(html,/Adicionar ao pré-pedido/);
  assert.doesNotMatch(html,/Em estoque|Disponível agora/);
  assert.throws(()=>validateCatalog({...raw,products:[{...p,ean:'123x'},...raw.products.slice(1)]}),/inválido/);
