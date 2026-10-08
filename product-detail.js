@@ -1,6 +1,6 @@
 import { money, unitPrice } from './catalog-utils.js';
 export const productEscape = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const imageUrl = s => /^(https:\/\/|assets\/)/.test(String(s||'')) ? String(s) : 'assets/logo.png';
+export const imageUrl = s => /^(https:\/\/|assets\/|\.\.\/assets\/)/.test(String(s||'')) ? String(s) : 'assets/logo.png';
 export function productDetailMarkup(p) {
   const esc=productEscape, c=p.content||{}, variants=p.variants||[];
   const prices=variants.map(v=>unitPrice(p,v.size));
