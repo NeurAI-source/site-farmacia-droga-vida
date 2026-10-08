@@ -57,19 +57,15 @@ test('failed publication retry does not resave prices; restore requires a second
  await page.locator('.neur-history summary').click();await page.getByRole('button',{name:'Revisar recuperação dos preços'}).click();await expect(page.locator('[data-preview]')).toContainText('6,00');expect(state.batches).toHaveLength(1);await page.getByRole('button',{name:'Confirmar recuperação dos preços'}).click();await expect(page.locator('[data-message]')).toContainText('Alterações salvas');expect(state.batches).toHaveLength(2);expect(state.catalog.products.map(p=>p.priceCents)).toEqual([600,800]);
 });
 
-test('Neur.AI sugere textos sem inventar benefícios e só aplica no formulário após revisão',async({page})=>{
+test('Neur.AI permanece com remarcação e check-up, sem gerador de descrições',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- const state=await setup(page);
- await page.locator('.neur-dialog [data-content-ai-launch]').click();
- await expect(page.locator('#content-ai-dialog')).toBeVisible();
- await page.locator('#content-ai-dialog [data-free]').click();
- await expect(page.locator('#content-ai-dialog [data-review]')).toBeVisible();
- await expect(page.locator('#content-ai-dialog [data-fields] [data-key="purpose"]')).toHaveValue('');
- await expect(page.locator('#content-ai-dialog [data-fields] [data-key="usage"]')).toHaveValue('');
- await expect(page.locator('#content-ai-dialog [data-fields] [data-key="description"]')).not.toHaveValue('');
- await page.locator('#content-ai-dialog [data-apply]').click();
- await expect(page.locator('#editor')).toBeVisible();
- await expect(page.locator('#product-form [name="contentDescription"]')).not.toHaveValue('');
- expect(state.calls.some(c=>c.action==='publish')).toBe(false);
+ await setup(page);
+ await expect(page.locator('.neur-dialog')).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Remarcação em lote'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Check-up do cadastro'})).toBeVisible();
+ await expect(page.locator('.neur-dialog [data-content-ai-launch]')).toHaveCount(0);
+ await expect(page.locator('#content-ai-dialog')).toHaveCount(0);
+ await expect(page.locator('#open-neur-content')).toHaveCount(0);
+ await expect(page.locator('#open-neur-editor')).toHaveCount(0);
  expect(errors).toEqual([]);
 });
