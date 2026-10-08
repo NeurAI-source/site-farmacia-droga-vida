@@ -30,13 +30,10 @@
 .neur-auto{display:flex;align-items:center;gap:10px;margin:20px 0 8px;font-weight:700}.neur-auto input{width:auto;accent-color:#c91d2c}.neur-history{border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:10px 0}.neur-history summary{cursor:pointer}.neur-history small{display:block;color:#64748b;margin-top:5px;overflow-wrap:anywhere}.neur-dialog .table-scroll{overflow-x:auto}.neur-history button{margin:8px 12px 0 0}
 
 
-/* Página de produto: modo reversível e histórico de descrições */
+/* Página de produto: modo reversível */
 .product-page-settings{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:18px 22px;margin:0 0 22px}
 .product-page-settings h2{font-size:17px}.product-page-settings p{font-size:12px;color:#666;margin-top:5px}
 .feature-check{display:flex;align-items:center;gap:9px;margin-top:12px}.feature-check input{width:auto;accent-color:#e60012}
-.content-editor{background:#fdfdfd}.content-editor textarea{display:block;width:100%;margin-top:7px;resize:vertical;padding:10px 12px;border:1px solid #dddde1;border-radius:8px;font:12px/1.5 Arial,Helvetica,sans-serif}
-.content-history{padding:16px;border-radius:12px;background:#fff;border:1px solid #ececef;margin-top:18px}.content-history>p{font-size:11px;color:#666;margin-top:8px}
-.history-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #eee;font-size:11px}
 @media(max-width:760px){.product-page-settings{align-items:stretch;flex-direction:column}.product-page-settings button{width:100%}}
 
 /* Cabeçalho do catálogo */
