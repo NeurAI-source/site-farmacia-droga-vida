@@ -36,6 +36,18 @@ O cadastro aceita EAN e campos editoriais opcionais: descrição completa, para 
 
 O pré-pedido permanece no WhatsApp; o estoque não é integrado a sistemas externos e deve ser confirmado por atendentes.
 
+## Neur.AI — Conteúdo inteligente e auditável
+
+No painel administrativo, abra **Neur.AI — Descrições** ou use **Editar produto → Sugerir textos com a Neur.AI**.
+
+- **Base gratuita:** organiza nome, marca, apresentação e categoria sem inventar alegações de saúde. Ao colar o texto do rótulo ou ficha oficial com títulos, a Neur.AI extrai trechos correspondentes a descrição, finalidade, benefícios, modo de uso, advertências e características técnicas. O responsável deve conferir os trechos antes de salvar.
+- **Pesquisa com IA:** integrada à Edge Function autenticada `product-content-ai`. Usa pesquisa na web com fontes, limita a oito solicitações/hora por administrador, exclui medicamentos do fluxo automático e **não salva nem publica** por conta própria. A pesquisa só fica disponível se o administrador configurar a secret `OPENAI_API_KEY` em Supabase → Edge Functions → Secrets; o uso pode gerar custos no serviço externo. Nunca coloque essa chave no navegador, GitHub ou repositório.
+- **Em lote:** permite preparar até dez descrições básicas pendentes, revisar e salvar somente os itens escolhidos no rascunho.
+- **Fontes:** links HTTPS podem ser registrados no produto e exibidos com as informações; a pessoa responsável confere se a fonte se refere à apresentação correta antes de publicar.
+- **Reversão:** histórico de textos permanece disponível no painel. Restaurar limpa links antigos para evitar citações incorretas. A nova página pode ser desligada no painel sem apagar cadastros.
+
+**Importante:** não há integração com a Trier, coleta automática de bula ou pesquisa sem uma chave de IA configurada. No modo gratuito, campos clínicos sem rótulo permanecem em branco; não devem ser preenchidos com suposições.
+
 ## Verificação
 
 `npm test` verifica busca por acentos, categorias, integridade dos arquivos, cálculo em centavos, variantes e recuperação segura do carrinho. Validar também visualmente em desktop e celular antes de publicar alterações.
