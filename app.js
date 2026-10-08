@@ -30,6 +30,7 @@ const $ = s => document.querySelector(s);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const save = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The catalog also works without browser storage. */ } };
+let expandedProductPage = false;
 let products = [], categories = [], cart = [], favorites = [], category = 'Todos', subcategory = '', query = '', favoriteOnly = false, all = false, limit = 12, toastTimer;
 
 const whatsapp = text => `https://wa.me/5517996630482?text=${encodeURIComponent(text)}`;
@@ -82,6 +83,7 @@ document.addEventListener('click', event => {
 function addToCart(id, variant='') { const found=cart.find(i=>i.id===id && i.variant===variant); if(found?.qty===99) {toast('Limite de 99 unidades por item.');return;} if(found)found.qty++;else cart.push({id,variant,qty:1}); cart=sanitizeCart(cart,products);updateCounts();renderCart();toast('Produto adicionado ao carrinho'); }
 function showDetail(id) {
   const p=products.find(p=>p.id===id); if(!p)return;
+  if(expandedProductPage) { window.location.assign(new URL(`produto.html?id=${encodeURIComponent(id)}`,import.meta.url).href); return; }
   const variantPrices=p.variants.map(v=>unitPrice(p,v.size));
   const initialPrice=variantPrices.length?Math.min(...variantPrices):p.priceCents;
   const initialPriceHtml=p.variants.length?`<small>A partir de</small><strong>${money(initialPrice)}</strong>`:`${p.oldPriceCents>p.priceCents?`<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(p.priceCents)}</strong>`;
@@ -138,10 +140,14 @@ $('#contact-form').addEventListener('submit',event=>{event.preventDefault();cons
 $('#privacy').onclick=()=>openDialog($('#privacy-dialog')); $('#clear-data').onclick=()=>{cart=[];favorites=[];renderProducts();renderCart();toast('Carrinho e favoritos apagados deste navegador.');};
 $('#year').textContent=new Date().getFullYear();
 try {
-  const catalogUrl=new URL('catalog.json',import.meta.url); catalogUrl.searchParams.set('v','20261006-mobile-cache-fix-1'); const response=await fetch(catalogUrl,{cache:'no-store'}); if(!response.ok) throw new Error('Catálogo indisponível'); const data=await response.json(); products=data.products; categories=data.categories;
+  const catalogUrl=new URL('catalog.json',import.meta.url); catalogUrl.searchParams.set('v','20261006-mobile-cache-fix-1'); const response=await fetch(catalogUrl,{cache:'no-store'}); if(!response.ok) throw new Error('Catálogo indisponível'); const data=await response.json(); products=data.products; categories=data.categories; expandedProductPage=data.expandedProductPage === true;
   cart=sanitizeCart(read('dv-cart',[]),products); const storedFavorites=read('dv-favorites',[]); favorites=Array.isArray(storedFavorites)?[...new Set(storedFavorites)].filter(id=>products.some(p=>p.id===id)):[];
   $('#filters').innerHTML=['Todos',...data.categories.map(c=>c.name)].map(c=>`<button data-category="${escape(c)}" aria-pressed="${c==='Todos'}">${escape(c==='Perfumaria e Cuidados Pessoais'?'Beleza e cuidados':c)}</button>`).join('');
   renderProducts();
+  if(new URLSearchParams(window.location.search).get('prePedido') === '1') {
+    renderCart(); openDialog($('#cart-dialog'));
+    history.replaceState(null,'',window.location.pathname+window.location.hash);
+  }
 } catch(error) {
   $('#results').textContent='Não foi possível carregar o catálogo.';$('#products').innerHTML=`<div class="empty"><h3>Estamos aqui para ajudar.</h3><p>Consulte nossos produtos diretamente com a equipe.</p><a class="button red-button" href="https://wa.me/5517996630482" target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a></div>`;
 }

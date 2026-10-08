@@ -4,6 +4,8 @@ export function validateCatalog(data) {
   const text = (v, max) => typeof v === 'string' && v.length <= max;
   const count = v => Number.isSafeInteger(v) && v >= 0 && v <= 100000000;
   const image = v => text(v, 2048) && (/^https:\/\/[^\s<>"']+$/.test(v) || /^assets\/[\w./-]+\.(png|jpe?g|webp|svg)$/i.test(v) && !v.includes('..'));
+  if (data.expandedProductPage != null && typeof data.expandedProductPage !== 'boolean') fail();
+  const contentFields = ['description','purpose','benefits','usage','warnings','specifications'];
   const ids = new Set();
   const shortCodes = new Set();
   const registerCode = raw => {
@@ -24,6 +26,9 @@ export function validateCatalog(data) {
       || !data.categories.some(c => c.name === p.category) || !Array.isArray(p.variants)
       || (p.updatedAt != null && !text(p.updatedAt, 80))
       || !['active','featured','availableStore1','availableStore2'].every(k => typeof p[k] === 'boolean')) fail();
+    if (p.ean != null && (!text(p.ean, 20) || (p.ean && !/^[0-9]{8,14}$/.test(p.ean)))) fail();
+    if (p.content != null && (typeof p.content !== 'object' || Array.isArray(p.content) || p.content === null
+        || contentFields.some(k => p.content[k] != null && !text(p.content[k], 2400)))) fail();
     ids.add(p.id);
     registerCode(p.shortCode || '');
     for (const k of ['brand','detail','badge','subcategory']) if (!text(p[k], 200)) fail();
