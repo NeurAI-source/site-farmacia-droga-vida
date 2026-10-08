@@ -7,6 +7,8 @@ test('página individual mantém pré-pedido no desktop e celular',async({page})
  await page.goto('/produto.html?id='+product.id);
  await expect(page.getByRole('heading',{level:1,name:product.name})).toBeVisible();
  await expect(page.getByText('Preço, disponibilidade e taxa de entrega sujeitos à confirmação')).toBeVisible();
+ await expect(page.locator('.product-page-details')).toHaveCount(0);
+ await expect(page.locator('.product-page-sources')).toHaveCount(0);
  await page.getByRole('button',{name:'Adicionar ao pré-pedido'}).click();
  await expect(page.locator('#product-page-feedback')).toContainText('adicionado ao pré-pedido');
  await page.getByRole('link',{name:/Ver meu pré-pedido/}).click();
