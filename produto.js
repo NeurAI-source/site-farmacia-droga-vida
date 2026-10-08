@@ -1,7 +1,7 @@
 import { money, unitPrice, sanitizeCart } from './catalog-utils.js';
 import { productDetailMarkup, productEscape, imageUrl } from './product-detail.js';
 const host=document.querySelector('#product-page-root');
-const params=new URLSearchParams(location.search), id=Number(params.get('id')), preview=params.get('preview')==='1';
+const params=new URLSearchParams(location.search), id=Number(params.get('id'));
 const msg=s=>{const el=document.querySelector('#product-page-feedback'); if(el)el.textContent=s;};
 const read=(k,def)=>{try{return JSON.parse(localStorage.getItem(k))??def}catch{return def}};
 const save=(k,val)=>{try{localStorage.setItem(k,JSON.stringify(val))}catch{}};
@@ -12,7 +12,7 @@ try {
  if(!Number.isSafeInteger(id)||id<1)throw Error('Produto não encontrado.');
  const p=data.products.find(x=>x.id===id&&x.active);
  if(!p)throw Error('Produto não encontrado no catálogo.');
- if(data.expandedProductPage!==true&&!preview)throw Error('Esta página ainda não está disponível. Consulte nosso catálogo.');
+ if(data.expandedProductPage!==true)throw Error('Esta página ainda não está disponível. Consulte nosso catálogo.');
  document.title=p.name+' | Droga Vida Popular';
  host.innerHTML=productDetailMarkup(p);
  const variants=p.variants||[], select=document.querySelector('#product-page-variant');
@@ -33,5 +33,5 @@ try {
   try{if(navigator.share)await navigator.share({title:p.name,url:location.href});else if(navigator.clipboard){await navigator.clipboard.writeText(location.href);msg('Link do produto copiado!')}else msg('Copie o endereço desta página para compartilhar.')}catch{}
  };
  const related=data.products.filter(x=>x.active&&x.id!==id&&x.category===p.category).slice(0,4);
- if(related.length){const section=document.createElement('section');section.className='product-page-related';section.innerHTML='<h2>Produtos relacionados</h2><div class="product-page-related-grid">'+related.map(x=>`<a href="produto.html?id=${x.id}${preview?'&preview=1':''}"><img src="${productEscape(imageUrl(x.imageUrl))}" alt="${productEscape(x.name)}" loading="lazy"><strong>${productEscape(x.name)}</strong><span>${money(x.priceCents)}</span></a>`).join('')+'</div>';host.append(section);}
+ if(related.length){const section=document.createElement('section');section.className='product-page-related';section.innerHTML='<h2>Produtos relacionados</h2><div class="product-page-related-grid">'+related.map(x=>`<a href="produto.html?id=${x.id}"><img src="${productEscape(imageUrl(x.imageUrl))}" alt="${productEscape(x.name)}" loading="lazy"><strong>${productEscape(x.name)}</strong><span>${money(x.priceCents)}</span></a>`).join('')+'</div>';host.append(section);}
 } catch(error){host.innerHTML='<div class="product-page-empty"><h1>'+productEscape(error.message)+'</h1><a href="./#ofertas">Voltar ao catálogo</a></div>'}
