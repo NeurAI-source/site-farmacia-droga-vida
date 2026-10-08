@@ -3,6 +3,7 @@ export const productEscape = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&
 export const imageUrl = s => /^(https:\/\/|assets\/|\.\.\/assets\/)/.test(String(s||'')) ? String(s) : 'assets/logo.png';
 export function productDetailMarkup(p) {
   const esc=productEscape, c=p.content||{}, variants=p.variants||[];
+  const evidence=Array.isArray(p.contentSources)?p.contentSources.filter(s=>{try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password&&!u.hostname.includes(':')&&!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(u.hostname)}catch{return false}}).slice(0,5):[];
   const prices=variants.map(v=>unitPrice(p,v.size));
   const display=prices.length ? Math.min(...prices):p.priceCents;
   const sections=[
@@ -37,5 +38,6 @@ export function productDetailMarkup(p) {
       </section>
     </div>
     <section class="product-page-details"><h2>Informações sobre o produto</h2>${sections.length?sections.map(([title,body])=>`<article class="product-page-section"><h3>${title}</h3><p>${esc(body)}</p></article>`).join(''):'<p>Informações complementares em atualização. Nossa equipe pode esclarecer suas dúvidas pelo WhatsApp.</p>'}</section>
+    ${sections.length&&evidence.length?`<section class="product-page-sources"><h2>Fontes das informações</h2><ul>${evidence.map(s=>`<li><a href="${esc(s)}" target="_blank" rel="noopener noreferrer nofollow">${esc(new URL(s).hostname)}</a></li>`).join('')}</ul></section>`:''}
   </div>`;
 }
