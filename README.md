@@ -32,13 +32,13 @@ As alegações do mockup sobre entrega nacional, parcelamento em 12 vezes e mais
 
 A página individual `produto.html?id=<ID>` pode ser ativada e desativada no painel administrativo em **Visão geral → Nova página individual de produto**. A flag `expandedProductPage` no catálogo publicado controla o comportamento; quando desligada, o modal antigo continua funcionando. O catálogo e os dados dos produtos são preservados.
 
-O cadastro aceita EAN e campos editoriais opcionais: descrição completa, para que serve, benefícios, modo de uso, advertências e características técnicas. Campos sem informação verificada ficam ocultos no site. Textos anteriores podem ser restaurados pelo histórico no painel, sem reverter preço ou estoque.
+O cadastro mantém EAN, nome, marca, apresentação, imagem, preço, estoque e opções de visibilidade. A antiga seção de descrição completa, finalidade, benefícios, modo de uso, advertências e características técnicas foi removida do editor e não é apresentada nas páginas públicas. Os textos e fontes anteriormente registrados permanecem preservados nos dados do catálogo quando outros campos são editados.
 
 O pré-pedido permanece no WhatsApp; o estoque não é integrado a sistemas externos e deve ser confirmado por atendentes.
 
-## Edição manual de informações dos produtos
+## Descrição inteligente desativada
 
-O painel mantém campos editoriais e histórico de versões para permitir conferência e restauração manual, sem alterar o catálogo ou preços. A área de **Descrição Inteligente da Neur.AI foi removida**: não há botões de geração em massa, pesquisa automática de descrições ou consultas pagas de IA pela interface. As páginas públicas de produto não exibem esses blocos de texto.
+A **Descrição Inteligente da Neur.AI** e o bloco de informações detalhadas foram removidos da interface administrativa. A edição dos produtos preserva os textos antigos que já existirem no cadastro, sem apagá-los nem exibi-los ao público.
 
 As funções tradicionais da Neur.AI (remarcação, histórico de preços e check-up do catálogo) permanecem disponíveis.
 
