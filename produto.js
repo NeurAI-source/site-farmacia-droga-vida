@@ -1,5 +1,5 @@
 import { money, unitPrice, sanitizeCart } from './catalog-utils.js';
-import { productDetailMarkup, productEscape, imageUrl } from './product-detail.js';
+import { productDetailMarkup, productEscape, imageUrl } from './product-detail.js?v=20261008-neur-content';
 const host=document.querySelector('#product-page-root');
 const params=new URLSearchParams(location.search), id=Number(params.get('id'));
 const msg=s=>{const el=document.querySelector('#product-page-feedback'); if(el)el.textContent=s;};
