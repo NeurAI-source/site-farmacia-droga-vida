@@ -6,6 +6,14 @@ export function validateCatalog(data) {
   const image = v => text(v, 2048) && (/^https:\/\/[^\s<>"']+$/.test(v) || /^assets\/[\w./-]+\.(png|jpe?g|webp|svg)$/i.test(v) && !v.includes('..'));
   if (data.expandedProductPage != null && typeof data.expandedProductPage !== 'boolean') fail();
   const contentFields = ['description','purpose','benefits','usage','warnings','specifications'];
+  const validSource = v => {
+    if (!text(v, 1000) || !v.startsWith('https://')) return false;
+    try { const u=new URL(v); const host=u.hostname.toLowerCase();
+      return u.protocol==='https:'&&!u.username&&!u.password&&host!=='localhost'
+        && !host.endsWith('.localhost')&&!host.endsWith('.local')
+        && !host.endsWith('.internal')&&!/^(?:\\d{1,3}\\.){3}\\d{1,3}$/.test(host)&&!host.includes(':');
+    } catch { return false; }
+  };
   const ids = new Set();
   const shortCodes = new Set();
   const registerCode = raw => {
@@ -29,6 +37,7 @@ export function validateCatalog(data) {
     if (p.ean != null && (!text(p.ean, 20) || (p.ean && !/^[0-9]{8,14}$/.test(p.ean)))) fail();
     if (p.content != null && (typeof p.content !== 'object' || Array.isArray(p.content) || p.content === null
         || contentFields.some(k => p.content[k] != null && !text(p.content[k], 2400)))) fail();
+    if (p.contentSources != null && (!Array.isArray(p.contentSources) || p.contentSources.length>5 || !p.contentSources.every(validSource))) fail();
     ids.add(p.id);
     registerCode(p.shortCode || '');
     for (const k of ['brand','detail','badge','subcategory']) if (!text(p[k], 200)) fail();
