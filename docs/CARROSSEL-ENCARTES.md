@@ -6,7 +6,8 @@ Esta atualização acrescenta uma seção independente abaixo do banner da famí
 
 - Posts têm uma capa e um link HTTPS opcional. Encartes têm capa e até 30 páginas, reorganizáveis no editor.
 - JPG, PNG e WebP: até 5 MB, dimensão máxima de 12.000 pixels por lado e 40 megapixels. Validação do conteúdo no servidor e decodificação no navegador; SVG e WebP animado não são aceitos.
-- Avanço automático a cada 5 segundos, setas, indicadores e pausa. Interação manual pausa até **Reproduzir**; foco/ponteiro e preferência por movimento reduzido também suspendem a rotação.
+- Sequência circular contínua: pausa de 5,2 segundos seguida de transição de 620 ms. Arraste horizontal por toque ou mouse acompanha o gesto, com retomada automática; gestos verticais continuam rolando a página. Sem botões de reprodução/pausa ou setas no carrossel; indicadores e teclado continuam disponíveis. O leitor de encartes preserva suas páginas e ampliação. Movimento reduzido desliga rotação automática e transições; foco de teclado e leitor aberto suspendem o avanço.
+- Somente três painéis (anterior/atual/próximo) são reutilizados. O deslocamento usa transform e requestAnimationFrame; não existe atualização de DOM a cada 250 ms. A imagem central permanece completa e as vizinhas aparecem nas laterais para dar continuidade ao arraste. Uma campanha isolada mantém a largura original, sem rotação.
 - O visualizador permite avançar, voltar e ampliar as páginas. As imagens usam `object-fit: contain`.
 - Campanhas podem ser rascunhos, publicadas ou arquivadas. A validade e o status ativo determinam a exibição. Sem campanhas válidas, a seção inteira fica oculta.
 - Datas são editadas em **America/Sao_Paulo**, convertidas para UTC e armazenadas como `timestamptz`. O minuto final é inclusivo: término em 10/10/2026 às 23:59 corresponde ao limite exclusivo 11/10/2026 às 03:00:00 UTC.
@@ -85,7 +86,7 @@ A workflow `campaign-checks.yml` executa somente verificações em pull requests
 | Histórico e exclusão | Arquivar/excluir, permissão admin e integridade das cópias | Confirmar retirada da lista pública |
 | Agendamento | UTC/São Paulo, próximo início e limites exatos | Campanha começando e terminando em poucos minutos |
 | Expiração e cache | Página aberta, encarte aberto, dispositivo com data errada, rede indisponível | Manter site aberto até expirar; inspecionar resposta sem cache |
-| Carrossel e encarte | Avanço, pausa, retomada, setas, páginas e ampliação | Conferir artes reais em aparelhos usados pela equipe |
+| Carrossel e encarte | Loop, arraste real com mouse/toque, cancelamento, rolagem vertical, retomada, movimento reduzido, páginas e ampliação | Conferir artes reais em aparelhos usados pela equipe |
 | Segurança | Função HTTP, papéis SQL, RLS/grants, imagens privadas | Login real, usuário revogado e tentativa anônima |
 | Preservação | Hashes do catálogo/banner e testes existentes; Neur.AI/publicação têm testes próprios na atualização conjunta | Conferir produtos, códigos, preços, imagens e pré-pedido WhatsApp |
 
