@@ -4,10 +4,20 @@ import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {TrierClient,mapProduct,moneyToCents,InventoryService,publicStock,config} from '../supabase/functions/trier-api/integration.js';
 import {createHandler} from '../supabase/functions/trier-api/handler.js';
+import {internalRequest,serverKey} from '../supabase/functions/trier-api/server-auth.js';
 const mock={reducedCode:'00123',ean:'7891234567890',name:'Produto de teste',price:'12.90',stockQuantity:17,status:'MOCK_ACTIVE'};
 const policy={priceUnit:'decimal',isSellable:status=>status==='MOCK_ACTIVE'};
 const settings={enabled:true,syncEnabled:true,token:'TEST_SECRET_ONLY',baseUrl:'https://example.invalid',storeId:'test',timeoutMs:100,retries:2,intervalMinutes:15};
 const contract={request:()=>({url:'/mock-only',headers:{'x-mock-secret':settings.token}}),decode:x=>x};
+test('server authentication accepts only platform-injected secret keys or exact legacy key',()=>{
+ const env=key=>({SUPABASE_SERVICE_ROLE_KEY:'legacy-test',SUPABASE_SECRET_KEYS:'{"default":"sb_secret_mock_only"}'}[key] || '');
+ assert.equal(serverKey(env),'sb_secret_mock_only');
+ assert.equal(internalRequest(new Headers({apikey:'sb_secret_mock_only'}),env),true);
+ assert.equal(internalRequest(new Headers({authorization:'Bearer legacy-test'}),env),true);
+ for(const headers of [{apikey:'sb_publishable_mock'},{apikey:'sb_secret_unknown'},{authorization:'Bearer fake-service-role-jwt'},{}]) assert.equal(internalRequest(new Headers(headers),env),false);
+ assert.equal(internalRequest(new Headers({apikey:'sb_secret_mock_only'}),()=>'{malformed'),false);
+ assert.equal(internalRequest(new Headers(),()=>''),false);
+});
 test('internal endpoint reads safe cached DTO, rejects private products and protects administrative operations',async()=>{
  const env=key=>({SUPABASE_SERVICE_ROLE_KEY:'server-secret',SITE_ORIGIN:'https://shop.invalid',TRIER_INTEGRATION_ENABLED:'false'}[key] || '');
  let cacheReads=0;

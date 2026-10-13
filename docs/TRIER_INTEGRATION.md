@@ -30,6 +30,12 @@ Erros 400/401/403/404 não são repetidos; 429/500/502/503/504 e falhas de rede/
 
 ## Testes e limites
 
+## Autenticação do ambiente Supabase
+
+Chamadas de servidor aceitam uma chave secreta atual no header `apikey`, comparada exclusivamente com o dicionário `SUPABASE_SECRET_KEYS` injetado pelo Supabase, ou a chave legada exata no header Authorization. Uma chave pública nunca autoriza sincronização; conteúdo/role de JWT sem verificação nunca é confiado. Sessões administrativas continuam validadas por Auth.getUser e vínculo ativo. Não é necessário criar nem copiar uma chave nova. O cliente privilegiado usa a chave secreta injetada, com fallback para a legada. Referência: [variáveis oficiais do Supabase](https://supabase.com/docs/guides/functions/secrets).
+
+## Validação e implantação
+
 Mocks exclusivamente em `tests/trier.test.mjs`: contratos fictícios em example.invalid e status MOCK_ACTIVE/MOCK_BLOCKED. Testes de mapper, centavos, códigos/EAN, estoques, status, erros, retries, fallback, sanitização, SQL/RLS/auditoria, lease expirada/substituída e identificadores conflitantes entre registros. Aplicar migration primeiro em banco local/staging e validar funções antes de implantação. Implantar somente no projeto confirmado `bzhsnoqlbhjaaheugpku`, mantendo a integração desligada; não reaplicar migrations anteriores.
 
 ## PENDENTE DA TRIER
