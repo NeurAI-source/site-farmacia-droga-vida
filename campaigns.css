@@ -17,6 +17,8 @@
 .campaign-viewport .campaign-art{cursor:grab;user-select:none;-webkit-user-drag:none}
 .campaign-viewport img{pointer-events:none;user-select:none;-webkit-user-drag:none}
 .campaign-caption{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:17px 24px;background:#fff}
+.campaign-caption>div:first-child{flex:1;min-width:0}
+.campaign-caption .campaign-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .campaign-name{font-size:17px;display:block;margin-bottom:4px}.campaign-hint{font-size:13px;color:#69605d}
 .campaign-controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
 .campaign-controls button,.campaign-heading button,.campaign-viewer button{border:1px solid #e8dcd8;border-radius:9px;background:white;color:#a91822;padding:9px 13px;font:inherit;font-size:13px;cursor:pointer}
@@ -34,3 +36,4 @@
 .campaign-viewer-stage img{display:block;margin:0 auto;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
 .campaign-viewer-stage img.zoomed{max-width:none;max-height:none;margin:0;height:auto}
 @media(max-width:600px){.campaign-section{padding-top:28px}.campaign-section .campaign-heading{align-items:flex-start;gap:10px}.campaign-heading button{white-space:nowrap}.campaign-caption{padding:15px;flex-direction:column;align-items:flex-start}.campaign-controls{align-self:center}.campaign-slide{height:390px;padding:8px}.campaign-viewer header,.campaign-viewer footer{padding:12px}.campaign-viewer header h2{font-size:16px}}
+@media(max-width:600px){.campaign-caption>div:first-child{width:100%;flex:initial}.campaign-caption .campaign-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;line-height:1.5;min-height:3em;max-height:3em}}

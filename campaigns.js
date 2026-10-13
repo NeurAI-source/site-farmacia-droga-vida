@@ -35,6 +35,7 @@ export function mountCampaignCarousel(root) {
     }
     const campaign = list[slider.index];
     root.querySelector('.campaign-name').textContent = campaign.title;
+    root.querySelector('.campaign-name').title = campaign.title;
     root.querySelector('.campaign-hint').textContent = campaign.kind === 'flyer' ? `${campaign.pages.length} páginas · Toque para abrir e ampliar` : campaign.link_url ? 'Toque para saber mais' : 'Toque para ampliar';
     [...dots.children].forEach((b, i) => b.setAttribute('aria-current', String(i === slider.index)));
     scheduleBoundary(); scheduleAuto();

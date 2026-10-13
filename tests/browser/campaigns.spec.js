@@ -95,6 +95,14 @@ test('reduced motion disables autoplay while keyboard and dots still select imag
   await page.locator(currentArt).focus();await page.keyboard.press('ArrowRight');await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
   await page.getByRole('button',{name:'Oferta 1: Campanha 1',exact:true}).click();await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
 });
+test('long titles never shift the page when the carousel advances',async({page})=>{
+  const title='Oferta especial para toda a família com várias novidades e condições promocionais disponíveis neste encarte';
+  await publicRoute(page,()=>payload([makeCampaign(1),makeCampaign(2,{title})]));await page.clock.install();await page.goto('/');
+  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  const before=await page.locator('#campaign-carousel').boundingBox();await page.clock.runFor(6000);
+  await expect(page.locator('.campaign-name')).toHaveText(title);const after=await page.locator('#campaign-carousel').boundingBox();
+  expect(Math.abs(after.height-before.height)).toBeLessThan(1);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
 async function adminRoute(page,role='admin',initial=[]) {
   await config(page);const rows=initial,assets=new Map();let saves=[];
   const user={id,email:'admin@example.test',aud:'authenticated',role:'authenticated'};
