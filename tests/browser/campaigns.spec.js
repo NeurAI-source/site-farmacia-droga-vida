@@ -8,25 +8,35 @@ const makeCampaign=(i,overrides={})=>({id:`00000000-0000-4000-8000-${String(i).p
 async function config(page){await page.route('**/public-config.js',r=>r.fulfill({contentType:'text/javascript',body:'export const config={url:"https://campaign-test.supabase.co",key:"sb_publishable_test"};'}));}
 async function publicRoute(page,getData){await config(page);await page.route('https://campaign-test.supabase.co/**',async r=>{if(!r.request().url().includes('action=public'))return r.fulfill({json:{}});const data=await getData();if(data===null)return r.abort();return r.fulfill({headers:{'cache-control':'no-store'},json:data});});}
 const payload=(campaigns,other={})=>({server_now:new Date().toISOString(),next_start:null,lease_ms:60000,campaigns,...other});
-test('public carousel auto-advances, pauses, navigates, opens all pages and zooms without cropping',async({page})=>{
+const currentArt = '.campaign-panel[aria-hidden="false"] .campaign-art';
+async function mouseDrag(page,direction,distance=180){
+  const stage=page.locator('.campaign-viewport');await stage.scrollIntoViewIfNeeded();const box=await stage.boundingBox();
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+direction*Math.min(distance,box.width*.4),y,{steps:12});await page.mouse.up();
+}
+test('public carousel loops automatically, supports mouse drag and keeps flyers/links intact without playback or arrow buttons',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await publicRoute(page,()=>payload([makeCampaign(1),makeCampaign(2,{kind:'post',pages:[],link_url:'https://wa.me/5517999999999'})]));
   await page.clock.install();await page.goto('/');await expect(page.locator('#campaign-carousel')).toBeVisible();
   await expect(page.locator('.hero-photo')).toHaveAttribute('src','assets/family.webp');
-  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');await page.clock.runFor(5100);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
-  await expect(page.locator('.campaign-art')).toHaveAttribute('href','https://wa.me/5517999999999');
-  await page.getByRole('button',{name:'Oferta anterior',exact:true}).click();await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');await page.clock.runFor(5500);await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
-  await page.locator('.campaign-art').click();await expect(page.locator('.campaign-viewer')).toBeVisible();await expect(page.locator('[data-page]')).toHaveText('1 de 2');
+  await expect(page.locator('[data-campaign-pause],[data-campaign-prev],[data-campaign-next]')).toHaveCount(0);
+  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');await page.clock.runFor(6000);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
+  await expect(page.locator(currentArt)).toHaveAttribute('href','https://wa.me/5517999999999');
+  await mouseDrag(page,1);await page.clock.runFor(800);await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await expect(page.locator('.campaign-viewer')).not.toBeVisible();
+  await page.locator(currentArt).click();await expect(page.locator('.campaign-viewer')).toBeVisible();await expect(page.locator('[data-page]')).toHaveText('1 de 2');
   await page.getByRole('button',{name:'Próxima página'}).click();await expect(page.locator('[data-page]')).toHaveText('2 de 2');await page.getByRole('button',{name:'Ampliar imagem'}).click();await expect(page.locator('.campaign-viewer img')).toHaveClass('zoomed');
-  await page.getByRole('button',{name:'Fechar encarte'}).click();expect(await page.locator('.campaign-art img').evaluate(e=>getComputedStyle(e).objectFit)).toBe('contain');
+  await page.getByRole('button',{name:'Fechar encarte'}).click();expect(await page.locator(currentArt+' img').evaluate(e=>getComputedStyle(e).objectFit)).toBe('contain');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);expect(errors).toEqual([]);
-  await page.getByRole('button',{name:'Reproduzir carrossel'}).click();await page.clock.runFor(5100);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');await page.getByRole('button',{name:'Pausar carrossel'}).click();await page.clock.runFor(5100);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
+  await page.locator('.campaign-name').click();await page.clock.runFor(6000);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
+  await page.clock.runFor(6000);await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await expect(page.locator('.campaign-panel')).toHaveCount(3);
   await page.locator('#campaign-carousel').screenshot({path:`test-results/public-${test.info().project.name}.png`});
 });
 test('expiration closes an open flyer immediately even offline and without further requests',async({page})=>{
   const now=Date.now();let count=0;
   await publicRoute(page,()=>++count===1?payload([makeCampaign(1,{ends_at:new Date(now+5000).toISOString()})],{server_now:new Date(now).toISOString()}):null);
-  await page.clock.install({time:now});await page.goto('/');await expect(page.locator('#campaign-carousel')).toBeVisible();await page.locator('.campaign-art').click();await expect(page.locator('.campaign-viewer')).toBeVisible();
+  await page.clock.install({time:now});await page.goto('/');await expect(page.locator('#campaign-carousel')).toBeVisible();await page.locator(currentArt).click();await expect(page.locator('.campaign-viewer')).toBeVisible();
   await page.clock.runFor(5100);await expect(page.locator('#campaign-carousel')).toBeHidden();await expect(page.locator('.campaign-viewer')).not.toBeVisible();await expect(page.locator('.hero')).toBeVisible();
 });
 test('an empty period is hidden; the next server boundary activates a scheduled campaign',async({page})=>{
@@ -38,6 +48,52 @@ test('stale cache and a wrong device date cannot extend offers; offline lease fa
   const now=Date.now();let count=0;
   await publicRoute(page,()=>++count===1?payload([makeCampaign(1)],{server_now:new Date(now).toISOString()}):null);
   await page.clock.install({time:new Date('2035-01-01T00:00:00Z')});await page.goto('/');await expect(page.locator('#campaign-carousel')).toBeVisible();await page.clock.runFor(61000);await expect(page.locator('#campaign-carousel')).toBeHidden();
+});
+test('touch follows the finger in both directions, wraps, cancels safely and preserves vertical scrolling',async({page})=>{
+  await publicRoute(page,()=>payload([makeCampaign(1),makeCampaign(2),makeCampaign(3)]));
+  await page.clock.install();await page.goto('/');await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  const session=await page.context().newCDPSession(page);
+  await session.send('Emulation.setTouchEmulationEnabled',{enabled:true});
+  const stage=page.locator('.campaign-viewport');await stage.scrollIntoViewIfNeeded();
+  const box=await stage.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2,distance=Math.min(180,box.width*.35);
+  const event=(type,px=x,py=y)=>session.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'||type==='touchCancel'?[]:[{x:px,y:py,id:1}]});
+  const position=()=>page.locator('.campaign-track').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41);
+  const initial=await position();await event('touchStart');await event('touchMove',x+distance,y);await page.clock.runFor(32);
+  expect(await position()).toBeGreaterThan(initial+distance*.8);
+  await event('touchEnd');await page.clock.runFor(800);await expect(page.locator('.campaign-name')).toHaveText('Campanha 3');
+  await expect(page.locator('.campaign-viewer')).not.toBeVisible();
+  await event('touchStart');await event('touchMove',x-distance,y);await event('touchEnd');await page.clock.runFor(800);
+  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await event('touchStart');await event('touchMove',x-distance,y);await event('touchCancel');await page.clock.runFor(800);
+  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await expect(page.locator('.campaign-slide')).not.toHaveClass(/is-moving/);
+  const scrollBefore=await page.evaluate(()=>scrollY);
+  await event('touchStart');await event('touchMove',x,y-130);await event('touchMove',x,y-180);await event('touchEnd');
+  await page.clock.runFor(300);expect(await page.evaluate(()=>scrollY)).toBeGreaterThan(scrollBefore+30);
+  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+});
+test('mouse drag is live, short drags snap back and cache refresh reuses the same bounded panels',async({page})=>{
+  let calls=0;await publicRoute(page,()=>{calls++;return payload([makeCampaign(1),makeCampaign(2),makeCampaign(3),makeCampaign(4)]);});
+  await page.clock.install();await page.goto('/');await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await page.locator('.campaign-panel').evaluateAll(nodes=>nodes.forEach((node,i)=>node.dataset.original=String(i)));
+  const stage=page.locator('.campaign-viewport');await stage.scrollIntoViewIfNeeded();const box=await stage.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;
+  const initial=await page.locator('.campaign-track').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41);
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-30,y,{steps:3});await page.clock.runFor(32);
+  expect(await page.locator('.campaign-track').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41)).toBeLessThan(initial-20);
+  await page.clock.runFor(120);await page.mouse.up();await page.clock.runFor(400);
+  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await mouseDrag(page,-1);await page.clock.runFor(800);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
+  await page.clock.runFor(20500);await expect.poll(()=>calls).toBe(2);
+  expect(await page.locator('.campaign-panel[data-original]').count()).toBe(3);
+  await expect(page.locator('.campaign-panel')).toHaveCount(3);
+  await expect(page.locator('.campaign-viewer')).not.toBeVisible();
+});
+test('reduced motion disables autoplay while keyboard and dots still select images',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});await publicRoute(page,()=>payload([makeCampaign(1),makeCampaign(2)]));
+  await page.clock.install();await page.goto('/');await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await page.clock.runFor(12000);await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  await page.locator(currentArt).focus();await page.keyboard.press('ArrowRight');await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
+  await page.getByRole('button',{name:'Oferta 1: Campanha 1',exact:true}).click();await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
 });
 async function adminRoute(page,role='admin',initial=[]) {
   await config(page);const rows=initial,assets=new Map();let saves=[];
