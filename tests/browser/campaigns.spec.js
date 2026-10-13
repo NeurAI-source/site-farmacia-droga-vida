@@ -9,6 +9,15 @@ async function config(page){await page.route('**/public-config.js',r=>r.fulfill(
 async function publicRoute(page,getData){await config(page);await page.route('https://campaign-test.supabase.co/**',async r=>{if(!r.request().url().includes('action=public'))return r.fulfill({json:{}});const data=await getData();if(data===null)return r.abort();return r.fulfill({headers:{'cache-control':'no-store'},json:data});});}
 const payload=(campaigns,other={})=>({server_now:new Date().toISOString(),next_start:null,lease_ms:60000,campaigns,...other});
 const currentArt = '.campaign-panel[aria-hidden="false"] .campaign-art';
+test('deployment loads one versioned carousel bundle even when the previous slider is cached',async({page})=>{
+  const errors=[],legacyRequests=[];page.on('pageerror',e=>errors.push(e.message));
+  await publicRoute(page,()=>payload([makeCampaign(1),makeCampaign(2)]));
+  await page.route('**/campaign-slider.js',route=>{legacyRequests.push(route.request().url());return route.fulfill({contentType:'text/javascript',body:'export const oldSlider = true;'});});
+  await page.goto('/');await expect(page.locator('#campaign-carousel')).toBeVisible();
+  await expect(page.locator('script[src^="campaigns-"]')).toHaveCount(1);
+  await mouseDrag(page,-1);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
+  expect(legacyRequests).toEqual([]);expect(errors).toEqual([]);
+});
 async function mouseDrag(page,direction,distance=180){
   const stage=page.locator('.campaign-viewport');await stage.scrollIntoViewIfNeeded();const box=await stage.boundingBox();
   const x=box.x+box.width/2,y=box.y+box.height/2;

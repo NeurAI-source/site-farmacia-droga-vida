@@ -1,6 +1,7 @@
 import { cp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { createHash } from 'node:crypto';
 import { validateCatalog } from '../catalog-validation.js';
 const root = new URL('../', import.meta.url), dist = new URL('dist/', root);
 await rm(dist, { recursive: true, force: true }); await mkdir(dist, { recursive: true });
@@ -14,6 +15,14 @@ if (key && !key.startsWith('sb_publishable_')) {
   if (payload?.role !== 'anon') throw Error('Only a public publishable/anon key may be bundled.');
 }
 await writeFile(new URL('public-config.js', dist), `export const config = ${JSON.stringify({url,key})};\n`);
+// Publish the entire carousel module graph together under a content-specific URL.
+// An open browser must never combine a new controller with an older slider.
+const carousel = await build({entryPoints:[fileURLToPath(new URL('campaigns.js',root))],bundle:true,format:'esm',platform:'browser',minify:true,external:['./public-config.js'],entryNames:'campaigns-[hash]',outdir:fileURLToPath(dist),metafile:true});
+const carouselFile = Object.keys(carousel.metafile.outputs).find(file => file.endsWith('.js')).split(/[\\/]/).pop();
+const carouselStyle = createHash('sha256').update(await readFile(new URL('campaigns.css',root))).digest('hex').slice(0,12);
+const html = (await readFile(new URL('index.html',dist),'utf8')).replace('campaigns.js?v=20261001',carouselFile).replace('campaigns.css?v=20261001',`campaigns.css?v=${carouselStyle}`);
+await writeFile(new URL('index.html',dist),html);
+await writeFile(new URL('_headers',dist),'/*.js\n  Cache-Control: no-cache\n/*.css\n  Cache-Control: no-cache\n/\n  Cache-Control: no-cache\n/*.html\n  Cache-Control: no-cache\n');
 await build({ stdin: { contents: "export { createClient } from '@supabase/supabase-js'", resolveDir: fileURLToPath(root) }, bundle:true,format:'esm',platform:'browser',minify:true,outfile:fileURLToPath(new URL('vendor/supabase.js',dist)) });
 const source = process.env.CATALOG_FILE || new URL('catalog.json', root);
 const catalog = validateCatalog(JSON.parse(await readFile(source, 'utf8')));
