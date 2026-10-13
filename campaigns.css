@@ -12,7 +12,8 @@
 .campaign-track{position:relative;width:100%;height:100%;transform-style:preserve-3d}
 .campaign-panel{position:absolute;left:50%;top:50%;width:min(72%,410px);height:94%;min-width:0;transform-origin:center;backface-visibility:hidden}
 .campaign-viewport.is-single .campaign-panel{width:100%;height:100%}
-.campaign-panel img{border-radius:10px;filter:drop-shadow(0 8px 8px #35150c26)}
+.campaign-panel img{border-radius:10px}
+.campaign-panel[aria-hidden=false] img{filter:drop-shadow(0 8px 8px #35150c26)}
 .campaign-slide.is-moving .campaign-panel{will-change:transform}
 .campaign-slide.is-moving,.campaign-slide.is-moving .campaign-art{cursor:grabbing;user-select:none}
 .campaign-viewport .campaign-art{cursor:grab;user-select:none;-webkit-user-drag:none}

@@ -27,7 +27,6 @@ export function createLoopSlider(stage, { onChange, onActivate, onInteraction, m
       const angle=items.length===1?0:(i-center()+value)*step,radians=angle*Math.PI/180;
       const sine=Math.sin(radians),cosine=Math.cos(radians);
       panel.style.transform=`translate(-50%,-50%) translate3d(${sine*radiusX}px,0,${(cosine-1)*radiusZ}px) rotateY(${-sine*52}deg)`;
-      panel.style.zIndex=String(Math.round((cosine+1)*100));
     });
   }
   function paint(){[...track.children].forEach((panel,i)=>render(panel,items[wrap(index+(items.length>1?i-center():0))],items.length===1||i===center()));pose(0);}
