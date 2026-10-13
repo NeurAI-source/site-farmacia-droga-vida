@@ -21,7 +21,7 @@ create unique index trier_id_unique on public.trier_inventory(trier_product_id) 
 create unique index trier_code_unique on public.trier_inventory(trier_reduced_code) where trier_reduced_code is not null;
 create unique index trier_ean_unique on public.trier_inventory(ean) where ean is not null;
 create table public.trier_sync_state (
-  id integer primary key check(id=1), store_id text,
+  id integer primary key check(id=1), store_id text, run_id uuid,
   started_at timestamptz, finished_at timestamptz, lease_until timestamptz,
   summary jsonb not null default '{}'::jsonb
 );
@@ -39,22 +39,31 @@ revoke all on public.trier_inventory,public.trier_sync_state,public.trier_invent
 grant select,insert,update on public.trier_inventory,public.trier_sync_state to service_role;
 grant select on public.trier_inventory_audit to service_role;
 
-create function public.trier_claim_sync(minutes integer, integrated_store text) returns boolean
+create function public.trier_claim_sync(minutes integer, integrated_store text) returns uuid
 language plpgsql security definer set search_path='' as $$
+declare claimed uuid;
 begin
-  if minutes < 1 or minutes > 1440 or integrated_store is null or integrated_store='' then raise exception 'Invalid configuration'; end if;
-  update public.trier_sync_state set started_at=now(), lease_until=now()+interval '30 minutes',store_id=integrated_store
+  if minutes is null or minutes < 1 or minutes > 1440 or integrated_store is null or integrated_store='' then raise exception 'Invalid configuration'; end if;
+  update public.trier_sync_state set started_at=now(), lease_until=now()+interval '30 minutes',store_id=integrated_store,run_id=gen_random_uuid()
   where id=1 and (store_id is null or store_id=integrated_store)
     and (lease_until is null or lease_until < now())
-    and (started_at is null or started_at < now()-make_interval(mins=>minutes));
-  return found;
+    and (started_at is null or started_at < now()-make_interval(mins=>minutes)) returning run_id into claimed;
+  return claimed;
 end $$;
-create function public.trier_apply_inventory(payload jsonb) returns boolean
+create function public.trier_apply_inventory(payload jsonb, run_id uuid) returns boolean
 language plpgsql security definer set search_path='' as $$
 declare oldrow public.trier_inventory; newrow public.trier_inventory; matched integer; priority integer;
 begin
+  -- Hold the lease row lock until this inventory write/audit transaction completes.
+  perform 1 from public.trier_sync_state s where s.id=1 and s.run_id=trier_apply_inventory.run_id and s.lease_until>now() for update;
+  if not found then raise exception 'Expired or superseded sync'; end if;
   if payload->>'storeId' is distinct from (select store_id from public.trier_sync_state where id=1)
     then raise exception 'Store mismatch'; end if;
+  if jsonb_typeof(payload->'stockQuantity') is distinct from 'number'
+    or jsonb_typeof(payload->'available') is distinct from 'boolean'
+    or payload->>'fetchedAt' is null or coalesce(payload->>'name','')=''
+    or (payload ? 'priceCents' and (jsonb_typeof(payload->'priceCents') is distinct from 'number'
+      or (payload->>'priceCents')::numeric <> trunc((payload->>'priceCents')::numeric))) then raise exception 'Invalid inventory'; end if;
   -- Match only explicit, reviewed identifiers. Names never participate.
   select min(case when trier_product_id=payload->>'externalId' then 1
     when trier_reduced_code=payload->>'reducedCode' then 2 when ean=payload->>'ean' then 3 end)
@@ -67,6 +76,9 @@ begin
   select * into oldrow from public.trier_inventory where store_id=payload->>'storeId' and
     (case priority when 1 then trier_product_id=payload->>'externalId'
       when 2 then trier_reduced_code=payload->>'reducedCode' when 3 then ean=payload->>'ean' end) for update;
+  if exists(select 1 from public.trier_inventory i where i.store_id=payload->>'storeId'
+    and (i.product_id,i.variant_id)<>(oldrow.product_id,oldrow.variant_id)
+    and (i.trier_product_id=payload->>'externalId' or i.trier_reduced_code=payload->>'reducedCode' or i.ean=payload->>'ean')) then raise exception 'Identifier conflict'; end if;
   if (oldrow.trier_product_id is not null and payload->>'externalId' is not null and oldrow.trier_product_id<>payload->>'externalId')
     or (oldrow.trier_reduced_code is not null and payload->>'reducedCode' is not null and oldrow.trier_reduced_code<>payload->>'reducedCode')
     or (oldrow.ean is not null and payload->>'ean' is not null and oldrow.ean<>payload->>'ean') then raise exception 'Identifier conflict'; end if;
@@ -83,5 +95,13 @@ begin
     values(oldrow.product_id,oldrow.variant_id,to_jsonb(oldrow),to_jsonb(newrow));
   return true;
 end $$;
-revoke all on function public.trier_claim_sync(integer,text),public.trier_apply_inventory(jsonb) from public,anon,authenticated;
-grant execute on function public.trier_claim_sync(integer,text),public.trier_apply_inventory(jsonb) to service_role;
+create function public.trier_finish_sync(result_summary jsonb, run_id uuid) returns boolean
+language plpgsql security definer set search_path='' as $$
+begin
+  update public.trier_sync_state s set summary=result_summary,finished_at=now(),lease_until=null
+    where s.id=1 and s.run_id=trier_finish_sync.run_id and s.lease_until>now();
+  if not found then raise exception 'Expired or superseded sync'; end if;
+  return true;
+end $$;
+revoke all on function public.trier_claim_sync(integer,text),public.trier_apply_inventory(jsonb,uuid),public.trier_finish_sync(jsonb,uuid) from public,anon,authenticated;
+grant execute on function public.trier_claim_sync(integer,text),public.trier_apply_inventory(jsonb,uuid),public.trier_finish_sync(jsonb,uuid) to service_role;

@@ -23,6 +23,8 @@ test('internal endpoint reads safe cached DTO, rejects private products and prot
  const post=(headers={})=>new Request('https://api.invalid/',{method:'POST',headers,body:JSON.stringify({action:'sync'})});
  assert.equal((await handler(post())).status,403);assert.equal((await handler(post({origin:'https://shop.invalid'}))).status,401);
  const disabled=await handler(post({authorization:'Bearer server-secret'}));assert.deepEqual(await disabled.json(),{status:'disabled'});
+ const malformed=new Request('https://api.invalid/',{method:'POST',headers:{authorization:'Bearer server-secret'},body:'null'});
+ assert.equal((await handler(malformed)).status,400);
 });
 test('canonical mock mapping preserves codes, EAN, cents and numeric inventory',()=>{
  const p=mapProduct(mock,policy,'test'); assert.equal(p.reducedCode,'00123');assert.equal(p.ean,mock.ean);assert.equal(p.priceCents,1290);assert.equal(p.stockQuantity,17);assert.equal(p.available,true);
@@ -47,6 +49,7 @@ for(const status of [400,401,403,404,429,500,502,503]) test(`HTTP ${status} has 
 test('invalid JSON, schema, timeout and unavailable API are sanitized',async()=>{
  await assert.rejects(()=>new TrierClient(settings,contract,async()=>new Response('{'),async()=>{}).products(),/invalid_json/);
  await assert.rejects(()=>new TrierClient(settings,contract,async()=>Response.json({}),async()=>{}).products(),/unexpected_schema/);
+ let bodyCalls=0;await assert.rejects(()=>new TrierClient(settings,contract,async()=>{bodyCalls++;return {ok:true,json:async()=>{throw Object.assign(Error('body timed out'),{name:'TimeoutError'});}};},async()=>{}).products(),/timeout/);assert.equal(bodyCalls,3);
  for(const [name,code] of [['TimeoutError','timeout'],['TypeError','api_unavailable']]) {
  let count=0;await assert.rejects(()=>new TrierClient(settings,contract,async()=>{count++;throw Object.assign(Error(settings.token),{name});},async()=>{}).products(),new RegExp(code));assert.equal(count,3);
  }
@@ -64,11 +67,20 @@ test('migration persists stock and audit atomically, preserves price, isolates s
  await db.exec(await readFile(new URL('../supabase/migrations/20261013120000_trier_inventory.sql',import.meta.url),'utf8'));
  await db.exec("insert into public.trier_inventory(product_id,trier_reduced_code,store_id,external_price_cents) values(1,'00123','test',1000)");
  const call=async(name,args)=> (await db.query(`select public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) result`,args)).rows[0].result;
- assert.equal(await call('trier_claim_sync',[15,'test']),true);assert.equal(await call('trier_claim_sync',[15,'test']),false);
- assert.equal(await call('trier_apply_inventory',[JSON.stringify(mapProduct({...mock,price:undefined},policy,'test'))]),true);
+ const lease=await call('trier_claim_sync',[15,'test']);assert.match(lease,/^[0-9a-f-]{36}$/);assert.equal(await call('trier_claim_sync',[15,'test']),null);
+ assert.equal(await call('trier_apply_inventory',[JSON.stringify(mapProduct({...mock,price:undefined},policy,'test')),lease]),true);
  const row=(await db.query('select * from public.trier_inventory')).rows[0];assert.equal(Number(row.stock_quantity),17);assert.equal(Number(row.external_price_cents),1000);
  assert.equal((await db.query('select count(*) n from public.trier_inventory_audit')).rows[0].n,1);
- await assert.rejects(()=>call('trier_apply_inventory',[JSON.stringify(mapProduct(mock,policy,'other'))]),/Store mismatch/);
- for(const role of ['anon','authenticated']) {await db.exec(`set role ${role}`);await assert.rejects(()=>db.query('select * from public.trier_inventory'),/permission denied/);await assert.rejects(()=>call('trier_claim_sync',[15,'test']),/permission denied/);await db.exec('reset role');}
+ await assert.rejects(()=>call('trier_apply_inventory',[JSON.stringify(mapProduct(mock,policy,'other')),lease]),/Store mismatch/);
+ await db.exec("insert into public.trier_inventory(product_id,trier_product_id,ean,store_id) values(2,'other-id','7891234567890','test')");
+ await assert.rejects(()=>call('trier_apply_inventory',[JSON.stringify(mapProduct(mock,policy,'test')),lease]),/Identifier conflict/);
+ assert.equal((await db.query('select count(*) n from public.trier_inventory_audit')).rows[0].n,1);
+ await assert.rejects(()=>call('trier_apply_inventory',[JSON.stringify({...mapProduct(mock,policy,'test'),stockQuantity:null}),lease]),/Invalid inventory/);
+ await db.exec("update public.trier_sync_state set lease_until=now()-interval '1 minute', started_at=now()-interval '31 minutes'");
+ const nextLease=await call('trier_claim_sync',[15,'test']);assert.notEqual(nextLease,lease);
+ await assert.rejects(()=>call('trier_apply_inventory',[JSON.stringify(mapProduct(mock,policy,'test')),lease]),/superseded/);
+ await assert.rejects(()=>call('trier_finish_sync',[JSON.stringify({status:'failed'}),lease]),/superseded/);
+ assert.equal(await call('trier_finish_sync',[JSON.stringify({status:'completed'}),nextLease]),true);
+ for(const role of ['anon','authenticated']) {await db.exec(`set role ${role}`);await assert.rejects(()=>db.query('select * from public.trier_inventory'),/permission denied/);await assert.rejects(()=>call('trier_claim_sync',[15,'test']),/permission denied/);await assert.rejects(()=>call('trier_finish_sync',[JSON.stringify({}),nextLease]),/permission denied/);await db.exec('reset role');}
  }finally{await db.close();}
 });

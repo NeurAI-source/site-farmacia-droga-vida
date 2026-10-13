@@ -73,7 +73,7 @@ test('hero and family visual asset remain byte-for-byte intact',async()=>{
   const digest=value=>createHash('sha256').update(value).digest('hex');
   assert.equal(digest(await readFile(new URL('../assets/family.webp',import.meta.url))),'39063134a612435d9482690d4868ef12f53dbdc348db6e4c6236296a04153e3c');
   const hero=(await readFile(new URL('../index.html',import.meta.url),'utf8')).match(/<section class="hero"[\s\S]*?<\/section>/)[0];
-  assert.equal(digest(hero),'0aa1d67aa2b44a8f1c3423c6043c9eded64fe47638d4b8211e808ea11ea9d365');
+  assert.equal(digest(hero.replace(/\r\n/g,'\n')),'0aa1d67aa2b44a8f1c3423c6043c9eded64fe47638d4b8211e808ea11ea9d365');
 });
 test('supplements are separated by audience and type',async()=>{
   const catalog=JSON.parse(await readFile(new URL('../catalog.json',import.meta.url),'utf8'));

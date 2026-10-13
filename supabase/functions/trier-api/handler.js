@@ -5,7 +5,7 @@ const officialContract = null;
 const policy = {priceUnit:'cents',isSellable:() => { throw Error('official_status_policy_pending'); }};
 export function createHandler(db, env) { return async req => {
   const origin = allowedOrigin(env('SITE_ORIGINS') || env('SITE_ORIGIN'),req.headers.get('origin'));
-  const headers = {'Content-Type':'application/json','Vary':'Origin','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'authorization, apikey, content-type',...(origin ? {'Access-Control-Allow-Origin':origin} : {})};
+  const headers = {'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'authorization, apikey, content-type',...(origin ? {'Access-Control-Allow-Origin':origin} : {})};
   const reply = (data,status=200) => new Response(JSON.stringify(data),{status,headers});
   if (req.method==='OPTIONS') return reply({},origin ? 200 : 403);
   try {
@@ -33,7 +33,8 @@ export function createHandler(db, env) { return async req => {
       if (!member || !['admin','owner'].includes(member.role)) return reply({error:'forbidden'},403);
     }
     const raw = await req.text(); if (raw.length>1024) return reply({error:'request_too_large'},413);
-    const body = JSON.parse(raw);
+    let body; try { body = JSON.parse(raw); } catch { return reply({error:'invalid_request'},400); }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return reply({error:'invalid_request'},400);
     if (body.action==='status') {
       const {data,error} = await db.from('trier_sync_state').select('started_at,finished_at,summary').eq('id',1).single();
       if (error) throw error;

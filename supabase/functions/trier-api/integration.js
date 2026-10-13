@@ -31,7 +31,10 @@ export class TrierClient {
       try {
         const response = await this.fetcher(url, { method: 'GET', headers: request.headers, redirect: 'error', signal: AbortSignal.timeout(this.settings.timeoutMs) });
         if (!response.ok) throw new TrierError(`http_${response.status}`, [429,500,502,503,504].includes(response.status));
-        let json; try { json = await response.json(); } catch { throw new TrierError('invalid_json'); }
+        let json; try { json = await response.json(); } catch (error) {
+          if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
+          throw new TrierError('invalid_json');
+        }
         let items; try { items = this.contract.decode(json); } catch { throw new TrierError('unexpected_schema'); }
         if (!Array.isArray(items)) throw new TrierError('unexpected_schema');
         return items;
@@ -55,6 +58,8 @@ export function moneyToCents(value, unit) {
 }
 export function mapProduct(input, policy, storeId, fetchedAt = new Date().toISOString()) {
   // input is canonical adapter output, never an assumed Trier JSON shape.
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TrierError('invalid_product');
+  if (typeof fetchedAt !== 'string' || !Number.isFinite(Date.parse(fetchedAt))) throw new TrierError('invalid_timestamp');
   const reducedCode = identifier(input.reducedCode), externalId = identifier(input.externalId), ean = identifier(input.ean);
   if ((!reducedCode && !externalId && !ean) || !identifier(input.name) || !Number.isFinite(input.stockQuantity) || Math.abs(input.stockQuantity) > 100000000) throw new TrierError('invalid_product');
   for (const key of ['reducedCode','externalId','ean']) if (input[key] != null && !identifier(input[key])) throw new TrierError('invalid_identifier');
@@ -76,7 +81,8 @@ export class InventoryService {
   constructor({client, repository, policy, settings, log = (_entry) => {}}) { Object.assign(this,{client,repository,policy,settings,log}); }
   async refresh({periodic = false} = {}) {
     if (!this.settings.enabled || (periodic && !this.settings.syncEnabled)) return {status:'disabled'};
-    if (!await this.repository.claim(this.settings.intervalMinutes)) return {status:'cached'};
+    const lease = await this.repository.claim(this.settings.intervalMinutes);
+    if (!lease) return {status:'cached'};
     const started = Date.now(); const result = {status:'completed',received:0,updated:0,skipped:0,errors:0,lastError:null};
     this.log({event:'trier_sync_started'});
     try {
@@ -84,12 +90,12 @@ export class InventoryService {
       for (const item of items) {
         try {
           const mapped = mapProduct(item, this.policy, this.settings.storeId);
-          const updated = await this.repository.apply(mapped);
+          const updated = await this.repository.apply(mapped, lease);
           if (updated) result.updated++; else result.skipped++;
         } catch (error) { result.errors++; result.lastError = error instanceof TrierError ? error.code : 'persistence_or_mapping_failed'; }
       }
     } catch (error) { result.status = 'failed'; result.errors++; result.lastError = error instanceof TrierError ? error.code : 'sync_failed'; }
-    await this.repository.finish(result);
+    await this.repository.finish(result, lease);
     this.log({event:'trier_sync_completed',...result,durationMs:Date.now()-started});
     return result;
   }
