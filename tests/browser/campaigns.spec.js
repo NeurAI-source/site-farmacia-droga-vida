@@ -57,7 +57,7 @@ test('touch follows the finger in both directions, wraps, cancels safely and pre
   const stage=page.locator('.campaign-viewport');await stage.scrollIntoViewIfNeeded();
   const box=await stage.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2,distance=Math.min(180,box.width*.35);
   const event=(type,px=x,py=y)=>session.send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'||type==='touchCancel'?[]:[{x:px,y:py,id:1}]});
-  const position=()=>page.locator('.campaign-track').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41);
+  const position=()=>page.locator('.campaign-panel[aria-hidden="false"]').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41);
   const initial=await position();await event('touchStart');await event('touchMove',x+distance,y);await page.clock.runFor(32);
   expect(await position()).toBeGreaterThan(initial+distance*.8);
   await event('touchEnd');await page.clock.runFor(800);await expect(page.locator('.campaign-name')).toHaveText('Campanha 3');
@@ -77,15 +77,15 @@ test('mouse drag is live, short drags snap back and cache refresh reuses the sam
   await page.clock.install();await page.goto('/');await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
   await page.locator('.campaign-panel').evaluateAll(nodes=>nodes.forEach((node,i)=>node.dataset.original=String(i)));
   const stage=page.locator('.campaign-viewport');await stage.scrollIntoViewIfNeeded();const box=await stage.boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;
-  const initial=await page.locator('.campaign-track').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41);
+  const initial=await page.locator('.campaign-panel[aria-hidden="false"]').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41);
   await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-30,y,{steps:3});await page.clock.runFor(32);
-  expect(await page.locator('.campaign-track').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41)).toBeLessThan(initial-20);
+  expect(await page.locator('.campaign-panel[aria-hidden="false"]').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m41)).toBeLessThan(initial-20);
   await page.clock.runFor(120);await page.mouse.up();await page.clock.runFor(400);
   await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
   await mouseDrag(page,-1);await page.clock.runFor(800);await expect(page.locator('.campaign-name')).toHaveText('Campanha 2');
   await page.clock.runFor(20500);await expect.poll(()=>calls).toBe(2);
-  expect(await page.locator('.campaign-panel[data-original]').count()).toBe(3);
-  await expect(page.locator('.campaign-panel')).toHaveCount(3);
+  expect(await page.locator('.campaign-panel[data-original]').count()).toBe(4);
+  await expect(page.locator('.campaign-panel')).toHaveCount(4);
   await expect(page.locator('.campaign-viewer')).not.toBeVisible();
 });
 test('reduced motion disables autoplay while keyboard and dots still select images',async({page})=>{
@@ -102,6 +102,15 @@ test('long titles never shift the page when the carousel advances',async({page})
   const before=await page.locator('#campaign-carousel').boundingBox();await page.clock.runFor(6000);
   await expect(page.locator('.campaign-name')).toHaveText(title);const after=await page.locator('#campaign-carousel').boundingBox();
   expect(Math.abs(after.height-before.height)).toBeLessThan(1);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+test('3D depth and tilt are real; a large gallery remains bounded and every image is selectable',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});await publicRoute(page,()=>payload(Array.from({length:100},(_,i)=>makeCampaign(i+1))));
+  await page.goto('/');await expect(page.locator('.campaign-dots button')).toHaveCount(100);await expect(page.locator('.campaign-panel')).toHaveCount(9);
+  expect(await page.locator('.campaign-track').evaluate(e=>getComputedStyle(e).transformStyle)).toBe('preserve-3d');
+  const poses=await page.locator('.campaign-panel').evaluateAll(nodes=>nodes.map(e=>{const m=new DOMMatrix(getComputedStyle(e).transform);return {active:e.getAttribute('aria-hidden')==='false',z:m.m43,tilt:m.m13};}));
+  expect(poses.find(p=>p.active).z).toBe(0);expect(poses.filter(p=>!p.active).every(p=>p.z<0)).toBe(true);expect(poses.some(p=>Math.abs(p.tilt)>.1)).toBe(true);
+  await page.getByRole('button',{name:'Oferta 100: Campanha 100',exact:true}).click();await expect(page.locator('.campaign-name')).toHaveText('Campanha 100');
+  await page.getByRole('button',{name:'Oferta 50: Campanha 50',exact:true}).click();await expect(page.locator('.campaign-name')).toHaveText('Campanha 50');await expect(page.locator('.campaign-panel')).toHaveCount(9);
 });
 async function adminRoute(page,role='admin',initial=[]) {
   await config(page);const rows=initial,assets=new Map();let saves=[];
