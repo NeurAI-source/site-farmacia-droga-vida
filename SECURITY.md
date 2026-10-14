@@ -1,5 +1,7 @@
 # Segurança do projeto
 
+Em produção, o painel usa um caminho aleatório de 128 bits definido por `ADMIN_PANEL_PATH` em GitHub Secrets. O build de publicação falha sem esse segredo; não publicar o valor em links, sitemap, robots.txt ou no repositório. `/admin` e seus subcaminhos não são publicados e recebem bloqueio ativo na Cloudflare para impedir que caches antigos entreguem o login. Essa discrição complementa Auth, MFA e autorização; conhecer o endereço nunca concede acesso ao painel.
+
 As dez tabelas antigas estão preservadas e isoladas de `anon`/`authenticated` pela migration `20261014170000_quarantine_legacy_tables.sql`. O backup criptografado inclui seus registros. As funções antigas `delivery-admin-create-driver`, `product-content-ai` e `set-erick-admin` recebem o código de `supabase/functions/legacy-disabled.ts` e não executam operações. Não reative esses caminhos sem revisão de autenticação, autorização e finalidade.
 
 Nunca versionar `.env`, variações/modelos desse nome, arquivos terminados em `.env`, `.venv`, `venv`, chaves privadas, tokens ou senhas. Segredos ficam no provedor ou GitHub Secrets. Somente a chave pública de backup pode ser versionada. O verificador de commits e a publicação devem recusar material privado; nunca remover esse bloqueio para publicar.
