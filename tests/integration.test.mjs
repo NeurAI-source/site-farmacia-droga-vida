@@ -3,8 +3,31 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { validateCatalog } from '../catalog-validation.js';
+import { adminPath } from '../scripts/admin-path.mjs';
 const root = new URL('../', import.meta.url);
 const original = JSON.parse(await readFile(new URL('catalog.json', root), 'utf8'));
+
+test('production rejects predictable or malformed administrative paths', () => {
+  assert.throws(()=>adminPath({REQUIRE_PRIVATE_ADMIN_PATH:'1'}),/required/);
+  for(const path of ['admin','login','../assets','acesso-short','acesso-'+'a'.repeat(32)+'\n'])
+    assert.throws(()=>adminPath({ADMIN_PANEL_PATH:path}),/Invalid/);
+});
+
+test('private production build removes the old login and only publishes bundled panel assets', async () => {
+  const privatePath = 'acesso-'+'b'.repeat(32);
+  const result=spawnSync(process.execPath,['scripts/build.mjs'],{cwd:root,
+    env:{...process.env,SUPABASE_URL:'',SUPABASE_PUBLISHABLE_KEY:'',ADMIN_PANEL_PATH:privatePath,REQUIRE_PRIVATE_ADMIN_PATH:'1'},encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+  const files=await readdir(new URL('dist/',root)); assert.ok(!files.includes('admin'));
+  const panelFiles=await readdir(new URL(`dist/${privatePath}/`,root));
+  assert.ok(panelFiles.includes('index.html')); assert.ok(panelFiles.some(f=>/^admin-[A-Z0-9]+\.js$/.test(f)));
+  assert.ok(!panelFiles.includes('session.js') && !panelFiles.includes('backend.js'));
+  for(const file of ['index.html','robots.txt','sitemap.xml'])
+    assert.ok(!(await readFile(new URL(`dist/${file}`,root),'utf8')).includes(privatePath));
+  const headers=await readFile(new URL('dist/_headers',root),'utf8');
+  assert.ok(headers.includes(`/${privatePath}*`)); assert.match(headers,/Referrer-Policy: no-referrer/);
+  assert.doesNotMatch(headers,/\/admin\/\*/);
+});
 test('accepts real catalog and rejects unsafe publication payloads', () => {
   assert.equal(validateCatalog(original), original);
   for (const change of [p=>p.priceCents=-1,p=>p.imageUrl='javascript:alert(1)',p=>p.stockQuantity='0\"><script>',p=>p.id='1 onclick=alert(1)',p=>p.active='true']) {

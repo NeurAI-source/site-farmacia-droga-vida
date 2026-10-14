@@ -50,7 +50,7 @@ O carrinho prepara um PRÉ-PEDIDO com nome, forma de recebimento e bairro obriga
 
 ## Painel administrativo — Supabase conectado
 
-Acesse `/admin/` pelo link separado. Sem configuração do Supabase, o painel fica bloqueado e mostra conexão pendente. A integração inclui login, autorização por perfil, rascunho na nuvem, upload de imagens, publicação pelo GitHub Actions e métricas de acesso. Só administradores cadastram usuários e publicam; editores alteram o catálogo. Categorias e lojas continuam somente para consulta. O botão Exportar baixa uma cópia e não publica. Auth, RLS, Storage e publicação pelo painel foram verificados no projeto conectado. Consulte o guia para reinstalação e renovação do token de publicação.
+Em produção, use o endereço reservado entregue ao responsável. A publicação exige o segredo `ADMIN_PANEL_PATH`; sem ele, falha antes de publicar. O endereço real não deve constar em links públicos, sitemap, robots.txt ou no repositório. `/admin/` existe somente no desenvolvimento local. Sem configuração do Supabase, o painel fica bloqueado e mostra conexão pendente. A integração inclui login, autorização por perfil, rascunho na nuvem, upload de imagens, publicação pelo GitHub Actions e métricas de acesso. Só administradores cadastram usuários e publicam; editores alteram o catálogo. Categorias e lojas continuam somente para consulta. O botão Exportar baixa uma cópia e não publica. Auth, RLS, Storage e publicação pelo painel foram verificados no projeto conectado. Consulte o guia para reinstalação e renovação do token de publicação.
 
 ## Código reduzido e Neur.AI
 

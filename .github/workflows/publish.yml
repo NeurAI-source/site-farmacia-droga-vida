@@ -46,6 +46,8 @@ jobs:
         if: steps.snapshot.outputs.skip != 'true'
         env:
           CATALOG_FILE: published-catalog.json
+          ADMIN_PANEL_PATH: ${{ secrets.ADMIN_PANEL_PATH }}
+          REQUIRE_PRIVATE_ADMIN_PATH: '1'
       - uses: actions/configure-pages@v5
         if: steps.snapshot.outputs.skip != 'true' && vars.CLOUDFLARE_ACCOUNT_ID == ''
       - uses: actions/upload-pages-artifact@v3

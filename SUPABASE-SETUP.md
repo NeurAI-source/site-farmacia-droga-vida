@@ -26,7 +26,7 @@ Crie o primeiro usuário no painel Authentication do Supabase; guarde sua senha 
 insert into public.team_members(user_id, role) values ('UUID_DO_PRIMEIRO_USUARIO', 'admin');
 ```
 
-O perfil `editor` pode editar rascunhos e enviar imagens. Só `admin` pode cadastrar usuários e publicar. A opção não aparece para editores, e o servidor também verifica a permissão. Remova o acesso mudando `active` para `false` em `team_members`. Não há link de administração no site público. `/admin/` é um endereço separado, mas não é um segredo: a proteção real é Auth e autorização no banco/servidor.
+O perfil `editor` pode editar rascunhos e enviar imagens. Só `admin` pode cadastrar usuários e publicar. A opção não aparece para editores, e o servidor também verifica a permissão. Remova o acesso mudando `active` para `false` em `team_members`. Não há link de administração no site público. Em produção o painel usa um endereço aleatório configurado por `ADMIN_PANEL_PATH` no GitHub Secrets; o caminho antigo não é publicado. Isso reduz a descoberta casual. Auth, MFA e autorização no banco/servidor continuam obrigatórios, mesmo para quem conhece o endereço.
 
 ## 3. Configuração local e funções
 
