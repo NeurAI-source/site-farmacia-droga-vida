@@ -48,7 +48,7 @@ jobs:
           CATALOG_FILE: published-catalog.json
       - uses: actions/configure-pages@v5
         if: steps.snapshot.outputs.skip != 'true' && vars.CLOUDFLARE_ACCOUNT_ID == ''
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         if: steps.snapshot.outputs.skip != 'true' && vars.CLOUDFLARE_ACCOUNT_ID == ''
         with:
           path: dist
