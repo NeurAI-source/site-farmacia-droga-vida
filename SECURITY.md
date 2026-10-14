@@ -1,5 +1,7 @@
 # Segurança do projeto
 
+As dez tabelas antigas estão preservadas e isoladas de `anon`/`authenticated` pela migration `20261014170000_quarantine_legacy_tables.sql`. O backup criptografado inclui seus registros. As funções antigas `delivery-admin-create-driver`, `product-content-ai` e `set-erick-admin` recebem o código de `supabase/functions/legacy-disabled.ts` e não executam operações. Não reative esses caminhos sem revisão de autenticação, autorização e finalidade.
+
 Nunca versionar `.env`, variações/modelos desse nome, arquivos terminados em `.env`, `.venv`, `venv`, chaves privadas, tokens ou senhas. Segredos ficam no provedor ou GitHub Secrets. Somente a chave pública de backup pode ser versionada. O verificador de commits e a publicação devem recusar material privado; nunca remover esse bloqueio para publicar.
 
 Operações administrativas exigem usuário verificado, colaborador ativo, cargo permitido e segundo fator (`aal2`), inclusive nas APIs e no banco. Credenciais de servidor não são credenciais de navegador. CORS, campos escondidos e `noindex` não substituem autorização.
