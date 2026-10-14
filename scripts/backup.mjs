@@ -6,7 +6,10 @@ export const TABLES = Object.freeze({
   team_members: 'user_id', catalog_draft: 'id', publications: 'id', site_visits: 'day,session_id',
   price_batches: 'id', campaign_assets: 'id', campaigns: 'id', campaign_pages: 'campaign_id,position',
   product_content_history: 'product_id,catalog_version', product_ai_usage: 'id',
-  trier_inventory: 'product_id,variant_id', trier_sync_state: 'id', trier_inventory_audit: 'id'
+  trier_inventory: 'product_id,variant_id', trier_sync_state: 'id', trier_inventory_audit: 'id',
+  banners: 'id', categories: 'id', deliveries: 'id', delivery_drivers: 'user_id',
+  delivery_events: 'id', delivery_staff: 'user_id', driver_locations: 'driver_id',
+  products: 'id', promotions: 'id', site_settings: 'id'
 });
 export const BUCKETS = Object.freeze(['product-images', 'campaign-images']);
 export const MAX_BYTES = 64 * 1024 * 1024;
@@ -60,19 +63,29 @@ export function decryptBackup(envelopeText, recoveryKey) {
     return validateBackup(JSON.parse(plaintext.toString('utf8')));
   } finally { key.fill(0); plaintext?.fill(0); }
 }
-export async function collectBackup({ url, serviceKey, fetcher = fetch }) {
+export async function collectBackup({ url, serviceKey, fetcher = fetch, progress = () => {} }) {
   const base = new URL(url);
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(url) || base.username || base.password || !serviceKey) throw Error('Invalid backup configuration');
   let total = 0;
   async function request(path, options = {}) {
-    const response = await fetcher(new URL(path, base), { ...options, headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(30000) });
-    if (!response.ok) throw Error(`Backup request failed (${response.status})`);
+    const resource=path.startsWith('/rest/v1/')?path.split('/')[3].split('?')[0]:'storage';
+    let response;
+    for(let attempt=0;attempt<3;attempt++){
+      try{response=await fetcher(new URL(path,base),{...options,headers:{apikey:serviceKey,Authorization:`Bearer ${serviceKey}`,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(30000)});}catch{
+        if(attempt===2)throw Error(`Backup unavailable: ${resource}`);
+      }
+      if(response?.ok)break;
+      if(response && ![429,500,502,503,504].includes(response.status))throw Error(`Backup HTTP ${response.status}: ${resource}`);
+      if(attempt===2)throw Error(`Backup HTTP ${response?.status||0}: ${resource}`);
+      await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));
+    }
     const reader = response.body.getReader(), chunks = [];
     for (;;) { const { done, value } = await reader.read(); if (done) break; total += value.length; if (total > MAX_BYTES) { await reader.cancel(); throw Error('Backup exceeds transfer limit'); } chunks.push(value); }
     return Buffer.concat(chunks);
   }
   const tables = {};
   for (const [table, order] of Object.entries(TABLES)) {
+    progress(`Exporting application table: ${table}`);
     const rows = [];
     for (let offset = 0;; offset += PAGE) {
       const page = JSON.parse((await request(`/rest/v1/${table}?select=*&order=${order.split(',').map(column => column + '.asc').join(',')}&limit=${PAGE}&offset=${offset}`)).toString());
@@ -83,6 +96,7 @@ export async function collectBackup({ url, serviceKey, fetcher = fetch }) {
   }
   const storage = [];
   for (const bucket of BUCKETS) {
+    progress(`Exporting image bucket: ${bucket}`);
     const folders = [''], seen = new Set();
     while (folders.length) {
       const prefix = folders.shift(); if (seen.has(prefix)) throw Error('Duplicate storage folder'); seen.add(prefix);
@@ -116,9 +130,9 @@ async function main() {
     console.log('Recovery verified; application data written to the requested file. Database unchanged.');
   } else if (process.argv[2] === 'backup') {
     const publicKey = process.env.SECURITY_BACKUP_PUBLIC_KEY || await readFile(new URL('../security/backup-public.pem', import.meta.url), 'utf8');
-    const backup = await collectBackup({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY });
+    const backup = await collectBackup({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY, progress: message=>console.log(message) });
     await writeFile(process.argv[3] || 'application-backup.enc', encryptBackup(backup, publicKey), { flag: 'wx', mode: 0o600 });
     console.log('Encrypted application backup completed.');
   } else throw Error('Usage: backup.mjs backup [encrypted-output] | restore encrypted-input explicit-json-output');
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(() => { console.error('Backup/recovery failed; no complete backup can be claimed. Check configuration and limits.'); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(error => { console.error(/^Backup (?:HTTP \d+|unavailable): (?:[a-z_]+|storage)$/.test(error?.message)?error.message:'Backup/recovery failed; no complete backup can be claimed. Check configuration and limits.'); process.exitCode = 1; });
