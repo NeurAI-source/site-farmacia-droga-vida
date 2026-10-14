@@ -12,7 +12,7 @@ export const TABLES = Object.freeze({
   products: 'id', promotions: 'id', site_settings: 'id'
 });
 export const BUCKETS = Object.freeze(['product-images', 'campaign-images']);
-export const MAX_BYTES = 64 * 1024 * 1024;
+export const MAX_BYTES = 128 * 1024 * 1024;
 const MAX_ROWS = 100000, PAGE = 1000;
 const aad = Buffer.from('droga-vida-application-backup:v1');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
