@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, createHash } from 'node:crypto';
 import { encryptBackup, decryptBackup, collectBackup, TABLES, validateBackup } from '../scripts/backup.mjs';
 const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const backup = () => ({ version: 1, kind: 'application-data', createdAt: new Date().toISOString(), tables: Object.fromEntries(Object.keys(TABLES).map(table => [table, []])), storage: [] });
+
+test('large real-world image backups recover without regex stack exhaustion', () => {
+  const bytes = Buffer.alloc(8 * 1024 * 1024, 17), value = backup();
+  value.storage.push({bucket:'product-images',path:'large.png',bytes:bytes.length,
+    sha256:createHash('sha256').update(bytes).digest('hex'),data:bytes.toString('base64')});
+  const recovered = decryptBackup(encryptBackup(value, keys.publicKey), keys.privateKey);
+  assert.equal(recovered.storage[0].sha256, value.storage[0].sha256);
+  assert.equal(recovered.storage[0].bytes, bytes.length);
+});
 test('encrypted recovery preserves application data without exposing plaintext', () => {
   const value = backup(); value.tables.catalog_draft = [{ id: 1, catalog: { products: [{ name: 'Confidential draft' }] } }];
   const encrypted = encryptBackup(value, keys.publicKey);

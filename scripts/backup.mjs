@@ -18,8 +18,10 @@ const aad = Buffer.from('droga-vida-application-backup:v1');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const safePath = path => typeof path === 'string' && path.length <= 1024 && path.length > 0 && !path.includes('\\') && !/[\x00-\x1f]/.test(path) && path.split('/').every(part => part && part !== '.' && part !== '..');
 const decode = value => {
-  if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) throw Error('Invalid backup encoding');
-  return Buffer.from(value, 'base64');
+  if (typeof value !== 'string' || value.length % 4 || /[^A-Za-z0-9+/=]/.test(value)) throw Error('Invalid backup encoding');
+  const decoded = Buffer.from(value, 'base64');
+  if (decoded.toString('base64') !== value) throw Error('Invalid backup encoding');
+  return decoded;
 };
 export function validateBackup(value) {
   if (value?.version !== 1 || value.kind !== 'application-data' || !Number.isFinite(Date.parse(value.createdAt)) || !value.tables || !Array.isArray(value.storage)) throw Error('Invalid application backup');
