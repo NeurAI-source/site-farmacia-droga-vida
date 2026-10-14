@@ -1,4 +1,4 @@
-import { client, adminAction } from './backend.js?v=20261002';
+import { client, adminAction } from './backend.js';
 const $ = s => document.querySelector(s);
 export let membership;
 // The backend must independently require aal2; this gate also keeps draft data out of the UI.

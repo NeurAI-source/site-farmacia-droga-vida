@@ -1,4 +1,4 @@
-import { client } from './backend.js?v=20260929';
+import { client } from './backend.js';
 import { campaignStatus, validateCampaign, saoPauloInput, saoPauloISO, inspectImage, MAX_PAGES, MAX_IMAGE_BYTES } from '../campaign-utils.js';
 import { createCampaignViewer } from '../campaign-viewer.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -1,6 +1,6 @@
 import { mountCampaignManager } from './campaigns.js?v=20261001';
 import { mountNeurAI } from './neurai.js?v=20261002';
-import { client, adminAction } from './backend.js?v=20261002';
+import { client, adminAction } from './backend.js';
 import { authorize, membership, refreshTraffic, refreshPublication } from './session.js?v=20261002';
 import { validateCatalog } from '../catalog-validation.js';
 import { productDetailMarkup } from '../product-detail.js?v=20261008-sem-detalhes-v1';
