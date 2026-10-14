@@ -5,3 +5,4 @@
 /* Keep the family heads visible without altering the photograph. */
 @media(min-width:601px){.hero{min-height:clamp(560px,35vw,760px)}.hero-photo{object-position:center top}.hero-inner{padding-block:56px 80px}}
 @media(max-width:600px){.hero{min-height:calc(335px + 66.667vw)}.hero-photo{height:auto;aspect-ratio:3/2;object-fit:contain;object-position:center top}}
+.header-pharmacy-symbol{width:36px;height:36px;object-fit:contain;flex-shrink:0;border-radius:6px}
