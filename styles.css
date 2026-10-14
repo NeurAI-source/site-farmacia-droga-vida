@@ -36,3 +36,8 @@
 @media(hover:hover){.categories .cat:hover{transform:translateY(-3px);box-shadow:0 8px 18px #35150c12}.categories .cat:hover .category-art{transform:translateY(-2px) rotate(-2deg)}}
 @media(max-width:600px){.categories .cat{min-height:126px;padding:7px 3px 11px;gap:3px}.categories .category-art{width:82px;height:82px}}
 @media(prefers-reduced-motion:reduce){.categories .cat,.categories .category-art{transition:none}.categories .cat:hover .category-art{transform:none}}
+/* Approved header logo presentation. */
+header .brand{width:248px;height:90px;border-radius:10px;box-shadow:0 3px 12px #bc001014;background:#ff0000}
+header .brand img{left:0;width:100%;height:auto;top:50%;transform:translateY(-50%)}
+@media(max-width:1000px){header .brand{width:208px;height:78px}}
+@media(max-width:600px){header .brand{width:180px;height:70px;border-radius:8px}}
