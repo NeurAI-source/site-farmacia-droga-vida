@@ -28,3 +28,11 @@
 .footer-instagram:hover span{text-decoration:underline;text-underline-offset:4px}
 @media(max-width:750px){.instagram-section{grid-template-columns:1fr;margin-bottom:30px}.instagram-photo{min-height:280px}.instagram-photo img{object-position:center 35%}.instagram-photo span{left:20px;bottom:20px}.instagram-copy{padding:28px 24px 32px}.instagram-copy h2{font-size:30px}.instagram-copy h2 br{display:none}.instagram-icon{margin-bottom:18px}.instagram-copy p{margin-bottom:22px}.instagram-button{width:100%}}
 @media(max-width:380px){.instagram-copy{padding-inline:20px}.instagram-copy h2{font-size:27px}.instagram-button{padding-inline:12px;font-size:15px}}
+/* Approved category illustrations. */
+.categories .cat{min-height:150px;gap:5px;padding:10px 7px 14px;overflow:hidden;position:relative;isolation:isolate;transition:transform .2s ease,box-shadow .2s ease}
+.categories .cat::before{content:"";position:absolute;width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,#ffffffb3,transparent 72%);top:-12px;left:50%;transform:translateX(-50%);z-index:-1;pointer-events:none}
+.categories .category-art{display:block;width:100px;height:100px;object-fit:contain;pointer-events:none;transition:transform .25s ease}
+.categories .cat:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+@media(hover:hover){.categories .cat:hover{transform:translateY(-3px);box-shadow:0 8px 18px #35150c12}.categories .cat:hover .category-art{transform:translateY(-2px) rotate(-2deg)}}
+@media(max-width:600px){.categories .cat{min-height:126px;padding:7px 3px 11px;gap:3px}.categories .category-art{width:82px;height:82px}}
+@media(prefers-reduced-motion:reduce){.categories .cat,.categories .category-art{transition:none}.categories .cat:hover .category-art{transform:none}}
