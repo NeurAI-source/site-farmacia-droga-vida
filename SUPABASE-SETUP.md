@@ -30,7 +30,7 @@ O perfil `editor` pode editar rascunhos e enviar imagens. Só `admin` pode cadas
 
 ## 3. Configuração local e funções
 
-Copie `exemple.env` para `.env` localmente e preencha somente no computador. O exemplo contém placeholders e não mascara nem criptografa segredos. `.env`, `.env.*`, `.venv/` e `venv/` estão ignorados. O build usa uma lista explícita de arquivos públicos.
+Configure os segredos somente no Supabase ou GitHub Secrets. Arquivos `.env` (inclusive modelos e variações de maiúsculas) e diretórios `.venv`/`venv` nunca devem ser versionados. O verificador de segurança bloqueia esses caminhos e padrões de credenciais privadas; o build usa uma lista explícita de arquivos públicos.
 
 Com Node 22 e Supabase CLI autenticado:
 

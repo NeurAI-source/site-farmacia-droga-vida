@@ -6,3 +6,4 @@
 @media(min-width:601px){.hero{min-height:clamp(560px,35vw,760px)}.hero-photo{object-position:center top}.hero-inner{padding-block:56px 80px}}
 @media(max-width:600px){.hero{min-height:calc(335px + 66.667vw)}.hero-photo{height:auto;aspect-ratio:3/2;object-fit:contain;object-position:center top}}
 .header-pharmacy-symbol{width:36px;height:36px;object-fit:contain;flex-shrink:0;border-radius:6px}
+.statistics-choice{position:fixed;left:18px;bottom:18px;width:min(360px,calc(100vw - 95px));padding:18px;background:#fff;border:1px solid #e9e9ec;border-radius:14px;box-shadow:0 6px 24px #0002;z-index:8;font-size:12px}.statistics-choice p{margin-bottom:12px}.statistics-choice>div{display:flex;gap:12px}.statistics-choice button{padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-weight:700}.statistics-choice button:last-child{background:var(--red);border-color:var(--red);color:#fff}

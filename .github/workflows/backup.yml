@@ -1,0 +1,46 @@
+name: Backup criptografado dos dados da aplicação
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: application-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test tests/backup.test.mjs
+      - name: Examinar arquivos para evitar segredos no repositório
+        run: |
+          if git ls-files | grep -E '(^|/)(\.env$|\.env\.(local|production|development)$|.*private.*\.pem$|\.venv/)'; then exit 1; fi
+          set +e
+          git grep -I -n -E -- '-----BEGIN (RSA )?PRIVATE KEY-----|sb_secret_[A-Za-z0-9_-]{20,}' ':!package-lock.json' ':!tests/**' ':!scripts/backup.mjs'
+          scan_status=$?
+          set -e
+          if [ "$scan_status" -ne 1 ]; then exit 1; fi
+      - name: Exportar e criptografar sem arquivos temporários em texto aberto
+        run: node scripts/backup.mjs backup application-backup.enc
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SECURITY_BACKUP_PUBLIC_KEY: ${{ vars.SECURITY_BACKUP_PUBLIC_KEY }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: application-backup-${{ github.run_id }}
+          path: application-backup.enc
+          if-no-files-found: error
+          retention-days: 30

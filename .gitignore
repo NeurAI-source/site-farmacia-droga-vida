@@ -6,8 +6,8 @@ node_modules/
 .env
 .env.*
 *.env
-!.env.example
-!exemple.env
+
+
 .venv/
 venv/
 __pycache__/
@@ -25,3 +25,9 @@ test-results/
 playwright-report/
 
 /node_modules
+
+# Mandatory: no environment files or virtual environments, including case variants
+.[eE][nN][vV]*
+*.[eE][nN][vV]
+.[vV][eE][nN][vV]/
+[vV][eE][nN][vV]/

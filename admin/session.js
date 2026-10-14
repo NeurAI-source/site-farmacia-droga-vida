@@ -1,6 +1,72 @@
 import { client, adminAction } from './backend.js?v=20261002';
 const $ = s => document.querySelector(s);
 export let membership;
+// The backend must independently require aal2; this gate also keeps draft data out of the UI.
+async function requireMFA() {
+  const panel = $('#mfa-screen'), status = $('#mfa-status'), code = $('#mfa-code');
+  $('#login-form').hidden = true; panel.hidden = false;
+  let factorId, enrolledId, busy = false;
+  const clearSecret = () => { $('#mfa-qr').removeAttribute('src'); $('#mfa-secret').textContent = ''; code.value = ''; };
+  try {
+    const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assurance.error) throw assurance.error;
+    if (assurance.data.currentLevel === 'aal2') { panel.hidden = true; return true; }
+    const factors = await client.auth.mfa.listFactors();
+    if (factors.error) throw factors.error;
+    factorId = factors.data.totp.find(f => f.status === 'verified')?.id;
+    $('#mfa-enroll').hidden = !!factorId;
+    $('#mfa-form').hidden = !factorId;
+    $('#mfa-description').textContent = factorId ? 'Digite o código de seis números do seu aplicativo autenticador.' : 'Para proteger sua conta, configure um aplicativo autenticador antes de entrar no painel.';
+  } catch { status.textContent = 'Não foi possível verificar a proteção da conta. Saia e tente entrar novamente.'; $('#mfa-enroll').hidden = $('#mfa-form').hidden = true; }
+  return new Promise(resolve => {
+    const lock = value => { busy = value; panel.querySelectorAll('button,input').forEach(el => el.disabled = value); };
+    $('#mfa-enroll').onclick = async () => {
+      if (busy) return; lock(true); status.textContent = 'Preparando o autenticador…';
+      try {
+        const result = await client.auth.mfa.enroll({ factorType: 'totp', friendlyName: `Droga Vida ${crypto.randomUUID()}`, issuer: 'Droga Vida Popular' });
+        if (result.error) throw result.error;
+        factorId = enrolledId = result.data.id;
+        const qr = result.data.totp.qr_code;
+        // SVG remains an isolated image document, never active markup in the administrative DOM.
+        if (typeof qr !== 'string' || !qr.trimStart().startsWith('<svg')) throw Error();
+        $('#mfa-qr').src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}`;
+        $('#mfa-secret').textContent = result.data.totp.secret;
+        $('#mfa-setup').hidden = false; $('#mfa-enroll').hidden = true; $('#mfa-form').hidden = false;
+        status.textContent = 'Escaneie o QR code ou copie a chave no autenticador. Depois confirme o código.'; code.focus();
+      } catch { status.textContent = 'Não foi possível configurar o autenticador. Saia e tente novamente ou fale com o administrador.'; }
+      finally { lock(false); }
+    };
+    $('#mfa-form').onsubmit = async event => {
+      event.preventDefault(); if (busy || !factorId) return;
+      const value = code.value.trim(); if (!/^\d{6}$/.test(value)) { status.textContent = 'Digite os seis números do autenticador.'; return; }
+      lock(true); status.textContent = 'Confirmando o código…';
+      try {
+        const result = await client.auth.mfa.challengeAndVerify({ factorId, code: value });
+        if (result.error) throw result.error;
+        enrolledId = null;
+        const assurance = await client.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (assurance.error || assurance.data.currentLevel !== 'aal2') throw Error();
+        enrolledId = null; clearSecret(); panel.hidden = true; resolve(true);
+      } catch { code.value = ''; status.textContent = 'Código não confirmado. Confira o aplicativo e tente novamente.'; }
+      finally { lock(false); }
+    };
+    $('#mfa-cancel').onclick = async () => {
+      if (busy) return; lock(true); clearSecret();
+      try {
+        // Only discard an unfinished factor created by this screen, never an existing verified factor.
+        if (enrolledId) {
+          const factors = await client.auth.mfa.listFactors();
+          if (!factors.error && factors.data.all?.some(f => f.id === enrolledId && f.status === 'unverified')) {
+            await client.auth.mfa.unenroll({ factorId: enrolledId });
+          }
+        }
+        const result = await client.auth.signOut();
+        if (result?.error) throw result.error;
+        location.reload();
+      } catch { status.textContent = 'Não foi possível sair. Recarregue a página e tente novamente.'; lock(false); }
+    };
+  });
+}
 export async function authorize() {
   if (!client) {
     $('#login-status').textContent = 'Conexão pendente: o projeto Supabase ainda precisa ser configurado.';
@@ -9,6 +75,7 @@ export async function authorize() {
   }
   const { data: { session } } = await client.auth.getSession();
   if (!session) return false;
+  if (!await requireMFA()) return false;
   const { data, error } = await client.from('team_members').select('role,active').eq('user_id', session.user.id).single();
   if (error || !data?.active) {
     $('#login-status').textContent = 'Este usuário não tem acesso autorizado. Fale com o administrador.';

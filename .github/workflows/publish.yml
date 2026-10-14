@@ -33,6 +33,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: node scripts/security-check.mjs
       - id: snapshot
         run: node scripts/cloud-catalog.mjs fetch
         env:

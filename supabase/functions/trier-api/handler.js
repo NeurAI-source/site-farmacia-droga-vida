@@ -2,6 +2,7 @@ import { allowedOrigin } from '../cors.js';
 import { config, TrierClient, InventoryService, publicStock } from './integration.js';
 import { repository } from './repository.js';
 import { internalRequest } from './server-auth.js';
+import { readJson, verifiedSessionAal2, panelQuota, RequestLimitError } from '../security.js';
 const officialContract = null;
 const policy = {priceUnit:'cents',isSellable:() => { throw Error('official_status_policy_pending'); }};
 export function createHandler(db, env) { return async req => {
@@ -29,12 +30,12 @@ export function createHandler(db, env) { return async req => {
       const token = req.headers.get('authorization')?.replace(/^Bearer /i,'') || '';
       const {data:{user},error} = await db.auth.getUser(token);
       if (error || !user) return reply({error:'unauthorized'},401);
+      if (!await verifiedSessionAal2(db,token,user)) return reply({error:'mfa_required',code:'mfa_required'},403);
       const {data:member} = await db.from('team_members').select('role').eq('user_id',user.id).eq('active',true).single();
       if (!member || !['admin','owner'].includes(member.role)) return reply({error:'forbidden'},403);
+      await panelQuota(db,user.id);
     }
-    const raw = await req.text(); if (raw.length>1024) return reply({error:'request_too_large'},413);
-    let body; try { body = JSON.parse(raw); } catch { return reply({error:'invalid_request'},400); }
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return reply({error:'invalid_request'},400);
+    const body = await readJson(req,1024);
     if (body.action==='status') {
       const {data,error} = await db.from('trier_sync_state').select('started_at,finished_at,summary').eq('id',1).single();
       if (error) throw error;
@@ -44,6 +45,6 @@ export function createHandler(db, env) { return async req => {
     const settings=config(env);
     const service = new InventoryService({settings,client:new TrierClient(settings,officialContract),repository:repository(db,settings.storeId),policy,log:(entry)=>console.log(JSON.stringify(entry))});
     return reply(await service.refresh({periodic:internal}));
-  } catch { return reply({error:'trier_operation_failed'},503); }
+  } catch (error) { return reply({error:error instanceof RequestLimitError ? error.message : 'trier_operation_failed'},error instanceof RequestLimitError ? error.status : 503); }
 }; }
 

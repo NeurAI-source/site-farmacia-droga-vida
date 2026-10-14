@@ -1,0 +1,6 @@
+* text=auto
+.githooks/pre-commit text eol=lf
+*.webp binary
+*.png binary
+*.jpg binary
+*.jpeg binary

@@ -11,37 +11,74 @@ export function config(env) {
   return { enabled: env('TRIER_INTEGRATION_ENABLED') === 'true', syncEnabled: env('TRIER_SYNC_ENABLED') === 'true',
     baseUrl: env('TRIER_BASE_URL'), token: env('TRIER_API_TOKEN'), storeId: env('TRIER_STORE_ID'),
     timeoutMs: integer('TRIER_TIMEOUT_MS', 10000, 100, 60000), retries: integer('TRIER_MAX_RETRIES', 2, 0, 3),
-    intervalMinutes: integer('TRIER_SYNC_INTERVAL_MINUTES', 15, 1, 1440) };
+    intervalMinutes: integer('TRIER_SYNC_INTERVAL_MINUTES', 15, 1, 1440),
+    maxResponseBytes: integer('TRIER_MAX_RESPONSE_BYTES', 2 * 1024 * 1024, 1, 10 * 1024 * 1024),
+    maxProducts: integer('TRIER_MAX_PRODUCTS', 10000, 1, 100000),
+    syncDeadlineMs: integer('TRIER_SYNC_DEADLINE_MS', 120000, 100, 300000) };
+}
+function remaining(deadline) {
+  const ms = deadline - Date.now();
+  if (ms <= 0) throw new TrierError('sync_deadline_exceeded');
+  return ms;
+}
+async function boundedJson(response, limit, signal) {
+  const length = response.headers?.get('content-length');
+  if (length && /^\d+$/.test(length) && Number(length) > limit) throw new TrierError('response_too_large');
+  if (!response.body?.getReader) throw new TrierError('invalid_response');
+  const reader = response.body.getReader(), chunks = []; let size = 0;
+  try {
+    while (true) {
+      signal.throwIfAborted();
+      let abort;
+      const interrupted = new Promise((_, reject) => { abort = () => reject(signal.reason); signal.addEventListener('abort', abort, {once:true}); });
+      let chunk;
+      try { chunk = await Promise.race([reader.read(), interrupted]); }
+      finally { signal.removeEventListener('abort', abort); }
+      if (chunk.done) break;
+      size += chunk.value.byteLength;
+      if (size > limit) throw new TrierError('response_too_large');
+      chunks.push(chunk.value);
+    }
+    const bytes = new Uint8Array(size); let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    try { return JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new TrierError('invalid_json'); }
+  } finally { void reader.cancel().catch(() => {}); reader.releaseLock(); }
 }
 export class TrierClient {
   constructor(settings, contract, fetcher = fetch, sleep = ms => new Promise(resolve => setTimeout(resolve, ms))) {
     Object.assign(this, { settings, contract, fetcher, sleep });
   }
-  async products() {
+  async products({deadline = Date.now() + (this.settings.syncDeadlineMs ?? 120000)} = {}) {
     if (!this.settings.enabled) throw new TrierError('integration_disabled');
     if (!this.contract || !this.settings.token || !this.settings.storeId) throw new TrierError('official_contract_pending');
     let base;
     try { base = new URL(this.settings.baseUrl); } catch { throw new TrierError('invalid_configuration'); }
     if (base.protocol !== 'https:' || base.username || base.password) throw new TrierError('invalid_configuration');
     // contract supplies documented endpoint, authentication, pagination and JSON decoder.
-    const request = this.contract.request(this.settings);
-    const url = new URL(request.url, base);
+    let url, headers;
+    try {
+      const request = this.contract.request(this.settings);
+      if (!request || typeof request.url !== 'string' || !request.headers || typeof request.headers !== 'object') throw Error();
+      url = new URL(request.url, base); headers = new Headers(request.headers);
+    } catch { throw new TrierError('invalid_configuration'); }
     if (url.origin !== base.origin || url.username || url.password) throw new TrierError('invalid_configuration');
     for (let attempt = 0; ; attempt++) {
       try {
-        const response = await this.fetcher(url, { method: 'GET', headers: request.headers, redirect: 'error', signal: AbortSignal.timeout(this.settings.timeoutMs) });
+        const signal = AbortSignal.timeout(Math.min(this.settings.timeoutMs, remaining(deadline)));
+        const response = await this.fetcher(url, { method: 'GET', headers, redirect: 'error', signal });
         if (!response.ok) throw new TrierError(`http_${response.status}`, [429,500,502,503,504].includes(response.status));
-        let json; try { json = await response.json(); } catch (error) {
-          if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error;
-          throw new TrierError('invalid_json');
-        }
+        const json = await boundedJson(response, this.settings.maxResponseBytes ?? 2 * 1024 * 1024, signal);
         let items; try { items = this.contract.decode(json); } catch { throw new TrierError('unexpected_schema'); }
         if (!Array.isArray(items)) throw new TrierError('unexpected_schema');
+        if (items.length > (this.settings.maxProducts ?? 10000)) throw new TrierError('too_many_products');
+        remaining(deadline);
         return items;
       } catch (error) {
         const safe = error instanceof TrierError ? error : new TrierError(error?.name === 'TimeoutError' || error?.name === 'AbortError' ? 'timeout' : 'api_unavailable', true);
         if (!safe.retryable || attempt >= this.settings.retries) throw safe;
-        await this.sleep(500 * 2 ** attempt + Math.floor(Math.random() * 250));
+        const pause = 500 * 2 ** attempt + Math.floor(Math.random() * 250);
+        if (pause >= remaining(deadline)) throw new TrierError('sync_deadline_exceeded');
+        await this.sleep(pause);
       }
     }
   }
@@ -83,13 +120,17 @@ export class InventoryService {
     if (!this.settings.enabled || (periodic && !this.settings.syncEnabled)) return {status:'disabled'};
     const lease = await this.repository.claim(this.settings.intervalMinutes);
     if (!lease) return {status:'cached'};
-    const started = Date.now(); const result = {status:'completed',received:0,updated:0,skipped:0,errors:0,lastError:null};
+    const started = Date.now(), deadline = started + (this.settings.syncDeadlineMs ?? 120000);
+    const result = {status:'completed',received:0,updated:0,skipped:0,errors:0,lastError:null};
     this.log({event:'trier_sync_started'});
     try {
-      const items = await this.client.products(); result.received = items.length;
+      const items = await this.client.products({deadline}); result.received = items.length;
+      if (items.length > (this.settings.maxProducts ?? 10000)) throw new TrierError('too_many_products');
       for (const item of items) {
+        remaining(deadline);
         try {
           const mapped = mapProduct(item, this.policy, this.settings.storeId);
+          remaining(deadline);
           const updated = await this.repository.apply(mapped, lease);
           if (updated) result.updated++; else result.skipped++;
         } catch (error) { result.errors++; result.lastError = error instanceof TrierError ? error.code : 'persistence_or_mapping_failed'; }

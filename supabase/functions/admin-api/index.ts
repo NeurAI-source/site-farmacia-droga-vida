@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 // Copy shared validator into _shared when deploying (npm run prepare:functions).
 import { allowedOrigin } from '../cors.js';
 import { checked, dispatchNext, neuraiAction } from './publication.js';
+import { readJson, verifiedSessionAal2, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
 const baseHeaders = { 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Content-Type': 'application/json', 'Vary': 'Origin' };
@@ -16,18 +17,18 @@ Deno.serve(async req => {
   if (req.method !== 'POST') return reply({ error: 'Método inválido.' }, 405);
   try {
     if (internal) {
-      const body = await req.json();
+      const body = await readJson(req, 1024);
       if (body.action !== 'dispatch-next') return reply({ error: 'Ação interna inválida.' }, 400);
       return reply(await dispatchNext(db, env));
     }
     const token = req.headers.get('authorization')?.replace(/^Bearer /i, '') || '';
     const { data: { user }, error: authError } = await db.auth.getUser(token);
     if (authError || !user) return reply({ error: 'Faça login novamente.' }, 401);
+    if (!await verifiedSessionAal2(db, token, user)) return reply({ error: 'Confirme o segundo fator para continuar.', code: 'mfa_required' }, 403);
     const { data: member } = await db.from('team_members').select('role').eq('user_id', user.id).eq('active', true).single();
     if (!member) return reply({ error: 'Usuário não autorizado.' }, 403);
-    const raw = await req.text();
-    if (raw.length > 50000) return reply({ error: 'Solicitação muito grande.' }, 413);
-    const body = JSON.parse(raw);
+    await panelQuota(db, user.id);
+    const body = await readJson(req, 50000);
     if (['price-batch','price-history','publication-status','retry-publication'].includes(body.action)) {
       try { return reply(await neuraiAction({ body, db, user, env })); }
       catch (error) { return reply({ error: error instanceof Error ? error.message : 'Não foi possível concluir.' }, 409); }
@@ -74,5 +75,5 @@ Deno.serve(async req => {
       return reply({ id, ...delivery });
     }
     return reply({ error: 'Ação inválida.' }, 400);
-  } catch { return reply({ error: 'Não foi possível concluir a operação.' }, 500); }
+  } catch (error) { return reply({ error: error instanceof RequestLimitError ? error.message : 'Não foi possível concluir a operação.' }, error instanceof RequestLimitError ? error.status : 500); }
 });

@@ -10,7 +10,7 @@ async function setup(page,{role='admin',lost=false,seedContent=false}={}){
  }
  const state={catalog,version:7,batches:[],calls:[],status:'pending',lost};
  await page.route('**/public-config.js',r=>r.fulfill({contentType:'text/javascript',body:'export const config={url:"https://neurai-test.supabase.co",key:"sb_publishable_test"};'}));
- const user={id,email:'admin@example.test',aud:'authenticated',role:'authenticated'};const token=`e30.${Buffer.from(JSON.stringify({sub:id,role:'authenticated',exp:4102444800})).toString('base64url')}.test`;
+ const user={id,email:'admin@example.test',aud:'authenticated',role:'authenticated'};const token=`e30.${Buffer.from(JSON.stringify({sub:id,role:'authenticated',aal:'aal2',exp:4102444800})).toString('base64url')}.test`;
  await page.addInitScript(({user,token})=>localStorage.setItem('sb-neurai-test-auth-token',JSON.stringify({access_token:token,refresh_token:'test',token_type:'bearer',expires_at:4102444800,user})),{user,token});
  await page.route('https://neurai-test.supabase.co/**',async r=>{
   const url=new URL(r.request().url());let data={};

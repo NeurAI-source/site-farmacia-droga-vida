@@ -151,3 +151,7 @@ try {
 } catch(error) {
   $('#results').textContent='Não foi possível carregar o catálogo.';$('#products').innerHTML=`<div class="empty"><h3>Estamos aqui para ajudar.</h3><p>Consulte nossos produtos diretamente com a equipe.</p><a class="button red-button" href="https://wa.me/5517996630482" target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a></div>`;
 }
+
+document.querySelector('#statistics-preferences')?.addEventListener('click',()=>{document.querySelector('#privacy-dialog').close();document.dispatchEvent(new Event('dv-statistics-choice'));});
+
+document.querySelector('#terms')?.addEventListener('click',()=>document.querySelector('#terms-dialog').showModal());

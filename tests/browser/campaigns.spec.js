@@ -124,7 +124,7 @@ test('3D depth and tilt are real; a large gallery remains bounded and every imag
 async function adminRoute(page,role='admin',initial=[]) {
   await config(page);const rows=initial,assets=new Map();let saves=[];
   const user={id,email:'admin@example.test',aud:'authenticated',role:'authenticated'};
-  const token=`${Buffer.from('{}').toString('base64url')}.${Buffer.from(JSON.stringify({sub:id,role:'authenticated',exp:4102444800})).toString('base64url')}.test`;
+  const token=`${Buffer.from('{}').toString('base64url')}.${Buffer.from(JSON.stringify({sub:id,role:'authenticated',aal:'aal2',exp:4102444800})).toString('base64url')}.test`;
   await page.addInitScript(({user,token})=>localStorage.setItem('sb-campaign-test-auth-token',JSON.stringify({access_token:token,refresh_token:'test-refresh',token_type:'bearer',expires_at:4102444800,user})),{user,token});
   await page.route('https://campaign-test.supabase.co/**',async r=>{
     const url=new URL(r.request().url());let data={};

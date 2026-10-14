@@ -12,6 +12,8 @@ O contrato oficial ainda é `null`, portanto mesmo habilitar a integração não
 
 Somente servidor: TRIER_BASE_URL, TRIER_API_TOKEN, TRIER_STORE_ID, TRIER_INTEGRATION_ENABLED=false, TRIER_SYNC_ENABLED=false, TRIER_SYNC_INTERVAL_MINUTES=15, TRIER_TIMEOUT_MS=10000, TRIER_MAX_RETRIES=2. Armazenar secrets no ambiente Supabase. Os exemplos não contêm credenciais. O build usa lista explícita de arquivos públicos e não inclui a integração.
 
+Limites adicionais somente no servidor: `TRIER_MAX_RESPONSE_BYTES=2097152` (2 MiB, ajustável de 1 byte até 10485760 bytes/10 MiB), `TRIER_MAX_PRODUCTS=10000` (de 1 até 100000 itens) e `TRIER_SYNC_DEADLINE_MS=120000` (120 segundos, de 100 até 300000 ms/5 minutos). Configuração fora desses intervalos é rejeitada. A resposta é lida em fluxo com limite de bytes antes de interpretar o JSON; resposta ou lote acima do limite é rejeitado sem aplicar seus itens. O prazo total é compartilhado entre aquisição, repetições e início das escritas. Após expirar, nenhuma nova escrita de estoque é iniciada; uma operação no banco já iniciada pode terminar. A finalização registra o erro controlado e preserva os itens anteriores, inclusive alterações já concluídas nesta execução. Os limites não substituem paginação e política de lotes oficiais.
+
 ## Persistência e associação
 
 Migration aditiva `20261013120000_trier_inventory.sql`: cache, estado da sincronização, auditoria e RPCs restritas a service_role. RLS permanece ativo; anon/authenticated não acessam essas tabelas. Não altera os documentos nem publica mudanças automaticamente.
@@ -51,3 +53,5 @@ Mocks exclusivamente em `tests/trier.test.mjs`: contratos fictícios em example.
 - Documentação oficial.
 
 Após documentação: implementar contrato/decoder e política real, revisar vínculos, definir limite de lote/lease e agendamento, executar uma consulta controlada somente leitura pelo backend e conferir cache. Nenhuma chamada de produção pode ser validada nesta fase.
+
+Antes dessa documentação, a preparação pode ser validada com contratos fictícios e testes locais, mas não está conectada à Trier. O contrato continua explicitamente `null`: habilitar as flags não cria endpoints, autenticação ou regras de venda presumidas. Os limites de recursos, autorização e cache são preparativos; prontidão operacional exige o contrato oficial, configuração revisada, migration validada no ambiente de destino e a consulta controlada descrita acima.

@@ -1,4 +1,5 @@
 import { allowedOrigin } from "../cors.js";
+import { readBytes, readJson, verifiedSessionAal2, panelQuota, RequestLimitError } from '../security.js';
 import { validateCampaign, inspectImage, UUID, MAX_IMAGE_BYTES } from "../_shared/campaign-utils.js";
 function createCampaignHandler({ db, origins }) {
   const bucket = db.storage.from("campaign-images");
@@ -14,29 +15,6 @@ function createCampaignHandler({ db, origins }) {
       if (r.error || !r.signedUrl) throw Error("Não foi possível carregar as imagens.");
       return [r.path, r.signedUrl];
     }));
-  }
-  async function limitedBody(req, limit) {
-    const reader = req.body?.getReader();
-    if (!reader) throw Error("Corpo ausente.");
-    let size = 0;
-    const chunks = [];
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.length;
-      if (size > limit) {
-        await reader.cancel();
-        throw Error("Arquivo ou solicitação muito grande.");
-      }
-      chunks.push(value);
-    }
-    const out = new Uint8Array(size);
-    let p = 0;
-    for (const chunk of chunks) {
-      out.set(chunk, p);
-      p += chunk.length;
-    }
-    return out;
   }
   return async (req) => {
     const origin = allowedOrigin(origins, req.headers.get("origin"));
@@ -58,10 +36,12 @@ function createCampaignHandler({ db, origins }) {
       if (!token) return reply({ error: "Entre no painel para continuar." }, 401);
       const { data: { user }, error } = await db.auth.getUser(token);
       if (error || !user) return reply({ error: "Sessão inválida. Entre novamente." }, 401);
+      if (!await verifiedSessionAal2(db, token, user)) return reply({ error: 'Confirme o segundo fator para continuar.', code: 'mfa_required' }, 403);
       const member = check(await db.from("team_members").select("role,active").eq("user_id", user.id).maybeSingle());
       if (!member?.active) return reply({ error: "Acesso não autorizado." }, 403);
+      await panelQuota(db, user.id);
       if (url.searchParams.get("action") === "upload") {
-        const bytes = await limitedBody(req, MAX_IMAGE_BYTES);
+        const bytes = await readBytes(req, MAX_IMAGE_BYTES);
         const metadata = inspectImage(bytes, req.headers.get("content-type")?.split(";")[0]);
         const id2 = crypto.randomUUID(), path = `${id2}.${metadata.extension}`;
         check(await bucket.upload(path, bytes, { contentType: metadata.mime, cacheControl: "0", upsert: false }));
@@ -73,7 +53,7 @@ function createCampaignHandler({ db, origins }) {
         }
         return reply({ id: id2, url: (await sign([path])).get(path) });
       }
-      const body = JSON.parse(new TextDecoder().decode(await limitedBody(req, 2e4)));
+      const body = await readJson(req, 2e4);
       if (body.action === "list") {
         const page = Number(body.page || 0);
         if (!Number.isInteger(page) || page < 0 || page > 1e4) throw Error("Página inválida.");
@@ -97,7 +77,7 @@ function createCampaignHandler({ db, origins }) {
       return reply({ id });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Não foi possível concluir a operação.";
-      return reply({ error: req.method === "GET" ? "Ofertas temporariamente indisponíveis." : message }, 400);
+      return reply({ error: req.method === "GET" ? "Ofertas temporariamente indisponíveis." : message }, error instanceof RequestLimitError ? error.status : 400);
     }
   };
 }

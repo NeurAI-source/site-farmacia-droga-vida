@@ -59,7 +59,7 @@ for(const status of [400,401,403,404,429,500,502,503]) test(`HTTP ${status} has 
 test('invalid JSON, schema, timeout and unavailable API are sanitized',async()=>{
  await assert.rejects(()=>new TrierClient(settings,contract,async()=>new Response('{'),async()=>{}).products(),/invalid_json/);
  await assert.rejects(()=>new TrierClient(settings,contract,async()=>Response.json({}),async()=>{}).products(),/unexpected_schema/);
- let bodyCalls=0;await assert.rejects(()=>new TrierClient(settings,contract,async()=>{bodyCalls++;return {ok:true,json:async()=>{throw Object.assign(Error('body timed out'),{name:'TimeoutError'});}};},async()=>{}).products(),/timeout/);assert.equal(bodyCalls,3);
+ let bodyCalls=0;await assert.rejects(()=>new TrierClient(settings,contract,async()=>{bodyCalls++;return new Response(new ReadableStream({pull(){throw Object.assign(Error('body timed out'),{name:'TimeoutError'});}}));},async()=>{}).products(),/timeout/);assert.equal(bodyCalls,3);
  for(const [name,code] of [['TimeoutError','timeout'],['TypeError','api_unavailable']]) {
  let count=0;await assert.rejects(()=>new TrierClient(settings,contract,async()=>{count++;throw Object.assign(Error(settings.token),{name});},async()=>{}).products(),new RegExp(code));assert.equal(count,3);
  }

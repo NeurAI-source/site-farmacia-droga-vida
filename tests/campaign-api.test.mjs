@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createCampaignHandler} from '../supabase/functions/campaign-api/handler.js';
 const user='11111111-1111-4111-8111-111111111111',origin='https://www.drogavidapopular.com.br';
-function fixture({active=true,role='admin'}={}) {
+function fixture({active=true,role='admin',aal='aal2',claimsError=false,quota=true}={}) {
   let uploads=0,writes=0;
   const bucket={createSignedUrls:async paths=>({data:paths.map(path=>({path,signedUrl:`https://test.supabase.co/storage/v1/object/sign/campaign-images/${path}?token=short-lived`}))}),upload:async()=>{uploads++;return {data:{}};},remove:async()=>({data:{}})};
-  const db={storage:{from:name=>{assert.equal(name,'campaign-images');return bucket;}},auth:{getUser:async token=>({data:{user:token==='valid'?{id:user}:null},error:token==='valid'?null:Error('bad')})},from:name=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role,active}})})}),insert:async()=>({data:{}})}),rpc:async name=>{if(name==='campaign_public_snapshot')return {data:{server_now:new Date().toISOString(),next_start:null,campaigns:[{id:user,title:'Oferta aprovada',kind:'post',cover_path:'approved.png',page_paths:[],active:true,publication_state:'published'}]}};writes++;return {data:user};}};
+  const db={storage:{from:name=>{assert.equal(name,'campaign-images');return bucket;}},auth:{getUser:async token=>({data:{user:token==='valid'?{id:user}:null},error:token==='valid'?null:Error('bad')}),getClaims:async()=>({data:{claims:{sub:user,aal}},error:claimsError?Error('bad'):null})},from:name=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role,active}})})}),insert:async()=>({data:{}})}),rpc:async name=>{if(name==='panel_request_allow')return {data:quota};if(name==='campaign_public_snapshot')return {data:{server_now:new Date().toISOString(),next_start:null,campaigns:[{id:user,title:'Oferta aprovada',kind:'post',cover_path:'approved.png',page_paths:[],active:true,publication_state:'published'}]}};writes++;return {data:user};}};
   return {handler:createCampaignHandler({db,origins:origin}),counts:()=>({uploads,writes})};
 }
 function req({method='POST',token='valid',body={action:'list'},path='',requestOrigin=origin,type='application/json'}={}) {return new Request(`https://test.supabase.co/functions/v1/campaign-api${path}`,{method,headers:{origin:requestOrigin,authorization:`Bearer ${token}`,'content-type':type},...(method==='GET'||method==='OPTIONS'?{}:{body:typeof body==='object'&&!(body instanceof Uint8Array)?JSON.stringify(body):body})});}
@@ -21,10 +21,15 @@ test('untrusted origins, unauthenticated and inactive accounts cannot manage cam
 test('uploads validate the bytes on the server and never use the product bucket',async()=>{
   const f=fixture();let response=await f.handler(req({path:'?action=upload',body:new TextEncoder().encode('<svg><script>alert(1)</script></svg>'),type:'image/png'}));assert.equal(response.status,400);assert.equal(f.counts().uploads,0);
   response=await f.handler(req({path:'?action=upload',body:new Uint8Array(await readFile(new URL('../assets/products/3.png',import.meta.url))),type:'image/png'}));assert.equal(response.status,200);assert.equal(f.counts().uploads,1);const data=await response.json();assert.ok(data.id&&data.url);
-  response=await f.handler(req({path:'?action=upload',body:new Uint8Array(5242881),type:'image/png'}));assert.equal(response.status,400);assert.equal(f.counts().uploads,1);
+  response=await f.handler(req({path:'?action=upload',body:new Uint8Array(5242881),type:'image/png'}));assert.equal(response.status,413);assert.equal(f.counts().uploads,1);
 });
 test('editor publication is rejected before any write and body limits apply to JSON',async()=>{
   const f=fixture({role:'editor'});const campaign={id:crypto.randomUUID(),version:0,title:'Teste',kind:'post',cover_id:user,pages:[],starts_at:new Date().toISOString(),ends_at:new Date(Date.now()+60000).toISOString(),sort_order:0,active:true,publication_state:'published',link_url:''};
   assert.equal((await f.handler(req({body:{action:'save',campaign}}))).status,403);assert.equal(f.counts().writes,0);
-  assert.equal((await f.handler(req({body:'x'.repeat(20001)}))).status,400);
+  assert.equal((await f.handler(req({body:'x'.repeat(20001)}))).status,413);
+});
+
+test('AAL1 and failed claim verification cannot upload/write; persistent quota rejects excess requests',async()=>{
+  for(const options of [{aal:'aal1'},{claimsError:true}]){const f=fixture(options);assert.equal((await f.handler(req())).status,403);assert.deepEqual(f.counts(),{uploads:0,writes:0});}
+  const f=fixture({quota:false});assert.equal((await f.handler(req())).status,429);assert.deepEqual(f.counts(),{uploads:0,writes:0});
 });
