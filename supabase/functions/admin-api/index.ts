@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 // Copy shared validator into _shared when deploying (npm run prepare:functions).
 import { allowedOrigin } from '../cors.js';
+import { publicationHistory } from './publication-history.js';
 import { checked, dispatchNext, neuraiAction, requestPublication } from './publication.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
@@ -29,6 +30,10 @@ Deno.serve(async req => {
     if (!member) return reply({ error: 'Usuário não autorizado.' }, 403);
     await panelQuota(db, user.id);
     const body = await readJson(req, 50000);
+    if (['publication-history','publication-detail'].includes(body.action)) {
+      try { return reply(await publicationHistory({body,db,env})); }
+      catch { return reply({error:'Não foi possível consultar esta publicação.'},409); }
+    }
     if (['price-batch','price-history','publication-status','retry-publication'].includes(body.action)) {
       try { return reply(await neuraiAction({ body, db, user, env })); }
       catch (error) { return reply({ error: error instanceof Error ? error.message : 'Não foi possível concluir.' }, 409); }
