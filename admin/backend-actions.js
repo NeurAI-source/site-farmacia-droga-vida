@@ -1,14 +1,16 @@
 // Retry only an authentication rejection, before the server can execute a write.
 // Keep the exact batch ID and payload so response-loss recovery stays idempotent.
 export async function invokeAdminAction(client, action, payload = {}) {
-  const request = { body: { action, ...payload } };
-  let result = await client.functions.invoke('admin-api', request);
+  return invokeAdminRequest(client, 'admin-api', { body: { action, ...payload } });
+}
+export async function invokeAdminRequest(client, functionName, request) {
+  let result = await client.functions.invoke(functionName, request);
   let requiresLogin = false;
   if (result.error?.context?.status === 401) {
     try {
       const refreshed = await client.auth.refreshSession();
       if (!refreshed.error && refreshed.data?.session?.access_token) {
-        result = await client.functions.invoke('admin-api', request);
+        result = await client.functions.invoke(functionName, request);
         requiresLogin = result.error?.context?.status === 401;
       } else requiresLogin = true;
     } catch { requiresLogin = true; }

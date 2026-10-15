@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 // Copy shared validator into _shared when deploying (npm run prepare:functions).
 import { allowedOrigin } from '../cors.js';
 import { publicationHistory } from './publication-history.js';
+import { uploadProductImage } from './product-image.js';
 import { checked, dispatchNext, neuraiAction, requestPublication } from './publication.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
@@ -29,6 +30,9 @@ Deno.serve(async req => {
     const { data: member } = await db.from('team_members').select('role').eq('user_id', user.id).eq('active', true).single();
     if (!member) return reply({ error: 'Usuário não autorizado.' }, 403);
     await panelQuota(db, user.id);
+    if (new URL(req.url).searchParams.get('action') === 'upload-product-image') {
+      return reply(await uploadProductImage(req, db, user));
+    }
     const body = await readJson(req, 50000);
     if (['publication-history','publication-detail'].includes(body.action)) {
       try { return reply(await publicationHistory({body,db,env})); }

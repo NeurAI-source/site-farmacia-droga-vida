@@ -95,3 +95,38 @@ test('editor de produto nao mostra informacoes detalhadas e preserva textos anti
  expect(state.calls.some(x=>x.payload?.products?.length)).toBe(true);
  expect(errors).toEqual([]);
 });
+
+test('product image upload shows progress, fills the photo URL and preserves product fields without saving a real product', async ({page}) => {
+ const state = await setup(page);
+ await page.getByRole('button',{name:'Fechar',exact:true}).click();
+ await page.locator('#new-product').click();
+ await page.locator('#product-form [name="name"]').fill('Produto de teste isolado');
+ let release;const wait=new Promise(resolve=>release=resolve);let uploads=0;
+ await page.route('**/storage/v1/object/public/product-images/**',route=>route.fulfill({contentType:'image/png',body:readFileSync(new URL('../../assets/products/3.png',import.meta.url))}));
+ await page.route('**/functions/v1/admin-api?action=upload-product-image',async route=>{uploads++;await wait;await route.fulfill({json:{url:'https://neurai-test.supabase.co/storage/v1/object/public/product-images/test/test.png'}});});
+ await page.locator('#image-upload').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:readFileSync(new URL('../../assets/products/3.png',import.meta.url))});
+ await expect(page.locator('#image-upload-status')).toContainText('Enviando imagem');
+ await expect(page.locator('#product-form [type="submit"]')).toBeDisabled();
+ release();
+ await expect(page.locator('#image-upload-status')).toContainText('Imagem enviada');
+ await expect(page.getByRole('textbox',{name:'Endereço da imagem'})).toHaveValue(/\/product-images\/test\/test.png$/);
+ await expect(page.locator('#product-preview')).toBeVisible();
+ await expect.poll(()=>page.locator('#product-preview').evaluate(image=>image.naturalWidth)).toBeGreaterThan(0);
+ await expect(page.locator('#product-form [name="name"]')).toHaveValue('Produto de teste isolado');
+ await expect(page.locator('#product-form [type="submit"]')).toBeEnabled();
+ expect(uploads).toBe(1);expect(state.calls.some(c=>c.payload)).toBe(false);
+});
+test('upload failure is visible beside the photo and keeps the previous image and unsaved form values', async ({page}) => {
+ const state = await setup(page);
+ await page.getByRole('button',{name:'Fechar',exact:true}).click();
+ await page.locator('#recent-products [data-edit]').first().click();
+ const old=await page.getByRole('textbox',{name:'Endereço da imagem'}).inputValue();
+ await page.locator('#product-form [name="name"]').fill('Nome ainda não salvo');
+ await page.route('**/functions/v1/admin-api?action=upload-product-image',route=>route.fulfill({status:503,json:{error:'Não foi possível guardar a imagem. Tente novamente em instantes.'}}));
+ await page.locator('#image-upload').setInputFiles({name:'photo.png',mimeType:'image/png',buffer:readFileSync(new URL('../../assets/products/3.png',import.meta.url))});
+ await expect(page.locator('#image-upload-status')).toBeVisible();
+ await expect(page.locator('#image-upload-status')).toContainText('Não foi possível guardar');
+ await expect(page.getByRole('textbox',{name:'Endereço da imagem'})).toHaveValue(old);
+ await expect(page.locator('#product-form [name="name"]')).toHaveValue('Nome ainda não salvo');
+ await expect(page.locator('#image-upload')).toBeEnabled();expect(state.calls.some(c=>c.payload)).toBe(false);
+});
