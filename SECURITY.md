@@ -1,12 +1,12 @@
 # Segurança do projeto
 
-Em produção, o painel usa um caminho aleatório de 128 bits definido por `ADMIN_PANEL_PATH` em GitHub Secrets. O build de publicação falha sem esse segredo; não publicar o valor em links, sitemap, robots.txt ou no repositório. `/admin` e seus subcaminhos não são publicados e recebem bloqueio ativo na Cloudflare para impedir que caches antigos entreguem o login. Essa discrição complementa Auth, MFA e autorização; conhecer o endereço nunca concede acesso ao painel.
+Em produção, o painel usa um caminho aleatório de 128 bits definido por `ADMIN_PANEL_PATH` em GitHub Secrets. O build de publicação falha sem esse segredo; não publicar o valor em links, sitemap, robots.txt ou no repositório. `/admin` e seus subcaminhos não são publicados e recebem bloqueio ativo na Cloudflare para impedir que caches antigos entreguem o login. Essa discrição complementa Auth e autorização; conhecer o endereço nunca concede acesso ao painel.
 
 As dez tabelas antigas estão preservadas e isoladas de `anon`/`authenticated` pela migration `20261014170000_quarantine_legacy_tables.sql`. O backup criptografado inclui seus registros. As funções antigas `delivery-admin-create-driver`, `product-content-ai` e `set-erick-admin` recebem o código de `supabase/functions/legacy-disabled.ts` e não executam operações. Não reative esses caminhos sem revisão de autenticação, autorização e finalidade.
 
 Nunca versionar `.env`, variações/modelos desse nome, arquivos terminados em `.env`, `.venv`, `venv`, chaves privadas, tokens ou senhas. Segredos ficam no provedor ou GitHub Secrets. Somente a chave pública de backup pode ser versionada. O verificador de commits e a publicação devem recusar material privado; nunca remover esse bloqueio para publicar.
 
-Operações administrativas exigem usuário verificado, colaborador ativo, cargo permitido e segundo fator (`aal2`), inclusive nas APIs e no banco. Credenciais de servidor não são credenciais de navegador. CORS, campos escondidos e `noindex` não substituem autorização.
+Operações administrativas exigem usuário verificado, colaborador ativo, cargo permitido e sessão autenticada por e-mail/senha (`aal1` ou `aal2`), inclusive nas APIs e no banco. A exigência do autenticador foi removida por solicitação do proprietário em 15/10/2026. Credenciais de servidor não são credenciais de navegador. CORS, campos escondidos e `noindex` não substituem autorização.
 
 Dados editoriais, arquivos, URLs e futuras respostas Trier são dados não confiáveis. Validar tamanho/esquema/identidade antes de persistir; escapar texto no DOM, aceitar somente destinos documentados e não executar HTML ou instruções vindas de conteúdo. NeurAI atual é um parser determinístico, sem agente/LLM; qualquer futura integração de IA requer revisão própria, saída tipada e aprovação humana antes de efeitos externos.
 

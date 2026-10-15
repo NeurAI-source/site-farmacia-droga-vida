@@ -1,5 +1,5 @@
 import { allowedOrigin } from "../cors.js";
-import { readBytes, readJson, verifiedSessionAal2, panelQuota, RequestLimitError } from '../security.js';
+import { readBytes, readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 import { validateCampaign, inspectImage, UUID, MAX_IMAGE_BYTES } from "../_shared/campaign-utils.js";
 function createCampaignHandler({ db, origins }) {
   const bucket = db.storage.from("campaign-images");
@@ -36,7 +36,7 @@ function createCampaignHandler({ db, origins }) {
       if (!token) return reply({ error: "Entre no painel para continuar." }, 401);
       const { data: { user }, error } = await db.auth.getUser(token);
       if (error || !user) return reply({ error: "Sessão inválida. Entre novamente." }, 401);
-      if (!await verifiedSessionAal2(db, token, user)) return reply({ error: 'Confirme o segundo fator para continuar.', code: 'mfa_required' }, 403);
+      if (!await verifiedSession(db, token, user)) return reply({ error: 'Sessão inválida. Entre novamente.', code: 'invalid_session' }, 403);
       const member = check(await db.from("team_members").select("role,active").eq("user_id", user.id).maybeSingle());
       if (!member?.active) return reply({ error: "Acesso não autorizado." }, 403);
       await panelQuota(db, user.id);

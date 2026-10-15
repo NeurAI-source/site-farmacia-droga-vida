@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
-import { readBytes, readJson, verifiedSessionAal2, analyticsSource } from '../supabase/functions/security.js';
+import { readBytes, readJson, verifiedSession, analyticsSource } from '../supabase/functions/security.js';
 import { createHandler } from '../supabase/functions/trier-api/handler.js';
 const actor='11111111-1111-4111-8111-111111111111';
 const original=JSON.parse(await readFile(new URL('../catalog.json',import.meta.url),'utf8'));
@@ -18,19 +18,15 @@ async function fixture(){
     create function storage.foldername(text) returns text[] language sql as $$ select string_to_array($1,'/') $$;
     grant usage on schema auth,storage to authenticated,service_role;grant insert on storage.objects to authenticated;
     insert into auth.users values('${actor}');`);
-  for(const file of ['202609270000_team.sql','202609270001_admin.sql','20261014130000_security_hardening.sql'])await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+  for(const file of ['202609270000_team.sql','202609270001_admin.sql','20261014130000_security_hardening.sql','20261015090000_password_login.sql'])await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
   await db.exec(`insert into public.team_members values('${actor}','admin',true);set test.uid='${actor}';set test.role='authenticated';set test.aal='aal1';`);
   await db.query('insert into public.catalog_draft(id,catalog) values(1,$1)',[JSON.stringify(original)]);
   return db;
 }
-test('database MFA blocks direct RPC, draft reads and storage but permits self membership enrollment',async()=>{
+test('password sessions retain member authorization, database validation and storage isolation',async()=>{
   const db=await fixture();try{
     await db.exec('set role authenticated');
     assert.equal((await db.query('select * from public.team_members')).rows.length,1);
-    assert.equal((await db.query('select * from public.catalog_draft')).rows.length,0);
-    await assert.rejects(()=>db.query('select public.save_catalog($1,1)',[JSON.stringify(original)]),/MFA/);
-    await assert.rejects(()=>db.query('insert into storage.objects values($1,$2)',['product-images',`${actor}/x.png`]),/row-level/);
-    await db.exec("set test.aal='aal2'");
     assert.equal((await db.query('select * from public.catalog_draft')).rows.length,1);
     assert.equal((await db.query('select public.save_catalog($1,1) version',[JSON.stringify(original)])).rows[0].version,2);
     await db.query('insert into storage.objects values($1,$2)',['product-images',`${actor}/x.png`]);
@@ -70,16 +66,16 @@ test('stream limits cancel excess input before parsing and count bytes rather th
   for(const body of ['null','[]','{'])await assert.rejects(()=>readJson(new Request('https://test.invalid',{method:'POST',body}),100),e=>e.status===400);
 });
 test('assurance uses verified claims for the same validated user and source hash never stores an IP',async()=>{
-  for(const claims of [{sub:actor,aal:'aal1'},{sub:'other',aal:'aal2'}])assert.equal(await verifiedSessionAal2({auth:{getClaims:async()=>({data:{claims}})}},'same-token',{id:actor}),false);
-  assert.equal(await verifiedSessionAal2({auth:{getClaims:async token=>{assert.equal(token,'same-token');return {data:{claims:{sub:actor,aal:'aal2'}}};}}},'same-token',{id:actor}),true);
+  for(const claims of [{sub:actor,aal:'invalid'},{sub:'other',aal:'aal2'}])assert.equal(await verifiedSession({auth:{getClaims:async()=>({data:{claims}})}},'same-token',{id:actor}),false);
+  assert.equal(await verifiedSession({auth:{getClaims:async token=>{assert.equal(token,'same-token');return {data:{claims:{sub:actor,aal:'aal1'}}};}}},'same-token',{id:actor}),true);
   const req=new Request('https://test.invalid',{headers:{'x-forwarded-for':'192.0.2.1'}});
   assert.equal(await analyticsSource(req,()=>''),null);
   const hash=await analyticsSource(req,()=> 'test-salt');assert.match(hash,/^[0-9a-f]{64}$/);assert.ok(!hash.includes('192.0.2.1'));
 });
-test('Trier browser administration enforces verified second factor and quota; server calls stay exempt',async()=>{
+test('Trier password sessions retain verified identity and quota; server calls stay exempt',async()=>{
   const env=key=>({SITE_ORIGIN:'https://shop.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-server',TRIER_INTEGRATION_ENABLED:'false'}[key]||'');
   const request=()=>new Request('https://api.invalid',{method:'POST',headers:{origin:'https://shop.invalid',authorization:'Bearer test-user'},body:JSON.stringify({action:'sync'})});
-  for(const [aal,quota,status] of [['aal1',true,403],['aal2',false,429],['aal2',true,200]]){
+  for(const [aal,quota,status] of [['invalid',true,403],['aal1',false,429],['aal1',true,200],['aal2',true,200]]){
     const db={auth:{getUser:async()=>({data:{user:{id:actor}}}),getClaims:async()=>({data:{claims:{sub:actor,aal}}})},from:()=>({select:()=>({eq(){return this;},single:async()=>({data:{role:'admin'}})})}),rpc:async()=>({data:quota})};
     assert.equal((await createHandler(db,env)(request())).status,status);
     const server=new Request('https://api.invalid',{method:'POST',headers:{authorization:'Bearer test-server'},body:JSON.stringify({action:'sync'})});

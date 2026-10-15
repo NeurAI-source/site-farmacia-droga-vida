@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createCampaignHandler} from '../supabase/functions/campaign-api/handler.js';
 const user='11111111-1111-4111-8111-111111111111',origin='https://www.drogavidapopular.com.br';
-function fixture({active=true,role='admin',aal='aal2',claimsError=false,quota=true}={}) {
+function fixture({active=true,role='admin',aal='aal1',claimsError=false,quota=true}={}) {
   let uploads=0,writes=0;
   const bucket={createSignedUrls:async paths=>({data:paths.map(path=>({path,signedUrl:`https://test.supabase.co/storage/v1/object/sign/campaign-images/${path}?token=short-lived`}))}),upload:async()=>{uploads++;return {data:{}};},remove:async()=>({data:{}})};
   const db={storage:{from:name=>{assert.equal(name,'campaign-images');return bucket;}},auth:{getUser:async token=>({data:{user:token==='valid'?{id:user}:null},error:token==='valid'?null:Error('bad')}),getClaims:async()=>({data:{claims:{sub:user,aal}},error:claimsError?Error('bad'):null})},from:name=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role,active}})})}),insert:async()=>({data:{}})}),rpc:async name=>{if(name==='panel_request_allow')return {data:quota};if(name==='campaign_public_snapshot')return {data:{server_now:new Date().toISOString(),next_start:null,campaigns:[{id:user,title:'Oferta aprovada',kind:'post',cover_path:'approved.png',page_paths:[],active:true,publication_state:'published'}]}};writes++;return {data:user};}};
@@ -29,7 +29,7 @@ test('editor publication is rejected before any write and body limits apply to J
   assert.equal((await f.handler(req({body:'x'.repeat(20001)}))).status,413);
 });
 
-test('AAL1 and failed claim verification cannot upload/write; persistent quota rejects excess requests',async()=>{
-  for(const options of [{aal:'aal1'},{claimsError:true}]){const f=fixture(options);assert.equal((await f.handler(req())).status,403);assert.deepEqual(f.counts(),{uploads:0,writes:0});}
+test('Invalid or unverifiable sessions cannot upload/write; persistent quota rejects excess requests',async()=>{
+  for(const options of [{aal:'invalid'},{claimsError:true}]){const f=fixture(options);assert.equal((await f.handler(req())).status,403);assert.deepEqual(f.counts(),{uploads:0,writes:0});}
   const f=fixture({quota:false});assert.equal((await f.handler(req())).status,429);assert.deepEqual(f.counts(),{uploads:0,writes:0});
 });

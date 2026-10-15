@@ -2,7 +2,7 @@ import { allowedOrigin } from '../cors.js';
 import { config, TrierClient, InventoryService, publicStock } from './integration.js';
 import { repository } from './repository.js';
 import { internalRequest } from './server-auth.js';
-import { readJson, verifiedSessionAal2, panelQuota, RequestLimitError } from '../security.js';
+import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const officialContract = null;
 const policy = {priceUnit:'cents',isSellable:() => { throw Error('official_status_policy_pending'); }};
 export function createHandler(db, env) { return async req => {
@@ -30,7 +30,7 @@ export function createHandler(db, env) { return async req => {
       const token = req.headers.get('authorization')?.replace(/^Bearer /i,'') || '';
       const {data:{user},error} = await db.auth.getUser(token);
       if (error || !user) return reply({error:'unauthorized'},401);
-      if (!await verifiedSessionAal2(db,token,user)) return reply({error:'mfa_required',code:'mfa_required'},403);
+      if (!await verifiedSession(db,token,user)) return reply({error:'invalid_session',code:'invalid_session'},403);
       const {data:member} = await db.from('team_members').select('role').eq('user_id',user.id).eq('active',true).single();
       if (!member || !['admin','owner'].includes(member.role)) return reply({error:'forbidden'},403);
       await panelQuota(db,user.id);

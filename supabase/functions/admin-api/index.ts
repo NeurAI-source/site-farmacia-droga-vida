@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 // Copy shared validator into _shared when deploying (npm run prepare:functions).
 import { allowedOrigin } from '../cors.js';
 import { checked, dispatchNext, neuraiAction } from './publication.js';
-import { readJson, verifiedSessionAal2, panelQuota, RequestLimitError } from '../security.js';
+import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
 const baseHeaders = { 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Content-Type': 'application/json', 'Vary': 'Origin' };
@@ -24,7 +24,7 @@ Deno.serve(async req => {
     const token = req.headers.get('authorization')?.replace(/^Bearer /i, '') || '';
     const { data: { user }, error: authError } = await db.auth.getUser(token);
     if (authError || !user) return reply({ error: 'Faça login novamente.' }, 401);
-    if (!await verifiedSessionAal2(db, token, user)) return reply({ error: 'Confirme o segundo fator para continuar.', code: 'mfa_required' }, 403);
+    if (!await verifiedSession(db, token, user)) return reply({ error: 'Sessão inválida. Entre novamente.', code: 'invalid_session' }, 403);
     const { data: member } = await db.from('team_members').select('role').eq('user_id', user.id).eq('active', true).single();
     if (!member) return reply({ error: 'Usuário não autorizado.' }, 403);
     await panelQuota(db, user.id);

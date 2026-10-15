@@ -27,11 +27,11 @@ export async function readJson(req, limit) {
     return value;
   } catch { throw new RequestLimitError('Solicitação inválida.', 400); }
 }
-export async function verifiedSessionAal2(db, token, validatedUser) {
+export async function verifiedSession(db, token, validatedUser) {
   if (!validatedUser?.id || !token) return false;
   try {
     const { data, error } = await db.auth.getClaims(token);
-    return !error && data?.claims?.sub === validatedUser.id && data.claims.aal === 'aal2';
+    return !error && data?.claims?.sub === validatedUser.id && ['aal1', 'aal2'].includes(data.claims.aal);
   } catch { return false; }
 }
 export async function panelQuota(db, actor) {

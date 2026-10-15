@@ -39,5 +39,3 @@
 /* Cabeçalho do catálogo */
 .admin-heading-buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 @media(max-width:760px){.admin-heading-buttons{justify-content:flex-end}.admin-heading-buttons .button{font-size:10px;white-space:normal}.heading{flex-wrap:wrap}}
-
-#mfa-screen{margin-top:20px}#mfa-screen h2{margin-bottom:12px}#mfa-description,#mfa-status,#mfa-setup p{margin:12px 0;line-height:1.6}#mfa-setup{margin:16px 0}#mfa-qr{display:block;max-width:100%;margin:12px auto;background:white}#mfa-secret{display:block;overflow-wrap:anywhere;padding:12px;background:#f8f8fa;user-select:all}#mfa-code{letter-spacing:6px;font-size:22px}#mfa-cancel{margin-top:16px}
