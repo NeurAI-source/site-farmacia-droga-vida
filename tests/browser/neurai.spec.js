@@ -42,7 +42,7 @@ test('optional automatic publication requires review, saves one batch and shows 
  await expect(page.locator('[data-preview]')).toContainText('001');await expect(page.locator('[data-preview]')).toContainText('6,00');await expect(page.locator('[data-preview]')).toContainText('5,00');expect(state.calls.filter(c=>c.action==='price-batch')).toHaveLength(0);
  await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('Alterações salvas: 2');expect(state.batches).toHaveLength(1);expect(state.calls.find(c=>c.action==='price-batch').autoPublish).toBe(true);
  state.status='building';await page.getByRole('button',{name:'Atualizar histórico'}).click();await expect(page.locator('[data-publication]')).toHaveText('Publicação em andamento.');state.status='published';await page.getByRole('button',{name:'Atualizar histórico'}).click();await expect(page.locator('[data-publication]')).toHaveText('Publicação concluída.');
- await expect(page.locator('[data-history]')).toContainText('admin@example.test');expect(errors).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await expect(page.locator('.neur-dialog [data-history]')).toContainText('admin@example.test');expect(errors).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.locator('.neur-dialog').screenshot({path:`test-results/neurai-${test.info().project.name}.png`});
 });
 test('disabled automatic publication saves a draft; editor cannot enable publication',async({page})=>{
