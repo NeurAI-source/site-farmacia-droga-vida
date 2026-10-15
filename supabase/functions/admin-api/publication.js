@@ -1,9 +1,36 @@
 // GitHub credentials stay in this server-only module. A DB claim makes retries safe.
 export const checked = result => { if (result.error) throw Error(result.error.message); return result.data; };
+const publicationFields = 'id,status,run_id,draft_version,error_message,dispatch_state';
+const publicationNotices = {
+  queued: 'Aguardando a publicação anterior.',
+  pending: 'Publicação na fila do GitHub Actions.',
+  building: 'Publicação em andamento.',
+  published: 'Esta versão do catálogo já está publicada. Confira se a remarcação foi salva no Neur.AI.',
+  failed: 'A publicação falhou. Os preços salvos foram preservados; consulte o histórico para tentar novamente.'
+};
+export async function requestPublication(db, env, actorId, version, fetcher = fetch) {
+  const id = checked(await db.rpc('catalog_request_publication', { actor_id: actorId, expected_version: version }));
+  return { id, ...await deliverPublication(db, env, id, fetcher) };
+}
+async function deliverPublication(db, env, id, fetcher) {
+  const publication = checked(await db.from('publications').select(publicationFields).eq('id', id).single());
+  // An idempotent request can return an already published snapshot. Never report
+  // that as a new job waiting for an unrelated publication.
+  if (publication.status === 'published' || publication.status === 'failed') {
+    return { publication, state: publication.status, notice: publicationNotices[publication.status] };
+  }
+  return dispatchNext(db, env, fetcher);
+}
 export async function dispatchNext(db, env, fetcher = fetch, retry = false) {
   if (!env('GITHUB_DEPLOY_TOKEN') || !env('GITHUB_REPOSITORY')) return { notice: 'Publicação não configurada. Os preços estão salvos; tente publicar após configurar o serviço.' };
   const job = checked(await db.rpc('catalog_dispatch_claim', { retry_pending: retry }));
-  if (!job) return { notice: 'Aguardando publicação. Outra publicação pode estar em andamento.' };
+  if (!job) {
+    const active = checked(await db.from('publications').select(publicationFields).in('status', ['queued', 'pending', 'building']).order('created_at', { ascending: true }).limit(1));
+    const publication = active[0];
+    return publication
+      ? { publication, state: publication.status, notice: publicationNotices[publication.status] }
+      : { publication: null, state: 'idle', notice: 'Nenhuma publicação em andamento. Não há alterações salvas aguardando publicação.' };
+  }
   try {
     const response = await fetcher(`https://api.github.com/repos/${env('GITHUB_REPOSITORY')}/actions/workflows/publish.yml/dispatches`, {
       method: 'POST', headers: { Authorization: `Bearer ${env('GITHUB_DEPLOY_TOKEN')}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
@@ -43,7 +70,7 @@ export async function neuraiAction({ body, db, user, env, fetcher = fetch }) {
     const batch = checked(await db.rpc('neurai_save_batch', { actor_id: user.id, batch_id: body.batchId, expected_version: body.version, changes: body.rows, auto_publish: body.autoPublish === true, restores_id: body.restoresId || null, actor_email: user.email || null }));
     let delivery = {};
     if (batch.publication_id) {
-      try { delivery = await dispatchNext(db, env, fetcher); } catch { delivery = { notice: 'Preços salvos. Não foi possível consultar a publicação; tente novamente pelo histórico.' }; }
+      try { delivery = await deliverPublication(db, env, batch.publication_id, fetcher); } catch { delivery = { notice: 'Preços salvos. Não foi possível consultar a publicação; tente novamente pelo histórico.' }; }
     }
     return { batch, ...delivery };
   }

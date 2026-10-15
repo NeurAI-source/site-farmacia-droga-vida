@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 // Copy shared validator into _shared when deploying (npm run prepare:functions).
 import { allowedOrigin } from '../cors.js';
-import { checked, dispatchNext, neuraiAction } from './publication.js';
+import { checked, dispatchNext, neuraiAction, requestPublication } from './publication.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
@@ -70,9 +70,7 @@ Deno.serve(async req => {
       return reply({ ok: true });
     }
     if (body.action === 'publish') {
-      const id = checked(await db.rpc('catalog_request_publication', { actor_id: user.id, expected_version: body.version }));
-      const delivery = await dispatchNext(db, env);
-      return reply({ id, ...delivery });
+      return reply(await requestPublication(db, env, user.id, body.version));
     }
     return reply({ error: 'Ação inválida.' }, 400);
   } catch (error) { return reply({ error: error instanceof RequestLimitError ? error.message : 'Não foi possível concluir a operação.' }, error instanceof RequestLimitError ? error.status : 500); }
