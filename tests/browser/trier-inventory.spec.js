@@ -9,8 +9,8 @@ test('fresh Trier prices and stock appear while checkout remains WhatsApp',async
  await page.goto('/');
  const card=page.locator('.product-card').filter({has:page.locator(`[data-add="${c.products[0].id}"]`)});
  await expect(card.locator('.product-price strong')).toContainText('12,34');
- await expect(card).toContainText('Disponível na unidade de entrega');
- await card.locator('[data-add]').click();await page.getByRole('button',{name:'Abrir carrinho',exact:true}).click();
- await expect(page.locator('#order-form').getByRole('button',{name:/Continuar no WhatsApp/})).toBeVisible();
+ await expect(card).toContainText('3 unidades disponíveis');
+ await card.locator('[data-add]').click();await expect(page.locator('#cart-dialog')).toBeVisible();await page.getByRole('button',{name:'Continuar para o WhatsApp →',exact:true}).click();
+ await expect(page.locator('#order-form')).toBeVisible();await expect(page.getByRole('button',{name:/Revisar meu pré-pedido/})).toBeVisible();
  await expect(page.getByText('Revisar e enviar à farmácia',{exact:true})).toHaveCount(0);
 });

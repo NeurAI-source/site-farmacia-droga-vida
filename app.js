@@ -1,4 +1,6 @@
-import { loadInventory } from './trier-inventory.js';
+import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
+import { mountCartChat } from './cart-chat.js';
+import { stockMarkup, stockState, refreshStockMarkup } from './product-stock.js';
 import { money, filterProducts, sanitizeCart, cartTotal, orderMessage, unitPrice } from './catalog-utils.js';
 const paths = {
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
@@ -32,6 +34,7 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp
 const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const save = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The catalog also works without browser storage. */ } };
 let expandedProductPage = false;
+let chatCart;
 let products = [], categories = [], cart = [], favorites = [], category = 'Todos', subcategory = '', query = '', favoriteOnly = false, all = false, limit = 12, toastTimer;
 
 const whatsapp = text => `https://wa.me/5517996630482?text=${encodeURIComponent(text)}`;
@@ -44,14 +47,14 @@ document.querySelectorAll('dialog').forEach(dialog => {
 function updateCounts() {
   $('#cart-count').textContent = cart.reduce((s, i) => s+i.qty, 0); $('#cart-total').textContent = money(cartTotal(cart, products));
   $('#favorite-count').textContent = favorites.length; $('#favorites').setAttribute('aria-pressed', String(favoriteOnly));
-  save('dv-cart', cart); save('dv-favorites', favorites);
+  save('dv-cart', cart); save('dv-favorites', favorites); chatCart?.update();
 }
 function productCard(p) {
   const variantPrices=p.variants.length?p.variants.map(v=>unitPrice(p,v.size)):[];
   const displayPrice=variantPrices.length?Math.min(...variantPrices):p.priceCents;
   const discount = !p.variants.length && p.oldPriceCents > p.priceCents ? Math.round((1-p.priceCents/p.oldPriceCents)*100) : 0;
   const categoryLabel = p.subcategory ? `${p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category} · ${p.subcategory}` : (p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category);
-  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(categoryLabel)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p>${p.trierStockLabel?`<p class="product-detail">${escape(p.trierStockLabel)}</p>`:''}<div class="product-price">${p.variants.length?'<small>A partir de</small>':p.oldPriceCents > p.priceCents ? `<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(displayPrice)}</strong></div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
+  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(categoryLabel)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p>${stockMarkup(p,{selectable:true})}<div class="product-price">${p.variants.length?'<small>A partir de</small>':p.oldPriceCents > p.priceCents ? `<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(displayPrice)}</strong></div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
 }
 function renderSubfilters() {
   const host = $('#subfilters'); if (!host) return;
@@ -81,57 +84,23 @@ document.addEventListener('click', event => {
   const detail = event.target.closest('[data-detail]'); if(detail) showDetail(Number(detail.dataset.detail));
   const add = event.target.closest('[data-add]'); if(add) { const p=products.find(p=>p.id===Number(add.dataset.add)); if(p.variants.length) showDetail(p.id); else addToCart(p.id); }
 });
-function addToCart(id, variant='') { const found=cart.find(i=>i.id===id && i.variant===variant); if(found?.qty===99) {toast('Limite de 99 unidades por item.');return;} if(found)found.qty++;else cart.push({id,variant,qty:1}); cart=sanitizeCart(cart,products);updateCounts();renderCart();toast('Produto adicionado ao carrinho'); }
-function showDetail(id) {
+function addToCart(id, variant='') { const p=products.find(p=>p.id===id),state=stockState(p,variant),current=cart.find(i=>i.id===id&&i.variant===variant)?.qty||0;if(current>=state.limit){toast(state.known?state.label:'Limite de 99 unidades por item.');return;} const found=cart.find(i=>i.id===id && i.variant===variant); if(found?.qty===99) {toast('Limite de 99 unidades por item.');return;} if(found)found.qty++;else cart.push({id,variant,qty:1}); cart=sanitizeCart(cart,products);updateCounts();chatCart.open({added:true});toast('Produto adicionado ao carrinho'); }
+function showDetail(id, chosenSize='') {
   const p=products.find(p=>p.id===id); if(!p)return;
-  if(expandedProductPage) { window.location.assign(new URL(`produto.html?id=${encodeURIComponent(id)}`,import.meta.url).href); return; }
+  if(expandedProductPage) { window.location.assign(new URL(`produto.html?id=${encodeURIComponent(id)}${chosenSize?'&tamanho='+encodeURIComponent(chosenSize):''}`,import.meta.url).href); return; }
   const variantPrices=p.variants.map(v=>unitPrice(p,v.size));
   const initialPrice=variantPrices.length?Math.min(...variantPrices):p.priceCents;
   const initialPriceHtml=p.variants.length?`<small>A partir de</small><strong>${money(initialPrice)}</strong>`:`${p.oldPriceCents>p.priceCents?`<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(p.priceCents)}</strong>`;
-  $('#detail-content').innerHTML=`<div class="detail-grid"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}"><div><p class="eyebrow red">${escape(p.category)}</p><h2>${escape(p.name)}</h2><p>${escape(p.detail)}${p.brand ? ' · '+escape(p.brand):''}</p><div class="product-price" id="detail-price">${initialPriceHtml}</div>${p.variants.length?`<label for="variant">Escolha o tamanho<select id="variant"><option value="">Selecione uma opção</option>${p.variants.map(v=>`<option value="${escape(v.size)}">${escape(v.size)} — ${v.packageQuantity} unidades — ${money(unitPrice(p,v.size))}</option>`).join('')}</select></label>`:''}<p>Consulte a disponibilidade ${p.availableStore1&&p.availableStore2?'nas duas lojas':p.availableStore1?'na Loja 1':'na Loja 2'}. Preço sujeito à confirmação.</p><button class="button red-button" id="detail-add">${icon('cart')} Adicionar ao carrinho</button></div></div>`;
+  $('#detail-content').innerHTML=`<div class="detail-grid"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}"><div><p class="eyebrow red">${escape(p.category)}</p><h2>${escape(p.name)}</h2><p>${escape(p.detail)}${p.brand ? ' · '+escape(p.brand):''}</p><div class="product-price" id="detail-price">${initialPriceHtml}</div>${stockMarkup(p,{selectable:true})}${p.variants.length?`<label for="variant">Escolha o tamanho<select id="variant"><option value="">Selecione uma opção</option>${p.variants.map(v=>`<option value="${escape(v.size)}" ${stockState(p,v.size).known&&!stockState(p,v.size).available?'disabled':''}>${escape(v.size)} — ${v.packageQuantity} unidades — ${money(unitPrice(p,v.size))}</option>`).join('')}</select></label>`:''}<p>Consulte a disponibilidade ${p.availableStore1&&p.availableStore2?'nas duas lojas':p.availableStore1?'na Loja 1':'na Loja 2'}. Preço sujeito à confirmação.</p><button class="button red-button" id="detail-add">${icon('cart')} Adicionar ao carrinho</button></div></div>`;
   if(p.variants.length) $('#variant').onchange=event=>{const size=event.target.value;$('#detail-price').innerHTML=size?`<strong>${money(unitPrice(p,size))}</strong>`:`<small>A partir de</small><strong>${money(initialPrice)}</strong>`;};
-  $('#detail-add').onclick=()=>{const variant=p.variants.length?$('#variant').value:'';if(p.variants.length&&!variant){$('#variant').focus();toast('Escolha o tamanho para continuar.');return;}addToCart(id,variant);$('#detail-dialog').close();};
+  $('#detail-add').onclick=()=>{const variant=p.variants.length?$('#variant').value:'';if(p.variants.length&&!variant){$('#variant').focus();toast('Escolha o tamanho para continuar.');return;}$('#detail-dialog').close();addToCart(id,variant);};
+  if(chosenSize && $('#variant')){$('#variant').value=chosenSize;$('#variant').dispatchEvent(new Event('change'));}
   openDialog($('#detail-dialog'));
 }
-const customer = { name: '', receipt: 'entrega', neighborhood: '' };
-function refreshOrderPreview() {
-  const preview = $('#order-preview');
-  if (preview) preview.textContent = orderMessage(cart, products, customer);
-}
-function renderCart() {
-  $('#cart-items').innerHTML=cart.length?cart.map((item,index)=>{const p=products.find(p=>p.id===item.id); const variant=p.variants.find(v=>v.size===item.variant);return `<article class="cart-item"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}"><div><h3>${escape(p.name)}</h3><p>${variant?`${escape(variant.size)} · ${variant.packageQuantity} unidades`:escape(p.detail)}</p><strong>${money(unitPrice(p,item.variant)*item.qty)}</strong><div class="quantity"><button data-qty="${index}" data-delta="-1" aria-label="Diminuir quantidade de ${escape(p.name)}">−</button><span>${item.qty}</span><button data-qty="${index}" data-delta="1" aria-label="Aumentar quantidade de ${escape(p.name)}">+</button><button data-remove="${index}">Remover</button></div></div></article>`}).join(''):`<div class="empty"><h3>Seu carrinho está esperando por você.</h3><p>Escolha seus produtos e combine tudo com a nossa equipe.</p><button id="continue-shopping" class="button red-button">Ver produtos ${icon('arrow')}</button></div>`;
-  $('#cart-summary').innerHTML=cart.length?`<div class="cart-subtotal"><span>Subtotal estimado</span><span>${money(cartTotal(cart,products))}</span></div><p class="cart-footnote">Os produtos estão sujeitos à disponibilidade em estoque. Confirme os valores com a equipe.</p><form id="order-form" class="order-form"><label for="order-name">Seu nome<input id="order-name" name="name" required maxlength="80" autocomplete="given-name" placeholder="Como podemos chamar você?" value="${escape(customer.name)}"></label><label for="order-receipt">Forma de recebimento<select id="order-receipt" name="receipt"><option value="entrega" ${customer.receipt==='entrega'?'selected':''}>Entrega</option><option value="retirada" ${customer.receipt==='retirada'?'selected':''}>Retirada na loja</option></select></label><label id="neighborhood-label" for="order-neighborhood" ${customer.receipt==='retirada'?'hidden':''}>Bairro para entrega<input id="order-neighborhood" name="neighborhood" maxlength="120" ${customer.receipt==='entrega'?'required':''} placeholder="Informe seu bairro" value="${escape(customer.neighborhood)}"></label><p id="delivery-note" class="cart-footnote" ${customer.receipt==='retirada'?'hidden':''}>Taxa de entrega: consultar com os atendentes.</p><details class="order-preview"><summary>Ver mensagem do pré-pedido</summary><pre id="order-preview"></pre></details><button type="submit" class="button red-button checkout">${icon('message')} Continuar no WhatsApp ${icon('arrow')}</button><p class="cart-footnote order-note">Você poderá revisar a mensagem no WhatsApp antes de enviar. Este pré-pedido não confirma a compra.</p></form>`:'';
-  refreshOrderPreview();
-  $('#continue-shopping')?.addEventListener('click',()=>{$('#cart-dialog').close();selectCategory('Todos');});
-}
-$('#cart-summary').addEventListener('input', event => {
-  if (event.target.name === 'name' || event.target.name === 'neighborhood') {
-    customer[event.target.name] = event.target.value;
-    event.target.setCustomValidity('');
-    refreshOrderPreview();
-  }
-});
-$('#cart-summary').addEventListener('change', event => {
-  if (event.target.name !== 'receipt') return;
-  customer.receipt = event.target.value;
-  const delivery = customer.receipt === 'entrega';
-  $('#neighborhood-label').hidden = !delivery;
-  $('#order-neighborhood').required = delivery;
-  $('#order-neighborhood').setCustomValidity('');
-  $('#delivery-note').hidden = !delivery;
-  refreshOrderPreview();
-});
-$('#cart-summary').addEventListener('submit', event => {
-  event.preventDefault();
-  if (!cart.length) return;
-  for (const input of event.target.querySelectorAll('input[required]')) {
-    input.setCustomValidity(input.value.trim() ? '' : 'Preencha este campo para continuar.');
-  }
-  if (!event.target.reportValidity()) return;
-  window.open(whatsapp(orderMessage(cart, products, customer)), '_blank', 'noopener,noreferrer');
-});
-$('#cart-items').addEventListener('click',event=>{const qty=event.target.closest('[data-qty]'), remove=event.target.closest('[data-remove]');if(qty){const i=Number(qty.dataset.qty);cart[i].qty=Math.min(99,cart[i].qty+Number(qty.dataset.delta));cart=cart.filter(i=>i.qty>0);}if(remove)cart.splice(Number(remove.dataset.remove),1);if(qty||remove){updateCounts();renderCart();}});
-document.querySelectorAll('.cart-trigger').forEach(b=>b.onclick=()=>{renderCart();openDialog($('#cart-dialog'));});
+chatCart=mountCartChat({getProducts:()=>products,getCart:()=>cart,setCart:next=>{cart=next;updateCounts();}});
+function renderCart(){chatCart.refresh();}
+document.querySelectorAll('.cart-trigger').forEach(b=>b.onclick=()=>chatCart.open());
+document.addEventListener('click',event=>{const stock=event.target.closest('[data-stock-product]');if(!stock)return;const id=Number(stock.dataset.stockProduct),size=stock.dataset.stockSize;if($('#detail-dialog').open&&$('#variant')){$('#variant').value=size;$('#variant').dispatchEvent(new Event('change'));}else showDetail(id,size);});
 $('#search-form').addEventListener('submit',event=>{event.preventDefault();query=$('#search').value;all=true;category='Todos';subcategory='';favoriteOnly=false;limit=12;renderProducts();$('#ofertas').scrollIntoView({behavior:'smooth'});});
 $('#search').addEventListener('input',()=>{query=$('#search').value;all=true;category='Todos';subcategory='';favoriteOnly=false;limit=12;renderProducts();});
 $('#show-all').onclick=()=>selectCategory('Todos'); $('#load-more').onclick=()=>{limit+=12;renderProducts();};
@@ -141,12 +110,13 @@ $('#contact-form').addEventListener('submit',event=>{event.preventDefault();cons
 $('#privacy').onclick=()=>openDialog($('#privacy-dialog')); $('#clear-data').onclick=()=>{cart=[];favorites=[];renderProducts();renderCart();toast('Carrinho e favoritos apagados deste navegador.');};
 $('#year').textContent=new Date().getFullYear();
 try {
-  const catalogUrl=new URL('catalog.json',import.meta.url); catalogUrl.searchParams.set('v','20261006-mobile-cache-fix-1'); const response=await fetch(catalogUrl,{cache:'no-store'}); if(!response.ok) throw new Error('Catálogo indisponível'); const data=await loadInventory(await response.json()); products=data.products; categories=data.categories; expandedProductPage=data.expandedProductPage === true;
+  const catalogUrl=new URL('catalog.json',import.meta.url); catalogUrl.searchParams.set('v','20261006-mobile-cache-fix-1'); const response=await fetch(catalogUrl,{cache:'no-store'}); if(!response.ok) throw new Error('Catálogo indisponível'); const sourceCatalog=await response.json(); const data=await loadInventory(sourceCatalog); products=data.products; categories=data.categories; expandedProductPage=data.expandedProductPage === true;
   cart=sanitizeCart(read('dv-cart',[]),products); const storedFavorites=read('dv-favorites',[]); favorites=Array.isArray(storedFavorites)?[...new Set(storedFavorites)].filter(id=>products.some(p=>p.id===id)):[];
   $('#filters').innerHTML=['Todos',...data.categories.map(c=>c.name)].map(c=>`<button data-category="${escape(c)}" aria-pressed="${c==='Todos'}">${escape(c==='Perfumaria e Cuidados Pessoais'?'Beleza e cuidados':c)}</button>`).join('');
   renderProducts();
+  startInventoryUpdates(sourceCatalog,next=>{products=next.products;cart=sanitizeCart(cart,products);refreshStockMarkup(products);updateCounts();chatCart.refresh();});
   if(new URLSearchParams(window.location.search).get('prePedido') === '1') {
-    renderCart(); openDialog($('#cart-dialog'));
+    chatCart.open();
     history.replaceState(null,'',window.location.pathname+window.location.hash);
   }
 } catch(error) {

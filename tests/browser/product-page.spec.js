@@ -11,6 +11,8 @@ test('página individual mantém pré-pedido no desktop e celular',async({page})
  await expect(page.locator('.product-page-sources')).toHaveCount(0);
  await page.getByRole('button',{name:'Adicionar ao pré-pedido'}).click();
  await expect(page.locator('#product-page-feedback')).toContainText('adicionado ao pré-pedido');
+ await expect(page.locator('#cart-dialog')).toBeVisible();
+ await page.getByRole('button',{name:'Fechar carrinho'}).click();
  await page.getByRole('link',{name:/Ver meu pré-pedido/}).click();
  await expect(page.locator('#cart-dialog')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);

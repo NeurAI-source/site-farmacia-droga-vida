@@ -10,7 +10,7 @@ const root = new URL('../', import.meta.url), dist = new URL('dist/', root);
 const panelPath = adminPath();
 await rm(dist, { recursive: true, force: true }); await mkdir(dist, { recursive: true });
 // Copy only public assets. Never copy the checkout or environment files.
-for (const file of ['index.html','produto.html','produto.js','produto.css','product-detail.js','robots.txt','sitemap.xml','styles.css','premium.css','app.js','analytics.js','campaign-utils.js','campaign-images.js','campaign-viewer.js','campaign-slider.js','campaigns.js','campaigns.css','catalog-utils.js','trier-inventory.js','catalog-validation.js','content-evidence.js','assets']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
+for (const file of ['index.html','produto.html','produto.js','produto.css','product-detail.js','robots.txt','sitemap.xml','styles.css','premium.css','app.js','analytics.js','campaign-utils.js','campaign-images.js','campaign-viewer.js','campaign-slider.js','campaigns.js','campaigns.css','catalog-utils.js','trier-inventory.js','product-stock.js','cart-chat.js','cart-stock.css','catalog-validation.js','content-evidence.js','assets']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
 const url = process.env.SUPABASE_URL || '', key = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 if (!!url !== !!key) throw Error('Configure both public Supabase values.');
 if (url && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) throw Error('Invalid Supabase URL.');

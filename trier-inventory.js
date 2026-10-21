@@ -24,9 +24,23 @@ export function applyInventory(catalog, rows, now = Date.now()) {
 export async function loadInventory(catalog) {
   if (!config.url || !config.key) return catalog;
   try {
-    const response = await fetch(`${config.url}/functions/v1/trier-api?action=inventory`, {headers:{apikey:config.key},signal:AbortSignal.timeout(4000)});
+    const response = await fetch(`${config.url}/functions/v1/trier-api?action=inventory`, {headers:{apikey:config.key},cache:'no-store',signal:AbortSignal.timeout(4000)});
     if (!response.ok) return catalog;
     const data = await response.json();
     return Array.isArray(data.inventory) ? applyInventory(catalog,data.inventory) : catalog;
   } catch { return catalog; }
+}
+// Refresh only the existing public cache, never call Trier per visitor. Starting
+// from the unmodified published catalog also removes expired integration data.
+export function startInventoryUpdates(catalog, onUpdate) {
+  if (!config.url || !config.key) return () => {};
+  let busy=false,stopped=false;
+  async function refresh(){
+    if(document.hidden||busy||stopped)return;
+    busy=true;
+    try{const next=await loadInventory(catalog);if(!stopped)onUpdate(next);}finally{busy=false;}
+  }
+  const timer=setInterval(refresh,60000);
+  document.addEventListener('visibilitychange',refresh);
+  return ()=>{stopped=true;clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
 }

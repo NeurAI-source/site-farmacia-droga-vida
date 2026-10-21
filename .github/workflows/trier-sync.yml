@@ -1,5 +1,9 @@
 name: Sincronizar estoque e preços Trier
 on:
+  push:
+    branches: [main]
+    paths:
+      - product-stock.js
   schedule:
     - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
