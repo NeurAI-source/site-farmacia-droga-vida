@@ -21,7 +21,7 @@ function remaining(deadline) {
   if (ms <= 0) throw new TrierError('sync_deadline_exceeded');
   return ms;
 }
-async function boundedJson(response, limit, signal) {
+export async function boundedJson(response, limit, signal) {
   const length = response.headers?.get('content-length');
   if (length && /^\d+$/.test(length) && Number(length) > limit) throw new TrierError('response_too_large');
   if (!response.body?.getReader) throw new TrierError('invalid_response');
@@ -54,6 +54,7 @@ export class TrierClient {
     let base;
     try { base = new URL(this.settings.baseUrl); } catch { throw new TrierError('invalid_configuration'); }
     if (base.protocol !== 'https:' || base.username || base.password) throw new TrierError('invalid_configuration');
+    if (this.contract.load) return this.contract.load(this.settings, this.fetcher, this.sleep, deadline);
     // contract supplies documented endpoint, authentication, pagination and JSON decoder.
     let url, headers;
     try {

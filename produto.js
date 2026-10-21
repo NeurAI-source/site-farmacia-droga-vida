@@ -1,3 +1,4 @@
+import { loadInventory } from './trier-inventory.js';
 import { money, unitPrice, sanitizeCart } from './catalog-utils.js';
 import { productDetailMarkup, productEscape, imageUrl } from './product-detail.js?v=20261008-sem-detalhes-v1';
 const host=document.querySelector('#product-page-root');
@@ -8,7 +9,7 @@ const save=(k,val)=>{try{localStorage.setItem(k,JSON.stringify(val))}catch{}};
 try {
  const response=await fetch(new URL('catalog.json',import.meta.url),{cache:'no-store'});
  if(!response.ok)throw Error('O catálogo está temporariamente indisponível.');
- const data=await response.json();
+ const data=await loadInventory(await response.json());
  if(!Number.isSafeInteger(id)||id<1)throw Error('Produto não encontrado.');
  const p=data.products.find(x=>x.id===id&&x.active);
  if(!p)throw Error('Produto não encontrado no catálogo.');

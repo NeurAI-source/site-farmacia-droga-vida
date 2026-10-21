@@ -1,3 +1,23 @@
+# Trier — preços e estoque + WhatsApp
+
+## Escopo atual (21/10/2026)
+
+Somente leitura da API SGF LTS: `/rest/integracao/produto/obter-v1`, com Bearer no servidor, filtros `codigo` repetidos e paginação `primeiroRegistro`/`quantidadeRegistros`. Contrato oficial em `official-contract.js`. A filial é 2; não há soma de estoque entre unidades.
+
+O preço usa `valorVendaEcommerce` quando informado e `valorVenda` como alternativa. Não se presume aplicação de `percentualDesconto` sobre um preço que pode já incluir regras do ERP. Estoque usa `quantidadeEstoqueEcommerce` quando informado, senão `quantidadeEstoque`. Venda disponível exige produto ativo, habilitado para e-commerce e estoque positivo. Códigos são associados aos produtos e variantes do catálogo; o item de taxa 46295 fica excluído.
+
+A função grava estoque/preço em cache privado com auditoria. O site consulta uma lista reduzida dos itens publicados, sem consultar a Trier por visitante. A rotina GitHub Actions tenta sincronizar a cada 15 minutos (agendamentos podem atrasar); o painel permite atualização manual, respeitando o intervalo. O navegador usa dados com até uma hora e mantém o catálogo publicado como alternativa em falhas ou dados antigos. Preços e estoque continuam sujeitos à confirmação no WhatsApp.
+
+O cliente continua concluindo o pré-pedido pelo WhatsApp. Não há endpoint de criação de venda, envio de pedido à Trier, baixa de estoque, cobrança ou dados de cliente transmitidos à Trier nesta implementação. A opção de pedidos diretos foi adiada por solicitação do responsável.
+
+Configuração: secrets `TRIER_BASE_URL`, `TRIER_API_TOKEN`, `TRIER_STORE_ID`, `TRIER_INTEGRATION_ENABLED`, `TRIER_SYNC_ENABLED`. O token nunca é incluído no site ou repositório. Migration aditiva `20261021170000_trier_activation.sql` mantém vínculos de códigos existentes, com reset de cache quando o operador troca um código. Tabelas e RPCs continuam restritas a service_role. Não reaplicar a migration inicial em produção.
+
+Referência: https://api-sgf-doc.triersistemas.com.br/api/lts/sgf/openapi.json
+
+---
+
+## Histórico da preparação anterior (substituído pelo escopo acima)
+
 # Preparação Trier — integração desativada
 
 O site estático, painel, catálogo e publicação existentes são preservados. Nenhum arquivo visual é modificado. O catálogo atual é JSON em `catalog_draft` e snapshots em `publications`; possui `shortCode`, `barcode`, `priceCents`, `stockQuantity` e variantes. Não existe tabela `products` a alterar.

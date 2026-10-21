@@ -3,8 +3,7 @@ import { config, TrierClient, InventoryService, publicStock } from './integratio
 import { repository } from './repository.js';
 import { internalRequest } from './server-auth.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
-const officialContract = null;
-const policy = {priceUnit:'cents',isSellable:() => { throw Error('official_status_policy_pending'); }};
+import { createOfficialContract, officialPolicy as policy } from './official-contract.js';
 export function createHandler(db, env) { return async req => {
   const origin = allowedOrigin(env('SITE_ORIGINS') || env('SITE_ORIGIN'),req.headers.get('origin'));
   const headers = {'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'authorization, apikey, content-type',...(origin ? {'Access-Control-Allow-Origin':origin} : {})};
@@ -12,11 +11,21 @@ export function createHandler(db, env) { return async req => {
   if (req.method==='OPTIONS') return reply({},origin ? 200 : 403);
   try {
     if (req.method==='GET') {
-      const id = new URL(req.url).searchParams.get('productId');
+      const query = new URL(req.url).searchParams;
+      const bulk = query.get('action') === 'inventory';
+      const id = bulk ? '1' : query.get('productId');
       if (!id || !/^\d{1,15}$/.test(id)) return reply({error:'invalid_product_id'},400);
       // Only published products are public; never expose private draft inventory.
       const {data:publication,error:pubError} = await db.from('publications').select('catalog').eq('status','published').order('draft_version',{ascending:false}).limit(1).maybeSingle();
       if (pubError) throw pubError;
+      if (bulk) {
+        const products = publication?.catalog?.products?.filter(p => p.active) || [];
+        if (!products.length) return reply({inventory:[]});
+        const {data,error} = await db.from('trier_inventory').select('product_id,variant_id,trier_reduced_code,stock_quantity,availability,external_price_cents,last_trier_sync_at').eq('store_id',env('TRIER_STORE_ID')).in('product_id',products.map(p=>p.id));
+        if(error) throw error;
+        const rows=(data||[]).filter(row=>row.last_trier_sync_at && products.some(p=>p.id===row.product_id && String(Number((row.variant_id?p.variants?.find(v=>v.id===row.variant_id)?.shortCode:p.shortCode)||''))===String(Number(row.trier_reduced_code))));
+        return reply({inventory:rows.map(publicStock)});
+      }
       const product = publication?.catalog?.products?.find((p) => String(p.id)===id && p.active);
       if (!product) return reply({error:'product_not_found'},404);
       const {data,error} = await db.from('trier_inventory').select('product_id,variant_id,stock_quantity,availability,external_price_cents,last_trier_sync_at').eq('product_id',id);
@@ -39,10 +48,19 @@ export function createHandler(db, env) { return async req => {
     if (body.action==='status') {
       const {data,error} = await db.from('trier_sync_state').select('started_at,finished_at,summary').eq('id',1).single();
       if (error) throw error;
-      return reply({enabled:env('TRIER_INTEGRATION_ENABLED')==='true',contractReady:false,...data});
+      return reply({enabled:env('TRIER_INTEGRATION_ENABLED')==='true',contractReady:!!env('TRIER_API_TOKEN'),...data});
     }
     if (body.action!=='sync') return reply({error:'invalid_action'},400);
     const settings=config(env);
+    let codes=[];
+    if(settings.enabled) {
+      const linked=await db.rpc('trier_refresh_bindings',{integrated_store:settings.storeId});
+      if(linked.error) throw linked.error;
+      const {data,error}=await db.from('trier_inventory').select('trier_reduced_code').eq('store_id',settings.storeId);
+      if(error) throw error;
+      codes=(data||[]).map(row=>row.trier_reduced_code).filter(Boolean);
+    }
+    const officialContract=createOfficialContract(codes,env('TRIER_DELIVERY_PRODUCT_CODE')||'46295');
     const service = new InventoryService({settings,client:new TrierClient(settings,officialContract),repository:repository(db,settings.storeId),policy,log:(entry)=>console.log(JSON.stringify(entry))});
     return reply(await service.refresh({periodic:internal}));
   } catch (error) { return reply({error:error instanceof RequestLimitError ? error.message : 'trier_operation_failed'},error instanceof RequestLimitError ? error.status : 503); }

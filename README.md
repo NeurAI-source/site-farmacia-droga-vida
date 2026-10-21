@@ -34,7 +34,7 @@ A página individual `produto.html?id=<ID>` pode ser ativada e desativada no pai
 
 O cadastro mantém EAN, nome, marca, apresentação, imagem, preço, estoque e opções de visibilidade. A antiga seção de descrição completa, finalidade, benefícios, modo de uso, advertências e características técnicas foi removida do editor e não é apresentada nas páginas públicas. Os textos e fontes anteriormente registrados permanecem preservados nos dados do catálogo quando outros campos são editados.
 
-O pré-pedido permanece no WhatsApp; o estoque não é integrado a sistemas externos e deve ser confirmado por atendentes.
+O pré-pedido permanece no WhatsApp. Preços e estoque da filial 2 são consultados na Trier por uma rotina no servidor; o site usa o cache recente com alternativa no catálogo publicado. A equipe confirma a disponibilidade no atendimento. Não há envio de vendas ou pedidos à Trier. Consulte docs/TRIER_INTEGRATION.md.
 
 ## Descrição inteligente desativada
 
