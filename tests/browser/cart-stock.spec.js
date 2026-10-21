@@ -36,7 +36,7 @@ test('adding opens chat, shares the header count, limits stock and keeps checkou
  await page.getByRole('button',{name:'Abrir pré-pedido flutuante'}).click();await page.getByRole('button',{name:'Fechar carrinho'}).click();
  expect(Math.abs(await page.evaluate(()=>scrollY)-y)).toBeLessThan(3);
  await page.getByRole('button',{name:'Abrir carrinho',exact:true}).click();await page.getByRole('button',{name:'Continuar para o WhatsApp →',exact:true}).click();
- await page.getByLabel('Seu nome',{exact:true}).fill('Cliente de teste');await page.getByLabel('Forma de recebimento').selectOption('retirada');
+ await page.locator('#order-form').getByLabel('Seu nome',{exact:true}).fill('Cliente de teste');await page.getByLabel('Forma de recebimento').selectOption('retirada');
  await expect(page.locator('#neighborhood-label')).not.toBeVisible();await page.getByRole('button',{name:'Revisar meu pré-pedido →'}).click();
  await expect(page.locator('#order-preview')).toContainText('Cliente de teste');await expect(page.locator('#order-preview')).toContainText('Retirada');
  await page.context().route('https://wa.me/**',r=>r.fulfill({body:'WhatsApp interceptado pelo teste'}));
