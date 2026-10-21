@@ -1,7 +1,7 @@
 import { safeLink } from './campaign-utils.js';
 
 // A perspective ring with bounded, recycled cards; the sequence itself has no fixed length.
-export function createLoopSlider(stage, { onChange, onActivate, onInteraction, motion }) {
+export function createLoopSlider(stage, { onChange, onActivate, onInteraction, motion, setImage = (image, source) => { image.src = source; } }) {
   const viewport=document.createElement('div'),track=document.createElement('div');
   viewport.className='campaign-viewport';track.className='campaign-track';viewport.append(track);stage.replaceChildren(viewport);
   let items=[],index=0,signature='',gesture=null,animation=null,phase=0,frame=0,fallback=0,suppressClickUntil=0;
@@ -16,7 +16,7 @@ export function createLoopSlider(stage, { onChange, onActivate, onInteraction, m
       art.className='campaign-art';art.draggable=false;art.setAttribute('aria-label',campaign.kind==='flyer'?`Abrir encarte: ${campaign.title}`:campaign.title);
       if(linked){try{art.href=safeLink(campaign.link_url);}catch{art.removeAttribute('href');}art.target='_blank';art.rel='noopener noreferrer';}
       else{art.type='button';art.onclick=()=>onActivate(items[index]);}
-      const img=document.createElement('img');img.src=campaign.cover_url;img.alt=campaign.title;img.decoding='async';img.draggable=false;art.append(img);panel.replaceChildren(art);panel.dataset.key=key;
+      const img=document.createElement('img');setImage(img,campaign.cover_url);img.alt=campaign.title;img.decoding='async';img.draggable=false;art.append(img);panel.replaceChildren(art);panel.dataset.key=key;
     }
     panel.setAttribute('aria-hidden',String(!active));panel.inert=!active;panel.firstElementChild.tabIndex=active?0:-1;
   }

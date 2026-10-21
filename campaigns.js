@@ -1,17 +1,19 @@
 import { config } from './public-config.js';
 import { visibleCampaigns } from './campaign-utils.js';
 import { createCampaignViewer } from './campaign-viewer.js';
+import { createCampaignImageCache } from './campaign-images.js';
 import { createLoopSlider } from './campaign-slider.js';
 const root = document.querySelector('#campaign-carousel');
 if (root && config.url && config.key) mountCampaignCarousel(root);
 export function mountCampaignCarousel(root) {
-  const viewer = createCampaignViewer(), motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const images = createCampaignImageCache({ origin: new URL(config.url).origin });
+  const viewer = createCampaignViewer({ setImage: images.setSource }), motion = matchMedia('(prefers-reduced-motion: reduce)');
   const stage = root.querySelector('.campaign-slide'), dots = root.querySelector('.campaign-dots');
   let campaigns = [], serverAnchor = 0, monoAnchor = 0, leaseUntil = 0, nextStart = Infinity, fetching = false;
   let boundaryTimer, fetchTimer, autoTimer, lastIds = '';
   const serverNow = () => serverAnchor + performance.now() - monoAnchor;
   const eligible = () => performance.now() < leaseUntil ? visibleCampaigns(campaigns, serverNow()) : [];
-  const slider = createLoopSlider(stage, { motion, onChange: () => { draw(); restartAuto(); }, onInteraction: restartAuto,
+  const slider = createLoopSlider(stage, { motion, setImage: images.setSource, onChange: () => { draw(); restartAuto(); }, onInteraction: restartAuto,
     onActivate: campaign => { viewer.open(campaign); restartAuto(); } });
   function restartAuto() { clearTimeout(autoTimer); autoTimer = undefined; scheduleAuto(); }
   function scheduleAuto() {

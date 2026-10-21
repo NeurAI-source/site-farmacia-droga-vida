@@ -163,3 +163,28 @@ test('editors only save drafts; admin and campaign layout fit desktop and mobile
 test('logged-out visitors cannot open the administrative campaign forms',async({page})=>{
   await config(page);await page.goto('/admin/');await expect(page.locator('#login-screen')).toBeVisible();await expect(page.locator('#campaign-new')).toHaveCount(0);
 });
+
+
+test('private campaign image downloads once across recycled cards, token refresh and flyer viewer',async({page})=>{
+  await config(page);
+  let downloads=0,snapshots=0;
+  const bytes=readFileSync(new URL('../../assets/family.webp',import.meta.url));
+  await page.route('https://campaign-test.supabase.co/**',async route=>{
+    if(route.request().url().includes('action=public')){
+      const image=`https://campaign-test.supabase.co/storage/v1/object/sign/campaign-images/${id}.webp?token=${++snapshots}`;
+      return route.fulfill({headers:{'cache-control':'no-store'},json:payload([makeCampaign(1,{cover_url:image,pages:[image]}),makeCampaign(2,{cover_url:image,pages:[image]})])});
+    }
+    downloads++;
+    return route.fulfill({body:bytes,contentType:'image/webp',headers:{'cache-control':'no-store','access-control-allow-origin':'*'}});
+  });
+  await page.clock.install();await page.goto('/');
+  const active=page.locator(`${currentArt} img`);
+  await expect(active).toHaveAttribute('src',/^blob:/);
+  await expect.poll(()=>active.evaluate(img=>img.naturalWidth)).toBeGreaterThan(0);
+  await page.clock.runFor(22000);
+  expect(snapshots).toBeGreaterThan(1);
+  await page.locator(currentArt).click();
+  await expect(page.locator('.campaign-viewer')).toBeVisible();
+  await expect(page.locator('.campaign-viewer img')).toHaveAttribute('src',/^blob:/);
+  expect(downloads).toBe(1);
+});
