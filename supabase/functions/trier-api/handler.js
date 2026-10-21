@@ -4,7 +4,7 @@ import { repository } from './repository.js';
 import { verifiedServerRequest } from './server-auth.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 import { createOfficialContract, officialPolicy as policy } from './official-contract.js';
-export function createHandler(db, env) { return async req => {
+export function createHandler(db, env, {background} = {}) { return async req => {
   const origin = allowedOrigin(env('SITE_ORIGINS') || env('SITE_ORIGIN'),req.headers.get('origin'));
   const headers = {'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'authorization, apikey, content-type',...(origin ? {'Access-Control-Allow-Origin':origin} : {})};
   const reply = (data,status=200) => new Response(JSON.stringify(data),{status,headers});
@@ -46,12 +46,13 @@ export function createHandler(db, env) { return async req => {
     }
     const body = await readJson(req,1024);
     if (body.action==='status') {
-      const {data,error} = await db.from('trier_sync_state').select('started_at,finished_at,summary').eq('id',1).single();
+      const {data,error} = await db.from('trier_sync_state').select('run_id,started_at,finished_at,lease_until,summary').eq('id',1).single();
       if (error) throw error;
       return reply({enabled:env('TRIER_INTEGRATION_ENABLED')==='true',contractReady:!!env('TRIER_API_TOKEN'),...data});
     }
     if (body.action!=='sync') return reply({error:'invalid_action'},400);
     const settings=config(env);
+    if(!settings.enabled || (internal && !settings.syncEnabled)) return reply({status:'disabled'});
     let codes=[];
     if(settings.enabled) {
       const linked=await db.rpc('trier_refresh_bindings',{integrated_store:settings.storeId});
@@ -61,7 +62,15 @@ export function createHandler(db, env) { return async req => {
       codes=(data||[]).map(row=>row.trier_reduced_code).filter(Boolean);
     }
     const officialContract=createOfficialContract(codes,env('TRIER_DELIVERY_PRODUCT_CODE')||'46295');
-    const service = new InventoryService({settings,client:new TrierClient(settings,officialContract),repository:repository(db,settings.storeId),policy,log:(entry)=>console.log(JSON.stringify(entry))});
+    const repo=repository(db,settings.storeId);
+    if(background) {
+      const lease=await repo.claim(settings.intervalMinutes);
+      if(!lease) return reply({status:'cached'});
+      const service=new InventoryService({settings,client:new TrierClient(settings,officialContract),repository:{...repo,claim:async()=>lease},policy,log:entry=>console.log(JSON.stringify(entry))});
+      background(service.refresh({periodic:internal}).catch(()=>console.error('trier_background_sync_failed')));
+      return reply({status:'started',runId:lease},202);
+    }
+    const service = new InventoryService({settings,client:new TrierClient(settings,officialContract),repository:repo,policy,log:(entry)=>console.log(JSON.stringify(entry))});
     return reply(await service.refresh({periodic:internal}));
   } catch (error) { return reply({error:error instanceof RequestLimitError ? error.message : 'trier_operation_failed'},error instanceof RequestLimitError ? error.status : 503); }
 }; }

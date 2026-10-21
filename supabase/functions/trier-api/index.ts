@@ -4,4 +4,4 @@ import { createHandler } from './handler.js';
 import { serverKey } from './server-auth.js';
 const env = (key: string) => Deno.env.get(key) || '';
 const db = createClient(env('SUPABASE_URL'),serverKey(env),{auth:{persistSession:false,autoRefreshToken:false}});
-Deno.serve(createHandler(db, env));
+Deno.serve(createHandler(db, env, {background: (task: Promise<unknown>) => EdgeRuntime.waitUntil(task)}));

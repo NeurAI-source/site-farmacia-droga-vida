@@ -130,3 +130,29 @@ test('upload failure is visible beside the photo and keeps the previous image an
  await expect(page.locator('#product-form [name="name"]')).toHaveValue('Nome ainda não salvo');
  await expect(page.locator('#image-upload')).toBeEnabled();expect(state.calls.some(c=>c.payload)).toBe(false);
 });
+
+test('Trier manual sync follows background progress without repeating a lost request',async({page})=>{
+ await setup(page);await page.getByRole('button',{name:'Fechar',exact:true}).click();
+ let writes=0,polls=0;
+ const start=new Date().toISOString(),finish=new Date(Date.now()+10000).toISOString();
+ await page.route('**/functions/v1/trier-api',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.action==='sync'){writes++;return route.abort();}
+  polls++;
+  return route.fulfill({json:{enabled:true,run_id:'test-run',started_at:start,lease_until:new Date(Date.now()+60000).toISOString(),finished_at:polls>1?finish:null,summary:{status:'completed',updated:196,errors:0}}});
+ });
+ await page.locator('#trier-status button').click();
+ await expect(page.locator('#trier-status')).toContainText('em andamento');
+ await expect(page.locator('#trier-status')).toContainText('Atualizados: 196',{timeout:10000});
+ await expect(page.locator('#trier-status button')).toBeEnabled();expect(writes).toBe(1);
+});
+test('Trier started response is followed until the actual completed status',async({page})=>{
+ await setup(page);await page.getByRole('button',{name:'Fechar',exact:true}).click();
+ let writes=0;
+ await page.route('**/functions/v1/trier-api',route=>{
+  const body=route.request().postDataJSON();if(body.action==='sync'){writes++;return route.fulfill({status:202,json:{status:'started',runId:'test-run'}});}
+  return route.fulfill({json:{enabled:true,run_id:'test-run',started_at:'2026-10-21T00:00:00Z',finished_at:'2026-10-21T00:01:00Z',summary:{updated:196,errors:0}}});
+ });
+ await page.locator('#trier-status button').click();await expect(page.locator('#trier-status')).toContainText('Atualização iniciada');
+ await expect(page.locator('#trier-status')).toContainText('Atualizados: 196',{timeout:10000});expect(writes).toBe(1);
+});
