@@ -26,6 +26,21 @@ test('all active cards show real independent stock or consult, without replacing
  await expect(page.locator('[data-stock-id="8003"]')).toContainText('Consulte a disponibilidade');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);expect(state.writes).toBe(0);
 });
+test('floating cart stays accessible above the privacy notice on both public pages',async({page})=>{
+ await setup(page,{expanded:true});
+ await page.addInitScript(()=>localStorage.removeItem('dv-analytics-consent'));
+ for(const path of ['/', '/produto.html?id=8001']){
+  await page.goto(path);
+  const launcher=page.getByRole('button',{name:'Abrir pré-pedido flutuante'}),notice=page.locator('.statistics-choice');
+  await expect(launcher).toBeVisible();await expect(notice).toBeVisible();
+  await expect.poll(async()=>{const cart=await launcher.boundingBox(),panel=await notice.boundingBox();return !!cart&&!!panel&&cart.y+cart.height<=panel.y-8;}).toBe(true);
+  await launcher.click();await expect(page.locator('#cart-dialog')).toBeVisible();
+  await page.getByRole('button',{name:'Fechar carrinho'}).click();
+  await page.getByRole('button',{name:'Não permitir',exact:true}).click();
+  await expect(notice).toHaveCount(0);await expect(launcher).toBeVisible();
+  await expect.poll(()=>page.locator('body').evaluate(body=>body.style.getPropertyValue('--dv-cart-notice-offset'))).toBe('0px');
+ }
+});
 test('adding opens chat, shares the header count, limits stock and keeps checkout off the top of the page',async({page})=>{
  await setup(page);await page.goto('/');await page.locator('[data-add="8001"]').click();
  await expect(page.locator('#cart-dialog')).toBeVisible();await expect(page.locator('#cart-count')).toHaveText('1');
