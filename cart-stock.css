@@ -8,3 +8,5 @@
 /* The existing privacy choice stays accessible. The header cart remains usable
    even while the optional floating launcher waits for this notice to close. */
 .has-cart-chat:has(.statistics-choice) .dv-cart-launch{visibility:hidden;pointer-events:none}
+/* Related cards have their own price-span rules; keep stock labels independent. */
+.dv-product-stock .dv-stock-chip span{color:inherit;font-weight:400}.dv-product-stock .dv-stock-heading{color:#737c76;font-weight:400}
