@@ -52,6 +52,15 @@ test('individual product page selects size, adds to the same chat and never forc
  await expect(page.locator('#cart-items')).toContainText('M · 38 unidades por pacote');await expect(page).toHaveURL(/produto.html/);
  await page.getByRole('button',{name:'Fechar carrinho'}).click();await page.getByRole('link',{name:/Ver meu pré-pedido/}).click();await expect(page.locator('#cart-dialog')).toBeVisible();
 });
+test('delivery requires a neighborhood and preserves customer inputs while reviewing without sending',async({page})=>{
+ await setup(page);await page.goto('/');await page.locator('[data-add="8001"]').click();
+ await page.getByRole('button',{name:'Continuar para o WhatsApp →',exact:true}).click();
+ await page.locator('#order-name').fill('Cliente entrega');await page.getByRole('button',{name:'Revisar meu pré-pedido →'}).click();
+ await expect(page.locator('#order-form')).toBeVisible();await expect(page.locator('#order-neighborhood')).toHaveAttribute('required','');
+ await page.locator('#order-neighborhood').fill('Bairro de teste');await page.getByRole('button',{name:'Revisar meu pré-pedido →'}).click();
+ await expect(page.locator('#order-preview')).toContainText('Bairro de teste');await expect(page.locator('#order-preview')).toContainText('Taxa de entrega');
+ await page.getByRole('button',{name:'← Voltar',exact:true}).click();await expect(page.locator('#order-name')).toHaveValue('Cliente entrega');await expect(page.locator('#order-neighborhood')).toHaveValue('Bairro de teste');
+});
 test('expired cache becomes consult instead of exposing old or legacy balances',async({page})=>{
  await setup(page);await page.clock.install();await page.goto('/');await expect(page.locator('[data-stock-id="8001"]')).toContainText('2 unidades disponíveis');
  await page.clock.setSystemTime(new Date(Date.now()+61*60*1000));await page.clock.fastForward(60001);
