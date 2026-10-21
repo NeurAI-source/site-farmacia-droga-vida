@@ -1,5 +1,5 @@
 import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
-import { mountCartChat } from './cart-chat.js';
+import { mountCartChat } from './cart-chat.js?v=20261021-privacy-cart';
 import { stockMarkup, stockState, refreshStockMarkup } from './product-stock.js';
 import { money, filterProducts, sanitizeCart, cartTotal, orderMessage, unitPrice } from './catalog-utils.js';
 const paths = {

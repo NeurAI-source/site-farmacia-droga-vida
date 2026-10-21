@@ -9,6 +9,21 @@ export function mountCartChat({ getProducts, getCart, setCart }) {
   dialog.classList.add('dv-cart-chat');dialog.setAttribute('aria-labelledby','cart-title');
   dialog.innerHTML=`<div class="dv-chat-layout"><header class="dv-chat-header"><span class="dv-chat-avatar">${cartIcon}</span><div><h2 id="cart-title">Seu pré-pedido</h2><p>Droga Vida Popular · Estamos com você</p></div><button type="button" data-chat-close aria-label="Fechar carrinho">×</button></header><nav class="dv-chat-steps" aria-label="Etapas do pré-pedido"></nav><div class="dv-chat-scroll"><div class="dv-chat-bubble" role="status"></div><div id="cart-items"></div><div id="cart-summary"></div></div><footer class="dv-chat-footer"></footer></div>`;
   document.body.append(launcher);document.body.classList.add('has-cart-chat');
+  // Keep the cart above the optional privacy notice, including wrapped mobile
+  // text. Neither feature should depend on accepting or rejecting statistics.
+  let notice;
+  function placeLauncher(){
+    const gap=notice?.isConnected?Math.max(0,innerHeight-notice.getBoundingClientRect().top):0;
+    document.body.style.setProperty('--dv-cart-notice-offset',`${Math.ceil(gap)}px`);
+  }
+  const noticeResize=new ResizeObserver(placeLauncher);
+  function watchNotice(){
+    const next=document.querySelector('.statistics-choice');
+    if(next!==notice){noticeResize.disconnect();notice=next;if(notice)noticeResize.observe(notice);}
+    placeLauncher();
+  }
+  new MutationObserver(watchNotice).observe(document.body,{childList:true});
+  window.addEventListener('resize',placeLauncher);watchNotice();
   const $=s=>dialog.querySelector(s);
   const customer={name:'',receipt:'entrega',neighborhood:''}; // never persisted
   let step=0,added=false;
