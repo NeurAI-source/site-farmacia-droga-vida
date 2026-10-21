@@ -1,4 +1,6 @@
-import { loadInventory } from './trier-inventory.js';
+import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
+import { mountCartChat } from './cart-chat.js';
+import { stockState, refreshStockMarkup } from './product-stock.js';
 import { money, unitPrice, sanitizeCart } from './catalog-utils.js';
 import { productDetailMarkup, productEscape, imageUrl } from './product-detail.js?v=20261008-sem-detalhes-v1';
 const host=document.querySelector('#product-page-root');
@@ -9,15 +11,21 @@ const save=(k,val)=>{try{localStorage.setItem(k,JSON.stringify(val))}catch{}};
 try {
  const response=await fetch(new URL('catalog.json',import.meta.url),{cache:'no-store'});
  if(!response.ok)throw Error('O catálogo está temporariamente indisponível.');
- const data=await loadInventory(await response.json());
+ const sourceCatalog=await response.json(); let data=await loadInventory(sourceCatalog);
  if(!Number.isSafeInteger(id)||id<1)throw Error('Produto não encontrado.');
- const p=data.products.find(x=>x.id===id&&x.active);
+ let p=data.products.find(x=>x.id===id&&x.active);
  if(!p)throw Error('Produto não encontrado no catálogo.');
  if(data.expandedProductPage!==true)throw Error('Esta página ainda não está disponível. Consulte nosso catálogo.');
  document.title=p.name+' | Droga Vida Popular';
  host.innerHTML=productDetailMarkup(p);
  const variants=p.variants||[], select=document.querySelector('#product-page-variant');
+ let cart=sanitizeCart(read('dv-cart',[]),data.products);
+ const chatCart=mountCartChat({getProducts:()=>data.products,getCart:()=>cart,setCart:next=>{cart=next;save('dv-cart',cart);}});
+ document.querySelector('.product-page-view-cart').onclick=e=>{e.preventDefault();chatCart.open();};
+ document.querySelector('#product-page-root').addEventListener('click',e=>{const b=e.target.closest('[data-stock-size]');if(b&&select&&!b.disabled){select.value=b.dataset.stockSize;select.dispatchEvent(new Event('change'));}});
+ startInventoryUpdates(sourceCatalog,next=>{data=next;p=data.products.find(x=>x.id===id);refreshStockMarkup(data.products);chatCart.refresh();});
  if(select)select.onchange=()=>{const price=select.value?unitPrice(p,select.value):Math.min(...variants.map(v=>unitPrice(p,v.size)));document.querySelector('#product-page-price').innerHTML=(select.value?'':'<small>A partir de</small>')+'<strong>'+money(price)+'</strong>'};
+ const chosenSize=params.get('tamanho');if(select&&variants.some(v=>v.size===chosenSize)&&stockState(p,chosenSize).limit>0){select.value=chosenSize;select.dispatchEvent(new Event('change'));}
  let favorites=read('dv-favorites',[]);if(!Array.isArray(favorites))favorites=[];
  const favorite=document.querySelector('#product-page-favorite');
  const setFavorite=()=>{const chosen=favorites.includes(id);favorite.textContent=chosen?'♥ Salvo nos favoritos':'♡ Favoritar';favorite.setAttribute('aria-pressed',String(chosen))};
@@ -26,9 +34,10 @@ try {
  document.querySelector('#product-page-add').onclick=()=>{
   const variant=select?.value||'';
   if(variants.length&&!variant){select.focus();msg('Selecione um tamanho ou apresentação.');return}
-  const cart=sanitizeCart(read('dv-cart',[]),data.products);const existing=cart.find(x=>x.id===id&&x.variant===variant);
+  cart=sanitizeCart(read('dv-cart',[]),data.products);const state=stockState(p,variant);const existing=cart.find(x=>x.id===id&&x.variant===variant);
+  if((existing?.qty||0)>=state.limit){msg(state.known?state.label:'Limite de 99 unidades por produto.');return;}
   if(existing){if(existing.qty>=99){msg('Limite de 99 unidades por produto.');return}existing.qty++}else cart.push({id,variant,qty:1});
-  save('dv-cart',cart);msg('Produto adicionado ao pré-pedido! Clique em "Ver meu pré-pedido" para continuar.');
+  save('dv-cart',cart);msg('Produto adicionado ao pré-pedido!');chatCart.update();chatCart.open({added:true});
  };
  document.querySelector('#product-page-share').onclick=async()=>{
   try{if(navigator.share)await navigator.share({title:p.name,url:location.href});else if(navigator.clipboard){await navigator.clipboard.writeText(location.href);msg('Link do produto copiado!')}else msg('Copie o endereço desta página para compartilhar.')}catch{}

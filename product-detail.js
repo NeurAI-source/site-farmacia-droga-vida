@@ -1,3 +1,4 @@
+import { stockMarkup, stockState } from './product-stock.js';
 import { money, unitPrice } from './catalog-utils.js';
 export const productEscape = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const imageUrl = s => /^(https:\/\/|assets\/|\.\.\/assets\/)/.test(String(s||'')) ? String(s) : 'assets/logo.png';
@@ -15,8 +16,9 @@ export function productDetailMarkup(p) {
         ${p.detail?`<p class="product-page-presentation">${esc(p.detail)}</p>`:''}
         <p class="product-page-codes">${p.shortCode?`Código: ${esc(p.shortCode)}`:''}${p.shortCode&&p.ean?' · ':''}${p.ean?`EAN: ${esc(p.ean)}`:''}</p>
         <div class="product-page-price" id="product-page-price">${variants.length?'<small>A partir de</small>':''}<strong>${money(display)}</strong></div>
+        ${stockMarkup(p,{selectable:true})}
         <p class="product-page-warning">Preço, disponibilidade e taxa de entrega sujeitos à confirmação com a equipe.</p>
-        ${variants.length?`<label class="product-page-variant-label" for="product-page-variant">Escolha o tamanho / apresentação <select id="product-page-variant"><option value="">Selecione uma opção</option>${variants.map(v=>`<option value="${esc(v.size)}">${esc(v.size)} — ${v.packageQuantity} unidades — ${money(unitPrice(p,v.size))}</option>`).join('')}</select></label>`:''}
+        ${variants.length?`<label class="product-page-variant-label" for="product-page-variant">Escolha o tamanho / apresentação <select id="product-page-variant"><option value="">Selecione uma opção</option>${variants.map(v=>`<option value="${esc(v.size)}" ${stockState(p,v.size).known&&!stockState(p,v.size).available?'disabled':''}>${esc(v.size)} — ${v.packageQuantity} unidades — ${money(unitPrice(p,v.size))}</option>`).join('')}</select></label>`:''}
         <div class="product-page-actions"><button type="button" id="product-page-add">Adicionar ao pré-pedido</button><button type="button" id="product-page-favorite" aria-label="Adicionar aos favoritos">♡ Favoritar</button><button type="button" id="product-page-share">Compartilhar</button></div>
         <p id="product-page-feedback" role="status" aria-live="polite"></p>
         <a class="product-page-view-cart" href="./?prePedido=1">Ver meu pré-pedido →</a>
