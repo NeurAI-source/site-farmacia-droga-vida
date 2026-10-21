@@ -19,6 +19,15 @@ if (key && !key.startsWith('sb_publishable_')) {
   if (payload?.role !== 'anon') throw Error('Only a public publishable/anon key may be bundled.');
 }
 await writeFile(new URL('public-config.js', dist), `export const config = ${JSON.stringify({url,key})};\n`);
+// A new entry point must never import an older cached inventory/cart module.
+// Keep each public page's entire application graph at one content-specific URL.
+for (const [entry,page] of [['app.js','index.html'],['produto.js','produto.html']]) {
+  const result=await build({entryPoints:[fileURLToPath(new URL(entry,root))],bundle:true,format:'esm',platform:'browser',target:['safari15.4'],minify:true,external:['./public-config.js'],entryNames:entry.replace('.js','-[hash]'),outdir:fileURLToPath(dist),metafile:true});
+  const bundle=Object.keys(result.metafile.outputs).find(file=>file.endsWith('.js')).split(/[\\/]/).pop();
+  const source=await readFile(new URL(page,dist),'utf8');
+  const pattern=new RegExp(`src="${entry.replace('.','\\.')}\\?[^" ]*"`);
+  await writeFile(new URL(page,dist),source.replace(pattern,`src="${bundle}"`));
+}
 // Publish the entire carousel module graph together under a content-specific URL.
 // An open browser must never combine a new controller with an older slider.
 const carousel = await build({entryPoints:[fileURLToPath(new URL('campaigns.js',root))],bundle:true,format:'esm',platform:'browser',minify:true,external:['./public-config.js'],entryNames:'campaigns-[hash]',outdir:fileURLToPath(dist),metafile:true});
