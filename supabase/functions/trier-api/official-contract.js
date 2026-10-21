@@ -2,11 +2,11 @@ import { TrierClient, TrierError, moneyToCents } from './integration.js';
 // The documented bulk endpoint avoids one request per item. Complete the scan
 // before applying anything; partial/failed scans never advertise a discount.
 async function loadDiscounts(settings, fetcher, sleep, deadline, selected) {
-  const discounts=new Map(), seen=new Set(), pageSize=Math.min(500,settings.maxProducts ?? 10000);
+  const discounts=new Map(), seen=new Set(), pageSize=500;
   for(let offset=0;;offset+=pageSize){
     const contract={request(){const url=new URL(settings.baseUrl.replace(/\/$/,'')+'/rest/integracao/produto/desconto/melhor/obter-todos-v1');url.searchParams.set('primeiroRegistro',String(offset));url.searchParams.set('quantidadeRegistros',String(pageSize));return {url:url.href,headers:{Authorization:`Bearer ${settings.token}`,Accept:'application/json'}};},decode(payload){if(!Array.isArray(payload)||payload.length>pageSize)throw Error();return payload;}};
-    const rows=await new TrierClient(settings,contract,fetcher,sleep).products({deadline});
-    if(offset+rows.length>(settings.maxProducts ?? 10000))throw new TrierError('too_many_discounts');
+    const rows=await new TrierClient({...settings,maxProducts:pageSize},contract,fetcher,sleep).products({deadline});
+    if(offset+rows.length>20000)throw new TrierError('too_many_discounts');
     for(const row of rows){
       if(!Number.isSafeInteger(row.codigoProduto))throw new TrierError('unexpected_schema');
       const code=String(row.codigoProduto);if(!selected.has(code))continue;

@@ -23,7 +23,7 @@ try {
  const chatCart=mountCartChat({getProducts:()=>data.products,getCart:()=>cart,setCart:next=>{cart=next;save('dv-cart',cart);}});
  document.querySelector('.product-page-view-cart').onclick=e=>{e.preventDefault();chatCart.open();};
  document.querySelector('#product-page-root').addEventListener('click',e=>{const b=e.target.closest('[data-stock-size]');if(b&&select&&!b.disabled){select.value=b.dataset.stockSize;select.dispatchEvent(new Event('change'));}});
- startInventoryUpdates(sourceCatalog,next=>{data=next;p=data.products.find(x=>x.id===id);refreshStockMarkup(data.products);document.querySelector('#product-page-price').innerHTML=priceHtml(p,select?.value||'');chatCart.refresh();});
+ startInventoryUpdates(sourceCatalog,next=>{data=next;p=data.products.find(x=>x.id===id);refreshStockMarkup(data.products);document.querySelectorAll('[data-price-id]').forEach(link=>{const related=data.products.find(x=>x.id===Number(link.dataset.priceId));if(related)link.querySelector('span').innerHTML=priceHtml(related);});document.querySelector('#product-page-price').innerHTML=priceHtml(p,select?.value||'');chatCart.refresh();});
  if(select)select.onchange=()=>{document.querySelector('#product-page-price').innerHTML=priceHtml(p,select.value);};
  const chosenSize=params.get('tamanho');if(select&&variants.some(v=>v.size===chosenSize)&&stockState(p,chosenSize).limit>0){select.value=chosenSize;select.dispatchEvent(new Event('change'));}
  let favorites=read('dv-favorites',[]);if(!Array.isArray(favorites))favorites=[];
@@ -43,5 +43,5 @@ try {
   try{if(navigator.share)await navigator.share({title:p.name,url:location.href});else if(navigator.clipboard){await navigator.clipboard.writeText(location.href);msg('Link do produto copiado!')}else msg('Copie o endereço desta página para compartilhar.')}catch{}
  };
  const related=data.products.filter(x=>x.active&&x.id!==id&&x.category===p.category).slice(0,4);
- if(related.length){const section=document.createElement('section');section.className='product-page-related';section.innerHTML='<h2>Produtos relacionados</h2><div class="product-page-related-grid">'+related.map(x=>`<a href="produto.html?id=${x.id}"><img src="${productEscape(imageUrl(x.imageUrl))}" alt="${productEscape(x.name)}" loading="lazy"><strong>${productEscape(x.name)}</strong><span>${money(x.priceCents)}</span>${stockMarkup(x)}</a>`).join('')+'</div>';host.append(section);}
+ if(related.length){const section=document.createElement('section');section.className='product-page-related';section.innerHTML='<h2>Produtos relacionados</h2><div class="product-page-related-grid">'+related.map(x=>`<a data-price-id="${x.id}" href="produto.html?id=${x.id}"><img src="${productEscape(imageUrl(x.imageUrl))}" alt="${productEscape(x.name)}" loading="lazy"><strong>${productEscape(x.name)}</strong><span>${priceHtml(x)}</span>${stockMarkup(x)}</a>`).join('')+'</div>';host.append(section);}
 } catch(error){host.innerHTML='<div class="product-page-empty"><h1>'+productEscape(error.message)+'</h1><a href="./#ofertas">Voltar ao catálogo</a></div>'}

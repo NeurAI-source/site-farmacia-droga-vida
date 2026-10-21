@@ -29,7 +29,7 @@ test('conditional, ambiguous, invalid, mismatched and ecommerce-specific prices 
 });
 test('failed or incomplete discount scans safely clear promotions without blocking stock',async()=>{
  const {rows}=await load([source(1)],[],{fail:true});assert.equal(rows.discountStatus,'unavailable');assert.equal(rows[0].price,63.25);assert.equal(rows[0].regularPrice,null);
- const tooMany=Array.from({length:10},(_,i)=>offer(i+1));const partial=await load([source(1)],tooMany);assert.equal(partial.rows.discountStatus,'unavailable');assert.equal(partial.rows[0].price,63.25);
+ const tooMany=Array.from({length:500},(_,i)=>offer(i+1));const partial=await load([source(1)],tooMany);assert.equal(partial.rows.discountStatus,'unavailable');assert.equal(partial.rows[0].price,63.25);
 });
 test('public pair is per presentation, controls cart totals and expires to published fallback',()=>{
  const catalog={products:[{id:1,active:true,name:'Fralda',detail:'',priceCents:1000,variants:[{size:'M',priceCents:6325},{size:'G',priceCents:7000}]}]};

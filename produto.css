@@ -65,3 +65,5 @@
 .product-page-sources a{color:#bc0010;font-size:12px;overflow-wrap:anywhere}
 
 .product-page-price del{font-size:15px;color:#797979}
+
+.product-page-related del{display:block;font-size:12px;color:#797979}

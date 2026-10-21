@@ -11,7 +11,7 @@ pagamento específica. Campos de condição ausentes, duplicados ou valores inv�
 não autorizam promoção. Um preço específico de e-commerce diferente do preço base
 é preservado. Não se reaplica o percentual de desconto.
 
-A varredura é limitada pelo máximo de registros da integração e a até 30 segundos,
+A varredura é limitada a 20 mil registros e a até 30 segundos,
 reservando tempo para a gravação já existente. Resultado parcial ou falha não é
 usado: mantém preço normal e estoque, limpa a promoção do cache e informa
 `discountStatus: unavailable` no resumo da sincronização. Uma próxima execução
