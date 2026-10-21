@@ -1,7 +1,7 @@
 import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
 import { mountCartChat } from './cart-chat.js?v=20261021-privacy-cart';
 import { stockMarkup, stockState, refreshStockMarkup } from './product-stock.js';
-import { money, filterProducts, sanitizeCart, cartTotal, orderMessage, unitPrice } from './catalog-utils.js';
+import { money, filterProducts, sanitizeCart, cartTotal, orderMessage, unitPrice, priceInfo, priceHtml } from './catalog-utils.js';
 const paths = {
   search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
   arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
@@ -50,11 +50,9 @@ function updateCounts() {
   save('dv-cart', cart); save('dv-favorites', favorites); chatCart?.update();
 }
 function productCard(p) {
-  const variantPrices=p.variants.length?p.variants.map(v=>unitPrice(p,v.size)):[];
-  const displayPrice=variantPrices.length?Math.min(...variantPrices):p.priceCents;
-  const discount = !p.variants.length && p.oldPriceCents > p.priceCents ? Math.round((1-p.priceCents/p.oldPriceCents)*100) : 0;
+  const discount = priceInfo(p).discount;
   const categoryLabel = p.subcategory ? `${p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category} · ${p.subcategory}` : (p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category);
-  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(categoryLabel)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p>${stockMarkup(p,{selectable:true})}<div class="product-price">${p.variants.length?'<small>A partir de</small>':p.oldPriceCents > p.priceCents ? `<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(displayPrice)}</strong></div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
+  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(categoryLabel)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p>${stockMarkup(p,{selectable:true})}<div class="product-price">${priceHtml(p)}</div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
 }
 function renderSubfilters() {
   const host = $('#subfilters'); if (!host) return;
@@ -88,11 +86,10 @@ function addToCart(id, variant='') { const p=products.find(p=>p.id===id),state=s
 function showDetail(id, chosenSize='') {
   const p=products.find(p=>p.id===id); if(!p)return;
   if(expandedProductPage) { window.location.assign(new URL(`produto.html?id=${encodeURIComponent(id)}${chosenSize?'&tamanho='+encodeURIComponent(chosenSize):''}`,import.meta.url).href); return; }
-  const variantPrices=p.variants.map(v=>unitPrice(p,v.size));
-  const initialPrice=variantPrices.length?Math.min(...variantPrices):p.priceCents;
-  const initialPriceHtml=p.variants.length?`<small>A partir de</small><strong>${money(initialPrice)}</strong>`:`${p.oldPriceCents>p.priceCents?`<del>${money(p.oldPriceCents)}</del>`:''}<strong>${money(p.priceCents)}</strong>`;
+  const initialPriceHtml=priceHtml(p);
+  $('#detail-dialog').dataset.productId=String(id);
   $('#detail-content').innerHTML=`<div class="detail-grid"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}"><div><p class="eyebrow red">${escape(p.category)}</p><h2>${escape(p.name)}</h2><p>${escape(p.detail)}${p.brand ? ' · '+escape(p.brand):''}</p><div class="product-price" id="detail-price">${initialPriceHtml}</div>${stockMarkup(p,{selectable:true})}${p.variants.length?`<label for="variant">Escolha o tamanho<select id="variant"><option value="">Selecione uma opção</option>${p.variants.map(v=>`<option value="${escape(v.size)}" ${stockState(p,v.size).known&&!stockState(p,v.size).available?'disabled':''}>${escape(v.size)} — ${v.packageQuantity} unidades — ${money(unitPrice(p,v.size))}</option>`).join('')}</select></label>`:''}<p>Consulte a disponibilidade ${p.availableStore1&&p.availableStore2?'nas duas lojas':p.availableStore1?'na Loja 1':'na Loja 2'}. Preço sujeito à confirmação.</p><button class="button red-button" id="detail-add">${icon('cart')} Adicionar ao carrinho</button></div></div>`;
-  if(p.variants.length) $('#variant').onchange=event=>{const size=event.target.value;$('#detail-price').innerHTML=size?`<strong>${money(unitPrice(p,size))}</strong>`:`<small>A partir de</small><strong>${money(initialPrice)}</strong>`;};
+  if(p.variants.length) $('#variant').onchange=event=>{$('#detail-price').innerHTML=priceHtml(products.find(x=>x.id===id),event.target.value);};
   $('#detail-add').onclick=()=>{const variant=p.variants.length?$('#variant').value:'';if(p.variants.length&&!variant){$('#variant').focus();toast('Escolha o tamanho para continuar.');return;}$('#detail-dialog').close();addToCart(id,variant);};
   if(chosenSize && $('#variant')){$('#variant').value=chosenSize;$('#variant').dispatchEvent(new Event('change'));}
   openDialog($('#detail-dialog'));
@@ -114,7 +111,7 @@ try {
   cart=sanitizeCart(read('dv-cart',[]),products); const storedFavorites=read('dv-favorites',[]); favorites=Array.isArray(storedFavorites)?[...new Set(storedFavorites)].filter(id=>products.some(p=>p.id===id)):[];
   $('#filters').innerHTML=['Todos',...data.categories.map(c=>c.name)].map(c=>`<button data-category="${escape(c)}" aria-pressed="${c==='Todos'}">${escape(c==='Perfumaria e Cuidados Pessoais'?'Beleza e cuidados':c)}</button>`).join('');
   renderProducts();
-  startInventoryUpdates(sourceCatalog,next=>{products=next.products;cart=sanitizeCart(cart,products);refreshStockMarkup(products);updateCounts();chatCart.refresh();});
+  startInventoryUpdates(sourceCatalog,next=>{products=next.products;cart=sanitizeCart(cart,products);refreshStockMarkup(products);renderProducts();const detailProduct=products.find(p=>p.id===Number($('#detail-dialog').dataset.productId));if(detailProduct&&$('#detail-dialog').open)$('#detail-price').innerHTML=priceHtml(detailProduct,$('#variant')?.value||'');updateCounts();chatCart.refresh();});
   if(new URLSearchParams(window.location.search).get('prePedido') === '1') {
     chatCart.open();
     history.replaceState(null,'',window.location.pathname+window.location.hash);

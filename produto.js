@@ -1,7 +1,7 @@
 import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
 import { mountCartChat } from './cart-chat.js?v=20261021-privacy-cart';
 import { stockState, stockMarkup, refreshStockMarkup } from './product-stock.js';
-import { money, unitPrice, sanitizeCart } from './catalog-utils.js';
+import { money, unitPrice, sanitizeCart, priceHtml } from './catalog-utils.js';
 import { productDetailMarkup, productEscape, imageUrl } from './product-detail.js?v=20261008-sem-detalhes-v1';
 const host=document.querySelector('#product-page-root');
 const params=new URLSearchParams(location.search), id=Number(params.get('id'));
@@ -23,8 +23,8 @@ try {
  const chatCart=mountCartChat({getProducts:()=>data.products,getCart:()=>cart,setCart:next=>{cart=next;save('dv-cart',cart);}});
  document.querySelector('.product-page-view-cart').onclick=e=>{e.preventDefault();chatCart.open();};
  document.querySelector('#product-page-root').addEventListener('click',e=>{const b=e.target.closest('[data-stock-size]');if(b&&select&&!b.disabled){select.value=b.dataset.stockSize;select.dispatchEvent(new Event('change'));}});
- startInventoryUpdates(sourceCatalog,next=>{data=next;p=data.products.find(x=>x.id===id);refreshStockMarkup(data.products);chatCart.refresh();});
- if(select)select.onchange=()=>{const price=select.value?unitPrice(p,select.value):Math.min(...variants.map(v=>unitPrice(p,v.size)));document.querySelector('#product-page-price').innerHTML=(select.value?'':'<small>A partir de</small>')+'<strong>'+money(price)+'</strong>'};
+ startInventoryUpdates(sourceCatalog,next=>{data=next;p=data.products.find(x=>x.id===id);refreshStockMarkup(data.products);document.querySelector('#product-page-price').innerHTML=priceHtml(p,select?.value||'');chatCart.refresh();});
+ if(select)select.onchange=()=>{document.querySelector('#product-page-price').innerHTML=priceHtml(p,select.value);};
  const chosenSize=params.get('tamanho');if(select&&variants.some(v=>v.size===chosenSize)&&stockState(p,chosenSize).limit>0){select.value=chosenSize;select.dispatchEvent(new Event('change'));}
  let favorites=read('dv-favorites',[]);if(!Array.isArray(favorites))favorites=[];
  const favorite=document.querySelector('#product-page-favorite');

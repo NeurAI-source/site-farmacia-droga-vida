@@ -1,4 +1,15 @@
 export const money = cents => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
+export function priceInfo(product,size=''){
+ const variants=product.variants||[];
+ const target=variants.length?(size?variants.find(v=>v.size===size):variants.reduce((best,v)=>unitPrice(product,v.size)<unitPrice(product,best.size)?v:best)):product;
+ const priceCents=unitPrice(product,target?.size||'');
+ const oldPriceCents=Number.isSafeInteger(target?.oldPriceCents)&&target.oldPriceCents>priceCents?target.oldPriceCents:null;
+ return {priceCents,oldPriceCents,from:!!variants.length&&!size,discount:oldPriceCents?Math.floor((1-priceCents/oldPriceCents)*100):0};
+}
+export function priceHtml(product,size=''){
+ const info=priceInfo(product,size);
+ return `${info.from?'<small>A partir de</small>':''}${info.oldPriceCents?`<del aria-label="Preço normal">${money(info.oldPriceCents)}</del>`:''}<strong>${money(info.priceCents)}</strong>`;
+}
 export const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export function filterProducts(products, { category = 'Todos', subcategory = '', query = '', favorites = null } = {}) {
   return products.filter(p => p.active && (category === 'Todos' || p.category === category) && (!subcategory || p.subcategory === subcategory) && (!favorites || favorites.includes(p.id)) && normalize([p.name,p.brand,p.detail,p.category,p.subcategory].join(' ')).includes(normalize(query.trim())));

@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - product-stock.js
+      - 'supabase/functions/trier-api/**'
   schedule:
     - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
