@@ -41,7 +41,7 @@ begin
   if oldrow.last_trier_sync_at >= (payload->>'fetchedAt')::timestamptz then return false; end if;
   update public.trier_inventory set external_name=payload->>'name',external_description=coalesce(payload->>'description',external_description),
     external_price_cents=coalesce((payload->>'priceCents')::bigint,external_price_cents),
-    external_regular_price_cents=case when payload ? 'priceCents' then (payload->>'regularPriceCents')::bigint else external_regular_price_cents end,
+    external_regular_price_cents=case when payload ? 'regularPriceCents' then (payload->>'regularPriceCents')::bigint when payload ? 'priceCents' then null else external_regular_price_cents end,
     stock_quantity=(payload->>'stockQuantity')::numeric, availability=(payload->>'available')::boolean,
     external_status=payload->>'status',last_trier_sync_at=(payload->>'fetchedAt')::timestamptz
     where product_id=oldrow.product_id and variant_id=oldrow.variant_id returning * into newrow;

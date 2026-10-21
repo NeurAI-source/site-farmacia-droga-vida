@@ -4,7 +4,7 @@ export function priceInfo(product,size=''){
  const target=variants.length?(size?variants.find(v=>v.size===size):variants.reduce((best,v)=>unitPrice(product,v.size)<unitPrice(product,best.size)?v:best)):product;
  const priceCents=unitPrice(product,target?.size||'');
  const oldPriceCents=Number.isSafeInteger(target?.oldPriceCents)&&target.oldPriceCents>priceCents?target.oldPriceCents:null;
- return {priceCents,oldPriceCents,from:!!variants.length&&!size,discount:oldPriceCents?Math.floor((1-priceCents/oldPriceCents)*100):0};
+ return {priceCents,oldPriceCents,from:!!variants.length&&!size,discount:oldPriceCents?Math.round((1-priceCents/oldPriceCents)*100):0};
 }
 export function priceHtml(product,size=''){
  const info=priceInfo(product,size);
