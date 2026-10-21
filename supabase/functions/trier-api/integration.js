@@ -106,14 +106,18 @@ export function mapProduct(input, policy, storeId, fetchedAt = new Date().toISOS
   const sellable = policy.isSellable(input.status);
   if (typeof sellable !== 'boolean') throw new TrierError('unknown_status');
   if (input.description != null && (typeof input.description !== 'string' || input.description.length > 10000)) throw new TrierError('invalid_description');
+  const regularPriceCents=input.regularPrice==null?null:moneyToCents(input.regularPrice,policy.priceUnit);
+  const priceCents=input.price==null?undefined:moneyToCents(input.price,policy.priceUnit);
+  if(regularPriceCents!=null&&(!(priceCents>0)||regularPriceCents<=priceCents))throw new TrierError('invalid_promotion');
   return { externalId, reducedCode, ean, name: input.name.trim(), description: input.description, stockQuantity: input.stockQuantity,
+    ...(Object.hasOwn(input,'regularPrice')?{regularPriceCents}:{}),
     priceCents: input.price == null ? undefined : moneyToCents(input.price, policy.priceUnit),
     status: input.status == null ? null : String(input.status).slice(0,128), available: input.stockQuantity > 0 && sellable,
     storeId, fetchedAt };
 }
 export function publicStock(row) {
   return { productId: row.product_id, variantId: row.variant_id || null, stockQuantity: row.stock_quantity,
-    available: row.availability, priceCents: row.external_price_cents, lastUpdatedAt: row.last_trier_sync_at };
+    available: row.availability, priceCents: row.external_price_cents, regularPriceCents:row.external_regular_price_cents, lastUpdatedAt: row.last_trier_sync_at };
 }
 export class InventoryService {
   constructor({client, repository, policy, settings, log = (_entry) => {}}) { Object.assign(this,{client,repository,policy,settings,log}); }
@@ -126,6 +130,7 @@ export class InventoryService {
     this.log({event:'trier_sync_started'});
     try {
       const items = await this.client.products({deadline}); result.received = items.length;
+      if(items.discountStatus)result.discountStatus=items.discountStatus;
       if (items.length > (this.settings.maxProducts ?? 10000)) throw new TrierError('too_many_products');
       for (const item of items) {
         remaining(deadline);

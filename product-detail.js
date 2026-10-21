@@ -1,11 +1,9 @@
 import { stockMarkup, stockState } from './product-stock.js';
-import { money, unitPrice } from './catalog-utils.js';
+import { money, unitPrice, priceHtml } from './catalog-utils.js';
 export const productEscape = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const imageUrl = s => /^(https:\/\/|assets\/|\.\.\/assets\/)/.test(String(s||'')) ? String(s) : 'assets/logo.png';
 export function productDetailMarkup(p) {
   const esc=productEscape, variants=p.variants||[];
-  const prices=variants.map(v=>unitPrice(p,v.size));
-  const display=prices.length ? Math.min(...prices):p.priceCents;
   return `<div class="product-page">
     <div class="product-page-breadcrumb">${esc(p.category)}${p.subcategory?' › '+esc(p.subcategory):''} › ${esc(p.name)}</div>
     <div class="product-page-grid">
@@ -15,7 +13,7 @@ export function productDetailMarkup(p) {
         <h1>${esc(p.name)}</h1>
         ${p.detail?`<p class="product-page-presentation">${esc(p.detail)}</p>`:''}
         <p class="product-page-codes">${p.shortCode?`Código: ${esc(p.shortCode)}`:''}${p.shortCode&&p.ean?' · ':''}${p.ean?`EAN: ${esc(p.ean)}`:''}</p>
-        <div class="product-page-price" id="product-page-price">${variants.length?'<small>A partir de</small>':''}<strong>${money(display)}</strong></div>
+        <div class="product-page-price" id="product-page-price">${priceHtml(p)}</div>
         ${stockMarkup(p,{selectable:true})}
         <p class="product-page-warning">Preço, disponibilidade e taxa de entrega sujeitos à confirmação com a equipe.</p>
         ${variants.length?`<label class="product-page-variant-label" for="product-page-variant">Escolha o tamanho / apresentação <select id="product-page-variant"><option value="">Selecione uma opção</option>${variants.map(v=>`<option value="${esc(v.size)}" ${stockState(p,v.size).known&&!stockState(p,v.size).available?'disabled':''}>${esc(v.size)} — ${v.packageQuantity} unidades — ${money(unitPrice(p,v.size))}</option>`).join('')}</select></label>`:''}

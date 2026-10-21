@@ -21,14 +21,14 @@ export function createHandler(db, env, {background} = {}) { return async req => 
       if (bulk) {
         const products = publication?.catalog?.products?.filter(p => p.active) || [];
         if (!products.length) return reply({inventory:[]});
-        const {data,error} = await db.from('trier_inventory').select('product_id,variant_id,trier_reduced_code,stock_quantity,availability,external_price_cents,last_trier_sync_at').eq('store_id',env('TRIER_STORE_ID')).in('product_id',products.map(p=>p.id));
+        const {data,error} = await db.from('trier_inventory').select('product_id,variant_id,trier_reduced_code,stock_quantity,availability,external_price_cents,external_regular_price_cents,last_trier_sync_at').eq('store_id',env('TRIER_STORE_ID')).in('product_id',products.map(p=>p.id));
         if(error) throw error;
         const rows=(data||[]).filter(row=>row.last_trier_sync_at && products.some(p=>p.id===row.product_id && String(Number((row.variant_id?p.variants?.find(v=>v.id===row.variant_id)?.shortCode:p.shortCode)||''))===String(Number(row.trier_reduced_code))));
         return reply({inventory:rows.map(publicStock)});
       }
       const product = publication?.catalog?.products?.find((p) => String(p.id)===id && p.active);
       if (!product) return reply({error:'product_not_found'},404);
-      const {data,error} = await db.from('trier_inventory').select('product_id,variant_id,stock_quantity,availability,external_price_cents,last_trier_sync_at').eq('product_id',id);
+      const {data,error} = await db.from('trier_inventory').select('product_id,variant_id,stock_quantity,availability,external_price_cents,external_regular_price_cents,last_trier_sync_at').eq('product_id',id).eq('store_id',env('TRIER_STORE_ID'));
       if (error) throw error;
       return reply({inventory:(data || []).filter(row => row.last_trier_sync_at && (row.variant_id===0 || product.variants?.some((v)=>v.id===row.variant_id))).map(publicStock)});
     }

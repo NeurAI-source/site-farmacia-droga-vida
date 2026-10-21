@@ -8,6 +8,7 @@ export function applyInventory(catalog, rows, now = Date.now()) {
     const target = row.variantId ? product?.variants?.find(v => v.id === row.variantId) : product;
     if (!target || !Number.isSafeInteger(row.priceCents) || row.priceCents <= 0 || !Number.isFinite(row.stockQuantity) || typeof row.available !== 'boolean') continue;
     target.priceCents = row.priceCents;
+    if(Object.hasOwn(row,'regularPriceCents'))target.oldPriceCents=Number.isSafeInteger(row.regularPriceCents)&&row.regularPriceCents>row.priceCents?row.regularPriceCents:null;
     target.stockQuantity = Math.max(0,row.stockQuantity);
     target.trierAvailable = row.available;
     target.trierUpdatedAt = row.lastUpdatedAt;
