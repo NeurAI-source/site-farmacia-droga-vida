@@ -42,7 +42,7 @@ test('public pair is per presentation, controls cart totals and expires to publi
 test('additive migration atomically audits both prices, rejects invalid pairs and preserves RLS/catalog',async()=>{
  const db=new PGlite();try{
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create table public.catalog_draft(id integer,catalog jsonb);insert into public.catalog_draft values(1,'{"products":[{"id":1}]}');`);
-  for(const name of ['20261013120000_trier_inventory.sql','20261021232807_trier_promotional_prices.sql'])await db.exec(await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8'));
+  for(const name of ['20261013120000_trier_inventory.sql','20261021233613_trier_promotional_prices.sql'])await db.exec(await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8'));
   await db.exec("insert into public.trier_inventory(product_id,trier_reduced_code,store_id,external_price_cents) values(1,'1','2',6325)");
   const lease=(await db.query("select public.trier_claim_sync(15,'2') id")).rows[0].id;
   const apply=payload=>db.query('select public.trier_apply_inventory($1,$2)',[JSON.stringify(payload),lease]);

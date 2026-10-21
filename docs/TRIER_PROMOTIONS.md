@@ -17,7 +17,7 @@ usado: mantém preço normal e estoque, limpa a promoção do cache e informa
 `discountStatus: unavailable` no resumo da sincronização. Uma próxima execução
 pode recuperar os descontos sem reaplicar remarcações.
 
-A migration aditiva `20261021232807_trier_promotional_prices.sql` adiciona
+A migration aditiva `20261021233613_trier_promotional_prices.sql` adiciona
 `external_regular_price_cents` ao cache existente, valida o par e preserva o mesmo
 lease, vínculo por código/variante/filial, auditoria e permissões. Não muda o JSON
 do catálogo, preços editoriais, produtos, estoque no ERP ou imagens.
