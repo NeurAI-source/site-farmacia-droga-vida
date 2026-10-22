@@ -8,7 +8,7 @@ export function priceInfo(product,size=''){
 }
 export function priceHtml(product,size=''){
  const info=priceInfo(product,size);
- return `${info.from?'<small>A partir de</small>':''}${info.oldPriceCents?`<del aria-label="Preço normal">${money(info.oldPriceCents)}</del>`:''}<strong>${money(info.priceCents)}</strong>`;
+  return `${info.from?'<small>A partir de</small>':''}${info.oldPriceCents?`<small class="price-before">De: <del aria-label="Preço normal">${money(info.oldPriceCents)}</del></small>`:''}<strong>${info.oldPriceCents?'Por: ':''}${money(info.priceCents)}</strong>`;
 }
 export const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export function filterProducts(products, { category = 'Todos', subcategory = '', query = '', favorites = null } = {}) {
