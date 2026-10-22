@@ -7,3 +7,7 @@
 @media(prefers-reduced-motion:reduce){.dv-cart-chat *{scroll-behavior:auto}}
 /* Related cards have their own price-span rules; keep stock labels independent. */
 .dv-product-stock .dv-stock-chip span{color:inherit;font-weight:400}.dv-product-stock .dv-stock-heading{color:#737c76;font-weight:400}
+
+/* Keep verified normal prices and their labels on one line. */
+.product-price .price-before,.product-page-price .price-before{display:block;flex-basis:100%;white-space:nowrap}
+.product-price .price-before del,.product-page-price .price-before del{display:inline}
