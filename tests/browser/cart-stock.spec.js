@@ -96,7 +96,7 @@ test('blocked items expose physical counts separately and cannot enter a pre-ord
  await expect(page.locator('[data-stock-id="8002"] [data-stock-size="G"]')).toContainText('Esgotado');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
  await page.locator('[data-stock-id="8002"] [data-stock-size="M"]').click();
- await expect(page.locator('#product-page-variant option[value="XG"]')).toBeDisabled();
+ await expect(page.locator('#product-page-variant option[value="XG"]')).toHaveAttribute('disabled','');
  await expect(page.locator('[data-stock-id="8002"]')).toContainText('46 pac.');
  await page.goto('/produto.html?id=8001');
  await page.getByRole('button',{name:'Adicionar ao pré-pedido',exact:true}).click();
