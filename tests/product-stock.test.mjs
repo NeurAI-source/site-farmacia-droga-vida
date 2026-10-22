@@ -20,9 +20,21 @@ test('recent stock uses the sale unit and never the quantity printed inside the 
 test('each size is independent; missing size is unknown, zero is sold out, blocked is unavailable',()=>{
  const p={...item,variants:[{...fresh({},8),size:'M'},{...fresh({},0),size:'G'},{...fresh({},5,false),size:'XG'},{size:'P',stockQuantity:1}]};
  assert.equal(stockState(p,'M',now).quantity,8);assert.equal(stockState(p,'G',now).short,'Esgotado');
- assert.equal(stockState(p,'XG',now).short,'Indisponível');assert.equal(stockState(p,'P',now).known,false);
+ assert.equal(stockState(p,'XG',now).short,'5 un.');assert.equal(stockState(p,'P',now).known,false);
  const html=stockMarkup(p,{now,selectable:true});assert.equal((html.match(/class="dv-stock-chip/g)||[]).length,4);
  assert.match(html,/data-stock-size="G" disabled/);assert.match(html,/data-stock-size="P"/);
+});
+test('positive physical stock stays visible when pre-order is blocked, without releasing the cart',()=>{
+ const simple=fresh({},23,false),state=stockState(simple,'',now);
+ assert.equal(state.quantity,23);assert.equal(state.available,false);assert.equal(state.limit,0);
+ assert.equal(state.label,'23 unidades em estoque — pré-pedido indisponível');
+ assert.match(stockMarkup(simple,{now}),/23 unidades em estoque/);
+ assert.match(stockMarkup(simple,{now}),/Pré-pedido indisponível/);
+ assert.doesNotMatch(stockMarkup(simple,{now}),/Esgotado|23 unidades disponíveis/);
+ assert.match(cartStockIssue([{id:1,qty:1}],[simple],now),/pré-pedido indisponível/);
+ const diaper={...simple,name:'FR BABYSEC MEGA',variants:[{...fresh({},46,false),size:'G'}]};
+ assert.match(stockMarkup(diaper,{now,selectable:true}),/46 pac\./);
+ assert.match(stockMarkup(diaper,{now,selectable:true}),/data-stock-size="G" disabled/);
 });
 test('cart respects current per-size quantities without inventing reservations or deleting saved items',()=>{
  const p={...item,variants:[{...fresh({},2),size:'M'},{...fresh({},7),size:'G'}]};

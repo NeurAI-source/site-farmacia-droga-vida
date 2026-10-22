@@ -7,6 +7,7 @@
 @media(prefers-reduced-motion:reduce){.dv-cart-chat *{scroll-behavior:auto}}
 /* Related cards have their own price-span rules; keep stock labels independent. */
 .dv-product-stock .dv-stock-chip span{color:inherit;font-weight:400}.dv-product-stock .dv-stock-heading{color:#737c76;font-weight:400}
+.dv-stock-chip.is-restricted,.is-restricted .dv-stock-single{background:#faf8f0;border-color:#ece7d7;color:#75633b}.dv-stock-notice{display:block;font:inherit;font-size:10px;line-height:1.35;margin-top:3px;white-space:normal;overflow-wrap:anywhere}.dv-stock-chip .dv-stock-notice{font-size:9px}@media(max-width:640px){.dv-stock-chip .dv-stock-notice{font-size:8px}}
 
 /* Keep verified normal prices and their labels on one line. */
 .product-price .price-before,.product-page-price .price-before{display:block;flex-basis:100%;white-space:nowrap}

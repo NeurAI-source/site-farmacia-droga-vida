@@ -80,3 +80,27 @@ test('expired cache becomes consult instead of exposing old or legacy balances',
  await expect(page.locator('[data-stock-id="8001"]')).toContainText('Consulte a disponibilidade');
  await expect(page.locator('[data-stock-id="8002"]')).not.toContainText('8 pac.');
 });
+test('blocked items expose physical counts separately and cannot enter a pre-order',async({page})=>{
+ const state=await setup(page,{expanded:true});
+ state.rows[0].available=false;state.rows[0].stockQuantity=23;
+ state.rows.push({productId:8002,variantId:803,priceCents:3299,stockQuantity:46,available:false,lastUpdatedAt:new Date().toISOString()});
+ await page.goto('/');
+ const simple=page.locator('[data-stock-id="8001"]');
+ await expect(simple).toContainText('23 unidades em estoque');
+ await expect(simple).toContainText('Pré-pedido indisponível');
+ await page.locator('[data-add="8001"]').click();
+ await expect(page.locator('#cart-count')).toHaveText('0');
+ const blocked=page.locator('[data-stock-id="8002"] [data-stock-size="XG"]');
+ await expect(blocked).toContainText('46 pac.');await expect(blocked).toContainText('Pré-pedido indisponível');await expect(blocked).toBeDisabled();
+ await expect(page.locator('[data-stock-id="8002"] [data-stock-size="M"]')).toBeEnabled();
+ await expect(page.locator('[data-stock-id="8002"] [data-stock-size="G"]')).toContainText('Esgotado');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+ await page.locator('[data-stock-id="8002"] [data-stock-size="M"]').click();
+ await expect(page.locator('#product-page-variant option[value="XG"]')).toHaveAttribute('disabled','');
+ await expect(page.locator('[data-stock-id="8002"]')).toContainText('46 pac.');
+ await page.goto('/produto.html?id=8001');
+ await page.getByRole('button',{name:'Adicionar ao pré-pedido',exact:true}).click();
+ await expect(page.locator('#product-page-feedback')).toContainText('23 unidades em estoque — pré-pedido indisponível');
+ await expect(page.locator('#cart-dialog')).not.toBeVisible();
+ expect(state.writes).toBe(0);
+});
