@@ -5,8 +5,7 @@ on:
     paths:
       - product-stock.js
       - 'supabase/functions/trier-api/**'
-  schedule:
-    - cron: '7,22,37,52 * * * *'
+  # Periodic runs use Supabase Cron; keep manual and code-change recovery here.
   workflow_dispatch:
 permissions:
   contents: read

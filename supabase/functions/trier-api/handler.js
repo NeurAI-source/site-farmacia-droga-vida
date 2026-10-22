@@ -1,7 +1,7 @@
 import { allowedOrigin } from '../cors.js';
 import { config, TrierClient, InventoryService, publicStock } from './integration.js';
 import { repository } from './repository.js';
-import { verifiedServerRequest } from './server-auth.js';
+import { verifiedServerRequest, verifiedScheduledRequest } from './server-auth.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 import { createOfficialContract, officialPolicy as policy } from './official-contract.js';
 export function createHandler(db, env, {background} = {}) { return async req => {
@@ -33,7 +33,8 @@ export function createHandler(db, env, {background} = {}) { return async req => 
       return reply({inventory:(data || []).filter(row => row.last_trier_sync_at && (row.variant_id===0 || product.variants?.some((v)=>v.id===row.variant_id))).map(publicStock)});
     }
     if (req.method!=='POST') return reply({error:'method_not_allowed'},405);
-    const internal = await verifiedServerRequest(req.headers, env);
+    const scheduled = await verifiedScheduledRequest(req.headers,db);
+    const internal = scheduled || await verifiedServerRequest(req.headers, env);
     if (!internal) {
       if (!origin) return reply({error:'origin_forbidden'},403);
       const token = req.headers.get('authorization')?.replace(/^Bearer /i,'') || '';
@@ -45,6 +46,7 @@ export function createHandler(db, env, {background} = {}) { return async req => 
       await panelQuota(db,user.id);
     }
     const body = await readJson(req,1024);
+    if(scheduled&&body.action!=='sync')return reply({error:'forbidden'},403);
     if (body.action==='status') {
       const {data,error} = await db.from('trier_sync_state').select('run_id,started_at,finished_at,lease_until,summary').eq('id',1).single();
       if (error) throw error;

@@ -132,15 +132,26 @@ export class InventoryService {
       const items = await this.client.products({deadline}); result.received = items.length;
       if(items.discountStatus)result.discountStatus=items.discountStatus;
       if (items.length > (this.settings.maxProducts ?? 10000)) throw new TrierError('too_many_products');
-      for (const item of items) {
-        remaining(deadline);
-        try {
-          const mapped = mapProduct(item, this.policy, this.settings.storeId);
-          remaining(deadline);
-          const updated = await this.repository.apply(mapped, lease);
-          if (updated) result.updated++; else result.skipped++;
-        } catch (error) { result.errors++; result.lastError = error instanceof TrierError ? error.code : 'persistence_or_mapping_failed'; }
-      }
+      // Bound database round trips, not provider requests. Each existing RPC
+      // still validates the shared lease and atomically records its audit.
+      let next=0,halt;
+      const worker=async()=>{
+        while(!halt&&next<items.length){
+          const item=items[next++];
+          try{
+            remaining(deadline);
+            const mapped=mapProduct(item,this.policy,this.settings.storeId);
+            remaining(deadline);
+            const updated=await this.repository.apply(mapped,lease);
+            if(updated)result.updated++;else result.skipped++;
+          }catch(error){
+            if(error instanceof TrierError&&error.code==='sync_deadline_exceeded'){halt=error;return;}
+            result.errors++;result.lastError=error instanceof TrierError?error.code:'persistence_or_mapping_failed';
+          }
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(4,items.length)},worker));
+      if(halt)throw halt;
     } catch (error) { result.status = 'failed'; result.errors++; result.lastError = error instanceof TrierError ? error.code : 'sync_failed'; }
     await this.repository.finish(result, lease);
     this.log({event:'trier_sync_completed',...result,durationMs:Date.now()-started});

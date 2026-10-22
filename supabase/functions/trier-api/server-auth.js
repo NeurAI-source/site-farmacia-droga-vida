@@ -13,6 +13,13 @@ export function internalRequest(headers, env) {
   const key = headers.get('apikey');
   return !!key && secretKeys(env).includes(key);
 }
+// Vault-generated capability authorizes only scheduled inventory sync, never
+// database access, status reads, or catalogue publication.
+export async function verifiedScheduledRequest(headers, db) {
+  const token=headers.get('x-trier-schedule');
+  if(!token||!/^[a-f0-9]{64}$/.test(token))return false;
+  try{const {data,error}=await db.rpc('trier_schedule_authorized',{provided_token:token});return !error&&data===true;}catch{return false;}
+}
 // Verify an existing server key through PostgREST's own role validation when
 // the key is not in the Edge Runtime's injected key dictionary (rotated keys).
 // The probe RPC is executable ONLY by service_role, never anon/authenticated.
