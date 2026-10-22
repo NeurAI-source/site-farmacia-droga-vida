@@ -8,7 +8,7 @@ export function mountCartChat({ getProducts, getCart, setCart }) {
   let dialog=document.querySelector('#cart-dialog');
   if(!dialog){dialog=document.createElement('dialog');dialog.id='cart-dialog';document.body.append(dialog);}
   dialog.classList.add('dv-cart-chat');dialog.setAttribute('aria-labelledby','cart-title');
-  dialog.innerHTML=`<div class="dv-chat-layout"><header class="dv-chat-header"><span class="dv-chat-avatar">${cartIcon}</span><div><h2 id="cart-title">Seu pré-pedido</h2><p>Droga Vida Popular · Estamos com você</p></div><button type="button" data-chat-close aria-label="Fechar carrinho">×</button></header><nav class="dv-chat-steps" aria-label="Etapas do pré-pedido"></nav><div class="dv-chat-scroll"><div class="dv-chat-bubble" role="status"></div><div id="cart-items"></div><div id="cart-summary"></div></div><footer class="dv-chat-footer"></footer></div>`;
+  dialog.innerHTML=`<div class="dv-chat-layout"><header class="dv-chat-header"><span class="dv-chat-avatar">${cartIcon}</span><div><h2 id="cart-title">Seu pré-pedido</h2><p>Droga Vida Popular · Estamos com você</p></div><button type="button" data-chat-close aria-label="Fechar carrinho"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><nav class="dv-chat-steps" aria-label="Etapas do pré-pedido"></nav><div class="dv-chat-scroll"><div class="dv-chat-bubble" role="status"></div><div id="cart-items"></div><div id="cart-summary"></div></div><footer class="dv-chat-footer"></footer></div>`;
   document.body.append(launcher);
   // Keep the cart above the optional privacy notice, including wrapped mobile
   // text. Neither feature should depend on accepting or rejecting statistics.
