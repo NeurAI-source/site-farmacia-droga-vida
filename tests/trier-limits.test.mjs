@@ -63,6 +63,13 @@ test('expired total deadline prevents request and retry backoff', async () => {
 test('sync stops starting writes after the total deadline', async () => {
   let writes=0, finished;
   const item={reducedCode:'001',name:'Mock',stockQuantity:1,status:'mock'};
-  const service=new InventoryService({settings:{...settings,syncDeadlineMs:10},policy:{priceUnit:'cents',isSellable:()=>true},client:{products:async()=>[item,item]},repository:{claim:async()=> 'lease',apply:async()=>{writes++;await new Promise(resolve=>setTimeout(resolve,20));return true;},finish:async result=>{finished={...result};}}});
-  const result=await service.refresh();assert.equal(writes,1);assert.equal(result.status,'failed');assert.equal(result.lastError,'sync_deadline_exceeded');assert.equal(finished.updated,1);
+  let active=0;
+  const service=new InventoryService({settings:{...settings,syncDeadlineMs:10},policy:{priceUnit:'cents',isSellable:()=>true},client:{products:async()=>Array(9).fill(item)},repository:{claim:async()=> 'lease',apply:async()=>{writes++;active++;await new Promise(resolve=>setTimeout(resolve,20));active--;return true;},finish:async result=>{assert.equal(active,0);finished={...result};}}});
+  const result=await service.refresh();assert.equal(writes,4);assert.equal(result.status,'failed');assert.equal(result.lastError,'sync_deadline_exceeded');assert.equal(finished.updated,4);
+});
+test('inventory writes stay bounded, audit lease is shared and all in-flight writes settle before finish',async()=>{
+ let active=0,peak=0,finished=false;const seen=new Set();
+ const items=Array.from({length:196},(_,i)=>({reducedCode:String(i+1),name:'Mock',stockQuantity:1,status:'mock'}));
+ const service=new InventoryService({settings:{...settings,syncDeadlineMs:5000},policy:{priceUnit:'cents',isSellable:()=>true},client:{products:async()=>items},repository:{claim:async()=> 'lease',apply:async(p,lease)=>{assert.equal(lease,'lease');assert.equal(finished,false);active++;peak=Math.max(peak,active);assert.equal(seen.has(p.reducedCode),false);seen.add(p.reducedCode);await new Promise(r=>setTimeout(r,1));active--;return true;},finish:async(_,lease)=>{assert.equal(lease,'lease');assert.equal(active,0);finished=true;}}});
+ const result=await service.refresh();assert.equal(result.updated,196);assert.equal(result.errors,0);assert.equal(result.status,'completed');assert.equal(peak,4);assert.equal(seen.size,196);assert.equal(finished,true);
 });
