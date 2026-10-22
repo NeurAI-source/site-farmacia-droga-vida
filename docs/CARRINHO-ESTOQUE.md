@@ -17,15 +17,17 @@ da Trier. Tamanhos mostram seus próprios saldos; a quantidade por embalagem nã
 é confundida com pacotes disponíveis. Sem variantes, a quantidade é expressa na
 unidade de venda. Saldo antigo do JSON nunca é apresentado como confirmado.
 Sem vínculo, dado inválido ou cache com mais de uma hora, aparece consulta de
-disponibilidade; zero confirmado é esgotado. Itens bloqueados pela Trier não
-são anunciados como disponíveis, mesmo com saldo positivo.
+disponibilidade; zero confirmado é esgotado. Produtos inativos na Trier não
+são liberados para pré-pedido, mesmo com saldo positivo. A opção de integração
+para e-commerce não bloqueia o pré-pedido pelo WhatsApp de produtos ativos com
+saldo positivo (regra autorizada em 22/10/2026).
 
 O navegador revalida somente o cache já existente a cada minuto e ao voltar à
 aba. Não consulta a Trier por visitante. O workflow de sincronização existente
 também roda quando `product-stock.js` entra na main, para atualizar o cache na
 ativação. Conserva agendamento, credenciais, intervalo mínimo e lease existentes.
-Não há alteração de banco, Edge Function, permissões, preços do catálogo ou
-cadastros. A precedência de preços da Trier continua a mesma.
+A regra de pré-pedido é aplicada na Edge Function existente. Não há alteração
+de banco, permissões, preços do catálogo ou cadastros. A precedência de preços da Trier continua a mesma.
 
 Testes usam somente catálogo local e APIs interceptadas. Cobrem carrinho comum
 e flutuante, tamanhos, estoque ausente/zero/antigo, limites, entrega/retirada,
