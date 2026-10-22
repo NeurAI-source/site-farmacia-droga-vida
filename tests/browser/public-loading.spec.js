@@ -19,7 +19,8 @@ test('homepage boots icons, catalog and chat despite legacy cached modules and u
  await expect(page.locator('.product-card')).toHaveCount(1);
  await expect(page.locator('#results')).not.toContainText('Carregando');
  await expect(page.locator('.dv-product-stock')).toContainText('Consulte a disponibilidade');
- await page.getByRole('button',{name:'Abrir pré-pedido flutuante'}).click();
+ await expect(page.locator('.dv-cart-launch')).toBeHidden();
+ await page.getByRole('button',{name:'Abrir carrinho',exact:true}).click();
  await expect(page.locator('#cart-dialog')).toBeVisible();
  expect(state.legacy).toEqual([]);expect(state.errors).toEqual([]);
 });

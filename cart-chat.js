@@ -4,11 +4,12 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<'
 const cartIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 3h3l3 12h11l3-9H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>';
 export function mountCartChat({ getProducts, getCart, setCart }) {
   const launcher=document.createElement('button');launcher.type='button';launcher.className='dv-cart-launch';launcher.setAttribute('aria-label','Abrir pré-pedido flutuante');launcher.setAttribute('aria-haspopup','dialog');
+  launcher.hidden=true;launcher.style.display='none';
   let dialog=document.querySelector('#cart-dialog');
   if(!dialog){dialog=document.createElement('dialog');dialog.id='cart-dialog';document.body.append(dialog);}
   dialog.classList.add('dv-cart-chat');dialog.setAttribute('aria-labelledby','cart-title');
   dialog.innerHTML=`<div class="dv-chat-layout"><header class="dv-chat-header"><span class="dv-chat-avatar">${cartIcon}</span><div><h2 id="cart-title">Seu pré-pedido</h2><p>Droga Vida Popular · Estamos com você</p></div><button type="button" data-chat-close aria-label="Fechar carrinho">×</button></header><nav class="dv-chat-steps" aria-label="Etapas do pré-pedido"></nav><div class="dv-chat-scroll"><div class="dv-chat-bubble" role="status"></div><div id="cart-items"></div><div id="cart-summary"></div></div><footer class="dv-chat-footer"></footer></div>`;
-  document.body.append(launcher);document.body.classList.add('has-cart-chat');
+  document.body.append(launcher);
   // Keep the cart above the optional privacy notice, including wrapped mobile
   // text. Neither feature should depend on accepting or rejecting statistics.
   let notice;
@@ -27,7 +28,7 @@ export function mountCartChat({ getProducts, getCart, setCart }) {
   const $=s=>dialog.querySelector(s);
   const customer={name:'',receipt:'entrega',neighborhood:''}; // never persisted
   let step=0,added=false;
-  function update(){const cart=getCart(),count=cart.reduce((n,i)=>n+i.qty,0);launcher.innerHTML=`<span class="dv-cart-icon">${cartIcon}<b>${count}</b></span><span><strong>Meu pré-pedido</strong><small>${count?`${count} ${count===1?'item':'itens'} · toque para revisar`:'Seu carrinho sempre à mão'}</small></span><span class="dv-cart-value">${money(cartTotal(cart,getProducts()))} ›</span>`;}
+  function update(){const cart=getCart(),count=cart.reduce((n,i)=>n+i.qty,0);launcher.hidden=count===0;launcher.style.display=count?'':'none';document.body.classList.toggle('has-cart-chat',count>0);launcher.innerHTML=`<span class="dv-cart-icon">${cartIcon}<b>${count}</b></span><span><strong>Meu pré-pedido</strong><small>${count?`${count} ${count===1?'item':'itens'} · toque para revisar`:'Seu carrinho sempre à mão'}</small></span><span class="dv-cart-value">${money(cartTotal(cart,getProducts()))} ›</span>`;}
   function close(){dialog.close();}
   function render(){
     const products=getProducts(),cart=getCart(),issue=cartStockIssue(cart,products);

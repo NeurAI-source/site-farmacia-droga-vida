@@ -12,6 +12,10 @@ continuar comprando preserva a posição da página. Dados de nome/bairro ficam
 somente em memória; WhatsApp continua no número existente e não envia mensagens
 automaticamente. Não há pagamento, reserva ou baixa de estoque.
 
+O botão flutuante fica oculto enquanto o carrinho está vazio, aparece ao adicionar
+o primeiro item ou restaurar itens salvos e desaparece ao remover o último. O
+carrinho do topo permanece visível e abre normalmente mesmo vazio.
+
 Todos os cards ativos e detalhes mostram estoque da loja 2 pelo cache público
 da Trier. Tamanhos mostram seus próprios saldos; a quantidade por embalagem não
 é confundida com pacotes disponíveis. Sem variantes, a quantidade é expressa na

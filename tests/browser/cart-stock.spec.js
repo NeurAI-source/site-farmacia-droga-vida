@@ -17,7 +17,7 @@ async function setup(page,{expanded=false}={}){
 }
 test('all active cards show real independent stock or consult, without replacing the header cart',async({page})=>{
  const state=await setup(page);await page.goto('/');
- await expect(page.locator('.cart-trigger')).toHaveCount(1);await expect(page.locator('.dv-cart-launch')).toBeVisible();
+ await expect(page.locator('.cart-trigger')).toHaveCount(1);await expect(page.locator('.dv-cart-launch')).toBeHidden();
  const simple=page.locator('.product-card').filter({has:page.locator('[data-add="8001"]')});
  await expect(simple).toContainText('2 unidades disponíveis');await expect(simple).not.toContainText('999');
  const diaper=page.locator('.product-card').filter({has:page.locator('[data-add="8002"]')});
@@ -28,6 +28,7 @@ test('all active cards show real independent stock or consult, without replacing
 });
 test('floating cart stays accessible above the privacy notice before consent',async({page})=>{
  await setup(page,{expanded:true});
+ await page.addInitScript(()=>localStorage.setItem('dv-cart',JSON.stringify([{id:8001,variant:'',qty:1}])));
  await page.addInitScript(()=>localStorage.removeItem('dv-analytics-consent'));
   await page.goto('/');
   const launcher=page.getByRole('button',{name:'Abrir pré-pedido flutuante'}),notice=page.locator('.statistics-choice');
@@ -38,6 +39,23 @@ test('floating cart stays accessible above the privacy notice before consent',as
   await page.getByRole('button',{name:'Não permitir',exact:true}).click();
   await expect(notice).toHaveCount(0);await expect(launcher).toBeVisible();
   await expect.poll(()=>page.locator('body').evaluate(body=>body.style.getPropertyValue('--dv-cart-notice-offset'))).toBe('0px');
+});
+test('floating cart appears after adding, survives reload and disappears after removing the last item',async({page})=>{
+ await setup(page);await page.goto('/');
+ const launcher=page.locator('.dv-cart-launch');
+ await expect(launcher).toBeHidden();await expect(page.locator('.cart-trigger')).toBeVisible();
+ await page.getByRole('button',{name:'Abrir carrinho',exact:true}).click();
+ await expect(page.locator('#cart-dialog')).toContainText('Seu carrinho está esperando por você.');
+ await page.getByRole('button',{name:'Fechar carrinho'}).click();
+ await page.locator('[data-add="8001"]').click();await expect(page.locator('#cart-dialog')).toBeVisible();
+ await page.getByRole('button',{name:'Fechar carrinho'}).click();await expect(launcher).toBeVisible();
+ await page.reload();await expect(launcher).toBeVisible();await expect(page.locator('#cart-count')).toHaveText('1');
+ await launcher.click();await page.getByRole('button',{name:'Remover',exact:true}).click();
+ await expect(launcher).toBeHidden();await expect(page.locator('#cart-count')).toHaveText('0');
+ await page.getByRole('button',{name:'Fechar carrinho'}).click();
+ await expect(page.locator('.cart-trigger')).toBeVisible();
+ await page.reload();await expect(launcher).toBeHidden();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
 test('adding opens chat, shares the header count, limits stock and keeps checkout off the top of the page',async({page})=>{
  await setup(page);await page.goto('/');await page.locator('[data-add="8001"]').click();
