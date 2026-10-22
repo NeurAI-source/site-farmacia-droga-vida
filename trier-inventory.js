@@ -18,7 +18,7 @@ export function applyInventory(catalog, rows, now = Date.now()) {
   for (const p of updated.products) {
     const targets=p.variants?.length?p.variants:[p];
     const synced=targets.filter(v=>v.trierUpdatedAt);
-    if(synced.length) p.trierStockLabel=synced.some(v=>v.trierAvailable)?'Disponível na unidade de entrega. Confirme a apresentação pelo WhatsApp.':'Sem estoque na unidade de entrega. Consulte a equipe.';
+    if(synced.length) p.trierStockLabel=synced.some(v=>v.trierAvailable)?'Disponível na unidade de entrega. Confirme a apresentação pelo WhatsApp.':synced.some(v=>v.stockQuantity>0)?'Há estoque na loja 2, mas o pré-pedido está indisponível. Consulte a equipe.':'Sem estoque na unidade de entrega. Consulte a equipe.';
   }
   return updated;
 }
