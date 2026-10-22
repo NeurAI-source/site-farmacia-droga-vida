@@ -51,7 +51,10 @@ export function createOfficialContract(codes, deliveryCode = '46295') {
             result.push({ reducedCode: String(p.codigo), ean: /^\d{8,14}$/.test(String(p.codigoBarras)) ? String(p.codigoBarras) : undefined,
               name: p.nomeEcommerce || p.nome, price: p.valorVendaEcommerce ?? p.valorVenda,
               stockQuantity: p.quantidadeEstoqueEcommerce ?? p.quantidadeEstoque,
-              status: p.ativo && p.integracaoEcommerce ? 'sellable' : 'blocked', storeId: settings.storeId });
+              // This storefront accepts WhatsApp pre-orders, not ERP ecommerce
+              // sales. Ecommerce opt-in is independent of active stock; the
+              // mapper still blocks inactive products and non-positive balances.
+              status: p.ativo ? 'sellable' : 'blocked', storeId: settings.storeId });
           }
           if (result.length > settings.maxProducts) throw new TrierError('too_many_products');
           if (rows.length < 50) break;

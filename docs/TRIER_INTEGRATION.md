@@ -1,10 +1,10 @@
 # Trier — preços e estoque + WhatsApp
 
-## Escopo atual (21/10/2026)
+## Escopo atual (22/10/2026)
 
 Somente leitura da API SGF LTS: `/rest/integracao/produto/obter-v1`, com Bearer no servidor, filtros `codigo` repetidos e paginação `primeiroRegistro`/`quantidadeRegistros`. Contrato oficial em `official-contract.js`. A filial é 2; não há soma de estoque entre unidades.
 
-O preço usa `valorVendaEcommerce` quando informado e `valorVenda` como alternativa. Não se presume aplicação de `percentualDesconto` sobre um preço que pode já incluir regras do ERP. Estoque usa `quantidadeEstoqueEcommerce` quando informado, senão `quantidadeEstoque`. Venda disponível exige produto ativo, habilitado para e-commerce e estoque positivo. Códigos são associados aos produtos e variantes do catálogo; o item de taxa 46295 fica excluído.
+O preço usa `valorVendaEcommerce` quando informado e `valorVenda` como alternativa. Não se presume aplicação de `percentualDesconto` sobre um preço que pode já incluir regras do ERP. Estoque usa `quantidadeEstoqueEcommerce` quando informado, senão `quantidadeEstoque`. O pré-pedido pelo WhatsApp exige produto ativo na Trier e estoque positivo. A opção `integracaoEcommerce` não bloqueia esse fluxo: não se cria venda no ERP. Produtos inativos e saldos zero/negativos continuam bloqueados; o catálogo publicado também precisa manter o produto ativo. A liberação só acontece após nova consulta validada, nunca por alteração manual da disponibilidade no cache. Códigos são associados aos produtos e variantes do catálogo; o item de taxa 46295 fica excluído.
 
 A função grava estoque/preço em cache privado com auditoria. O site consulta uma lista reduzida dos itens publicados, sem consultar a Trier por visitante. A rotina GitHub Actions tenta sincronizar a cada 15 minutos (agendamentos podem atrasar); o painel permite atualização manual, respeitando o intervalo. O navegador usa dados com até uma hora e mantém o catálogo publicado como alternativa em falhas ou dados antigos. Preços e estoque continuam sujeitos à confirmação no WhatsApp.
 
