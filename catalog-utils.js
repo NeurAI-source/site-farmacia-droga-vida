@@ -42,14 +42,27 @@ export function orderMessage(cart, products, customer = {}) {
   const delivery = customer.receipt !== 'retirada';
   const name = String(customer.name || '').trim();
   const neighborhood = String(customer.neighborhood || '').trim();
-  return 'Olá, vim pelo site da Droga Vida Popular e gostaria de consultar este PRÉ-PEDIDO:\n' +
-    'Nome: ' + name + (delivery ? '\nBairro para entrega: ' + neighborhood : '') + '\n\n' + cart.map(item => {
-      const p = products.find(p => p.id === item.id);
-      const v = p.variants.find(v => v.size === item.variant);
-      const code = String((v ? v.shortCode : p.shortCode) ?? '').trim();
-      return '· ' + item.qty + 'x ' + p.name + (v ? ' — tamanho ' + v.size + ', pacote com ' + v.packageQuantity + (p.subcategory === 'Fraldas' ? ' fraldas' : ' unidades') : '') + (code ? ' — Cód. reduzido: ' + code : '') + ' — ' + money(unitPrice(p, item.variant) * item.qty);
-    }).join('\n') + '\n\nSubtotal estimado dos produtos: ' + money(cartTotal(cart, products)) +
-    '\nForma de recebimento: ' + (delivery ? 'entrega.' : 'retirada na loja.') +
-    (delivery ? '\nTaxa de entrega: consultar com os atendentes.' : '') +
-    '\n\nPodem confirmar a disponibilidade, por favor?';
+  const items = cart.map((item, index) => {
+    const p = products.find(p => p.id === item.id);
+    const v = p.variants.find(v => v.size === item.variant);
+    const code = String((v ? v.shortCode : p.shortCode) ?? '').trim();
+    const packages = !!v || /fralda|lenço|lenco|\blenc\b/i.test([p.name,p.subcategory].join(' ')) || /^FR\s/i.test(p.name);
+    const unit = packages ? (item.qty === 1 ? 'pacote' : 'pacotes') : (item.qty === 1 ? 'unidade' : 'unidades');
+    return [
+      `${String(index + 1).padStart(2, '0')} | ${p.name}`,
+      ...(v ? [`Tamanho: ${v.size} | Pacote: ${v.packageQuantity} ${p.subcategory === 'Fraldas' ? 'fraldas' : 'unidades'}`] : []),
+      `Quantidade: ${item.qty} ${unit}`,
+      ...(code ? [`Código: ${code}`] : []),
+      `Valor: ${money(unitPrice(p, item.variant) * item.qty)}`,
+    ].join('\n');
+  }).join('\n\n');
+  return [
+    '🛒 PRÉ-PEDIDO | DROGA VIDA POPULAR',
+    'Olá! Vim pelo site da Droga Vida Popular e gostaria de consultar meu pré-pedido.',
+    `👤 DADOS DO CLIENTE\nNome: ${name}${delivery ? '\n📍 Bairro de entrega: ' + neighborhood : ''}`,
+    `📦 PRODUTOS SOLICITADOS\n\n${items}`,
+    `💰 RESUMO DO PRÉ-PEDIDO\nSubtotal: ${money(cartTotal(cart, products))}\n${delivery ? '🚚 Recebimento: Entrega\nTaxa de entrega: A consultar' : '🏪 Recebimento: Retirada na loja 2 — Nature 1'}`,
+    delivery ? '✅ Poderiam confirmar o valor total com a entrega?' : '✅ Poderiam confirmar o valor total para retirada?',
+    'Obrigado!',
+  ].join('\n\n');
 }
