@@ -46,9 +46,10 @@ export function orderMessage(cart, products, customer = {}) {
     'Nome: ' + name + (delivery ? '\nBairro para entrega: ' + neighborhood : '') + '\n\n' + cart.map(item => {
       const p = products.find(p => p.id === item.id);
       const v = p.variants.find(v => v.size === item.variant);
-      return '· ' + item.qty + 'x ' + p.name + (v ? ' — tamanho ' + v.size + ', pacote com ' + v.packageQuantity + (p.subcategory === 'Fraldas' ? ' fraldas' : ' unidades') : '') + ' — ' + money(unitPrice(p, item.variant) * item.qty);
+      const code = String((v ? v.shortCode : p.shortCode) ?? '').trim();
+      return '· ' + item.qty + 'x ' + p.name + (v ? ' — tamanho ' + v.size + ', pacote com ' + v.packageQuantity + (p.subcategory === 'Fraldas' ? ' fraldas' : ' unidades') : '') + (code ? ' — Cód. reduzido: ' + code : '') + ' — ' + money(unitPrice(p, item.variant) * item.qty);
     }).join('\n') + '\n\nSubtotal estimado dos produtos: ' + money(cartTotal(cart, products)) +
     '\nForma de recebimento: ' + (delivery ? 'entrega.' : 'retirada na loja.') +
     (delivery ? '\nTaxa de entrega: consultar com os atendentes.' : '') +
-    '\n\nOs produtos estão sujeitos à disponibilidade em estoque.\nPodem confirmar a disponibilidade, por favor?';
+    '\n\nPodem confirmar a disponibilidade, por favor?';
 }
