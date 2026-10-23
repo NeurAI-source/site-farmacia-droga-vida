@@ -49,7 +49,7 @@ function suggestCategory(automatic=false){
 suggestButton.onclick=()=>suggestCategory();field('name').addEventListener('blur',()=>suggestCategory(true));
 const protectLabel=document.createElement('label');protectLabel.className='full';
 protectLabel.innerHTML='<span><input type="checkbox" data-protect-classification checked> Proteger esta classificação de ajustes automáticos</span>';
-suggestion.after(protectLabel);const protect=protectLabel.querySelector('input');protect.onchange=()=>{categoryTouched=true;};
+field('category').parentElement.after(protectLabel);const protect=protectLabel.querySelector('input');protect.onchange=()=>{categoryTouched=true;};
 setInterval(async()=>{if(!data?.categoryIntelligence?.automatic||saving||document.hidden||document.querySelector('dialog[open]')||document.activeElement?.matches('input,select,textarea'))return;try{await reloadCatalog();const next=fillMissingClassifications(data);if(next!==data){await save(next);render();}}catch(error){notify(error.message);}},60000);
 const productImageUpload = mountProductImageUpload({dialog:$('#editor'),input:$('#image-upload'),urlField:field('imageUrl'),status:$('#image-upload-status'),upload:uploadProductImage,preview:previewImage});
 function subcategories(selected=''){const category=data.categories.find(c=>c.name===field('category').value);field('subcategory').innerHTML='<option value="">Sem subcategoria</option>'+(category?.subcategories||[]).map(s=>`<option ${s.name===selected?'selected':''}>${esc(s.name)}</option>`).join('')}

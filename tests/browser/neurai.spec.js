@@ -65,10 +65,26 @@ test('category management adds defaults, edits structures and enables safe autom
  await page.getByRole('button',{name:'Nova categoria',exact:true}).click();const d=page.getByRole('dialog',{name:'Organização de categorias'});
  await d.getByLabel('Nome da categoria',{exact:true}).fill('Acessórios de teste');await d.getByLabel('Subcategorias — uma por linha',{exact:true}).fill('Acessório A\nAcessório B');await d.getByRole('button',{name:'Salvar categoria'}).click();await expect(d).toBeHidden();await expect(page.locator('#category-cards')).toContainText('Acessório B');
  state.catalog.products[0].name='ESM RISQUE TESTE';state.catalog.products[0].category='Beleza e cosméticos';state.catalog.products[0].subcategory='';
+ await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.getByRole('button',{name:'Categorias',exact:true}).click();
  await page.getByLabel('Completar subcategorias vazias automaticamente enquanto o painel estiver aberto').check();await expect(page.locator('[data-category-status]')).toContainText('Alterações salvas');expect(state.catalog.products[0].subcategory).toBe('Esmaltes');expect(state.catalog.categoryIntelligence.automatic).toBe(true);
 });
 test('invalid and duplicated codes block the entire batch before saving',async({page})=>{
  const state=await setup(page);for(const text of ['001 5,00\nmissing 9,99','001 5,00\n001 6,00','001 -1','001 0']){await analyze(page,text);await expect(page.locator('[data-confirm]')).toBeHidden();await expect(page.locator('[data-message]')).toContainText('Nenhum preço');}expect(state.calls.some(c=>c.action==='price-batch')).toBe(false);
+});
+
+test('classification conflict preserves the reviewed draft and reports a reload instead of overwriting',async({page})=>{
+ const state=await setup(page);state.catalog.products[0].name='ESM RISQUE TESTE';state.catalog.products[0].category='Perfumaria e Cuidados Pessoais';state.catalog.products[0].subcategory='Higiene pessoal';
+ await page.getByRole('button',{name:'Organizar catálogo',exact:true}).first().click();const dialog=page.getByRole('dialog',{name:'Organização de categorias'});await dialog.getByLabel('Classificar ESM RISQUE TESTE',{exact:true}).check();
+ await page.route('**/rest/v1/rpc/save_catalog',r=>r.fulfill({status:409,json:{message:'Conflict: reload catalog'}}));
+ await dialog.getByRole('button',{name:'Confirmar classificações selecionadas'}).click();await expect(dialog.locator('[data-review-status]')).toContainText('Outro usuário');expect(state.catalog.products[0].subcategory).toBe('Higiene pessoal');expect(state.calls.some(c=>c.action==='publish')).toBe(false);
+});
+
+test('classification history recovery requires review and keeps current prices',async({page})=>{
+ const state=await setup(page);const product=state.catalog.products[0];product.category='Perfumaria e Cuidados Pessoais';product.subcategory='Esmaltes';product.classification={locked:true,source:'reviewed'};const price=product.priceCents;
+ const row={id:1,created_at:new Date().toISOString(),actor_id:id,after_version:7,changes:[{id:product.id,name:product.name,before:{category:product.category,subcategory:'Higiene pessoal',classification:null},after:{category:product.category,subcategory:product.subcategory,classification:product.classification}}]};
+ await page.route('**/rest/v1/category_history*',r=>r.fulfill({json:[row]}));
+ await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.getByRole('button',{name:'Categorias',exact:true}).click();await page.getByRole('button',{name:'Consultar histórico de classificação'}).click();await page.locator('[data-category-history-list] summary').click();await page.getByRole('button',{name:'Revisar recuperação',exact:true}).click();const d=page.getByRole('dialog',{name:'Organização de categorias'});await expect(d).toContainText('Higiene pessoal');expect(product.subcategory).toBe('Esmaltes');
+ await d.getByRole('button',{name:'Confirmar recuperação',exact:true}).click();await expect(d).toBeHidden();expect(state.catalog.products[0].subcategory).toBe('Higiene pessoal');expect(state.catalog.products[0].priceCents).toBe(price);expect(state.catalog.products[0].classification.locked).toBe(true);
 });
 test('concurrent edit invalidates preview and publishes nothing',async({page})=>{
  const state=await setup(page);await analyze(page);state.version++;await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('catálogo mudou');expect(state.batches).toHaveLength(0);

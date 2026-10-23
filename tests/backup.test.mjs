@@ -33,6 +33,7 @@ test('wrong recovery key and unsupported envelope version are rejected', () => {
   assert.throws(() => decryptBackup(JSON.stringify(changed), keys.privateKey));
 });
 test('restore validation rejects missing tables, extra auth data and storage traversal', () => {
+  const legacy=backup();delete legacy.tables.category_history;assert.doesNotThrow(()=>validateBackup(legacy));
   const value = backup(); delete value.tables.campaigns; assert.throws(() => validateBackup(value));
   const auth = backup(); auth.tables.users = []; assert.throws(() => validateBackup(auth));
   const bad = backup(); bad.storage.push({ bucket: 'product-images', path: '../private', data: '', bytes: 0, sha256: '' }); assert.throws(() => validateBackup(bad));
