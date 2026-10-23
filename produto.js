@@ -3,6 +3,7 @@ import { mountCartChat } from './cart-chat.js?v=20261021-privacy-cart';
 import { stockState, stockMarkup, refreshStockMarkup } from './product-stock.js';
 import { money, unitPrice, sanitizeCart, priceHtml } from './catalog-utils.js';
 import { productDetailMarkup, productEscape, imageUrl } from './product-detail.js?v=20261008-sem-detalhes-v1';
+import { productThumbnail } from './product-images.js';
 const host=document.querySelector('#product-page-root');
 const params=new URLSearchParams(location.search), id=Number(params.get('id'));
 const msg=s=>{const el=document.querySelector('#product-page-feedback'); if(el)el.textContent=s;};
@@ -43,5 +44,5 @@ try {
   try{if(navigator.share)await navigator.share({title:p.name,url:location.href});else if(navigator.clipboard){await navigator.clipboard.writeText(location.href);msg('Link do produto copiado!')}else msg('Copie o endereço desta página para compartilhar.')}catch{}
  };
  const related=data.products.filter(x=>x.active&&x.id!==id&&x.category===p.category).slice(0,4);
- if(related.length){const section=document.createElement('section');section.className='product-page-related';section.innerHTML='<h2>Produtos relacionados</h2><div class="product-page-related-grid">'+related.map(x=>`<a data-price-id="${x.id}" href="produto.html?id=${x.id}"><img src="${productEscape(imageUrl(x.imageUrl))}" alt="${productEscape(x.name)}" loading="lazy"><strong>${productEscape(x.name)}</strong><span>${priceHtml(x)}</span>${stockMarkup(x)}</a>`).join('')+'</div>';host.append(section);}
+ if(related.length){const section=document.createElement('section');section.className='product-page-related';section.innerHTML='<h2>Produtos relacionados</h2><div class="product-page-related-grid">'+related.map(x=>`<a data-price-id="${x.id}" href="produto.html?id=${x.id}"><img src="${productEscape(productThumbnail(x.imageUrl))}" alt="${productEscape(x.name)}" loading="lazy"><strong>${productEscape(x.name)}</strong><span>${priceHtml(x)}</span>${stockMarkup(x)}</a>`).join('')+'</div>';host.append(section);}
 } catch(error){host.innerHTML='<div class="product-page-empty"><h1>'+productEscape(error.message)+'</h1><a href="./#ofertas">Voltar ao catálogo</a></div>'}

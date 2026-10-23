@@ -30,7 +30,7 @@ test('scheduler migration keeps capability in Vault, restricts RPCs and reuses t
  create table net.requests(id bigint generated always as identity,url text,headers jsonb,body jsonb,timeout_milliseconds int);
  create function net.http_post(url text,headers jsonb,body jsonb,timeout_milliseconds int) returns bigint language sql as $$insert into net.requests(url,headers,body,timeout_milliseconds) values(url,headers,body,timeout_milliseconds) returning id$$;
  revoke all on schema vault from public,anon,authenticated;`);
- const sql=(await readFile(new URL('../supabase/migrations/20261022150050_reliable_trier_scheduler.sql',import.meta.url),'utf8')).replace(/^create extension .*;\n/gm,'');
+ const sql=(await readFile(new URL('../supabase/migrations/20261022150050_reliable_trier_scheduler.sql',import.meta.url),'utf8')).replace(/^create extension .*;\r?\n/gm,'');
  await db.exec(sql);
  const token=(await db.query('select secret from vault.secrets')).rows[0].secret;assert.match(token,/^[a-f0-9]{64}$/);
  const job=(await db.query('select * from cron.job')).rows[0];assert.equal(job.active,false);assert.equal(job.schedule,'*/5 * * * *');assert.equal(job.command,'select public.trier_run_scheduled_sync();');

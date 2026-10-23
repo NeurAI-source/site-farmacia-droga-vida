@@ -24,7 +24,8 @@ const decode = value => {
   return decoded;
 };
 export function validateBackup(value) {
-  if (value?.version !== 1 || value.kind !== 'application-data' || !Number.isFinite(Date.parse(value.createdAt)) || !value.tables || !Array.isArray(value.storage)) throw Error('Invalid application backup');
+  const encryptedMedia = value?.version === 2 && value.kind === 'application-data-encrypted-media';
+  if ((!encryptedMedia && (value?.version !== 1 || value.kind !== 'application-data')) || !Number.isFinite(Date.parse(value.createdAt)) || !value.tables || !Array.isArray(value.storage)) throw Error('Invalid application backup');
   if (Object.keys(value.tables).sort().join() !== Object.keys(TABLES).sort().join()) throw Error('Unexpected or missing backup tables');
   for (const rows of Object.values(value.tables)) if (!Array.isArray(rows) || rows.length > MAX_ROWS || rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) throw Error('Invalid backup rows');
   if (value.storage.length > MAX_ROWS) throw Error('Too many storage objects');
@@ -33,39 +34,63 @@ export function validateBackup(value) {
     if (!BUCKETS.includes(object.bucket) || !safePath(object.path)) throw Error('Invalid storage manifest');
     const key = object.bucket + '/' + object.path;
     if (paths.has(key)) throw Error('Duplicate storage object'); paths.add(key);
-    const bytes = decode(object.data);
-    if (object.bytes !== bytes.length || hash(bytes) !== object.sha256) throw Error('Storage integrity mismatch');
+    if (encryptedMedia) {
+      if (!Number.isSafeInteger(object.bytes) || object.bytes < 0 || object.bytes > MAX_BYTES || !/^[a-f0-9]{64}$/.test(object.sha256) || typeof object.encryptedData !== 'string') throw Error('Invalid encrypted storage manifest');
+      const envelope = JSON.parse(object.encryptedData);
+      if (envelope.version !== 1 || envelope.algorithm !== 'RSA-OAEP-SHA256/AES-256-GCM' || typeof envelope.ciphertext !== 'string') throw Error('Invalid encrypted storage object');
+    } else {
+      const bytes = decode(object.data);
+      if (object.bytes !== bytes.length || hash(bytes) !== object.sha256) throw Error('Storage integrity mismatch');
+    }
   }
   if (Buffer.byteLength(JSON.stringify(value)) > MAX_BYTES) throw Error('Backup exceeds size limit');
   return value;
 }
-export function encryptBackup(value, recipientKey) {
-  validateBackup(value);
+export function encryptBytes(plaintext, recipientKey, context = aad) {
   const publicKey = recipientKey?.type === 'public' ? recipientKey : createPublicKey(recipientKey);
   if (publicKey.asymmetricKeyType !== 'rsa' || publicKey.asymmetricKeyDetails.modulusLength < 2048) throw Error('Backup requires an RSA public key of at least 2048 bits');
-  const plaintext = Buffer.from(JSON.stringify(value)), key = randomBytes(32), iv = randomBytes(12);
+  const key = randomBytes(32), iv = randomBytes(12);
   try {
-    const cipher = createCipheriv('aes-256-gcm', key, iv); cipher.setAAD(aad);
+    const cipher = createCipheriv('aes-256-gcm', key, iv); cipher.setAAD(context);
     const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
     const wrapped = publicEncrypt({ key: publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, key);
     return JSON.stringify({ version: 1, algorithm: 'RSA-OAEP-SHA256/AES-256-GCM', wrappedKey: wrapped.toString('base64'), iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), ciphertext: ciphertext.toString('base64') });
-  } finally { key.fill(0); plaintext.fill(0); }
+  } finally { key.fill(0); }
 }
-export function decryptBackup(envelopeText, recoveryKey) {
+export function encryptBackup(value, recipientKey) {
+  validateBackup(value);
+  const plaintext = Buffer.from(JSON.stringify(value));
+  try { return encryptBytes(plaintext, recipientKey); } finally { plaintext.fill(0); }
+}
+export function storageContext(bucket, path) { return Buffer.from(`droga-vida-application-backup:storage:v1:${bucket}/${path}`); }
+export function decryptBytes(envelopeText, recoveryKey, context = aad) {
   if (Buffer.byteLength(envelopeText) > MAX_BYTES * 1.5) throw Error('Encrypted backup exceeds size limit');
   const envelope = JSON.parse(envelopeText);
   if (envelope.version !== 1 || envelope.algorithm !== 'RSA-OAEP-SHA256/AES-256-GCM') throw Error('Unsupported backup envelope');
   const key = privateDecrypt({ key: recoveryKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, decode(envelope.wrappedKey));
-  let plaintext;
   try {
     const iv = decode(envelope.iv), tag = decode(envelope.tag);
     if (key.length !== 32 || iv.length !== 12 || tag.length !== 16) throw Error('Invalid encryption metadata');
-    const decipher = createDecipheriv('aes-256-gcm', key, iv); decipher.setAAD(aad); decipher.setAuthTag(tag);
-    plaintext = Buffer.concat([decipher.update(decode(envelope.ciphertext)), decipher.final()]);
-    return validateBackup(JSON.parse(plaintext.toString('utf8')));
-  } finally { key.fill(0); plaintext?.fill(0); }
+    const decipher = createDecipheriv('aes-256-gcm', key, iv); decipher.setAAD(context); decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(decode(envelope.ciphertext)), decipher.final()]);
+  } finally { key.fill(0); }
 }
-export async function collectBackup({ url, serviceKey, fetcher = fetch, progress = () => {} }) {
+export function decryptBackup(envelopeText, recoveryKey) {
+  const plaintext = decryptBytes(envelopeText, recoveryKey);
+  try {
+    const value = validateBackup(JSON.parse(plaintext.toString('utf8')));
+    if (value.version === 1) return value;
+    const storage = value.storage.map(({ encryptedData, ...object }) => {
+      const bytes = decryptBytes(encryptedData, recoveryKey, storageContext(object.bucket, object.path));
+      try {
+        if (bytes.length !== object.bytes || hash(bytes) !== object.sha256) throw Error('Storage integrity mismatch');
+        return { ...object, data: bytes.toString('base64') };
+      } finally { bytes.fill(0); }
+    });
+    return validateBackup({ ...value, version: 1, kind: 'application-data', storage });
+  } finally { plaintext.fill(0); }
+}
+export async function collectBackup({ url, serviceKey, fetcher = fetch, progress = () => {}, storeImage }) {
   const base = new URL(url);
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(url) || base.username || base.password || !serviceKey) throw Error('Invalid backup configuration');
   let total = 0;
@@ -112,14 +137,18 @@ export async function collectBackup({ url, serviceKey, fetcher = fetch, progress
           if (!safePath(path) || path.split('/').length > 16) throw Error('Invalid storage path');
           if (!entry.id) { folders.push(path); continue; }
           if (storage.length >= MAX_ROWS) throw Error('Storage exceeds object limit');
-          const bytes = await request(`/storage/v1/object/authenticated/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`);
-          storage.push({ bucket, path, bytes: bytes.length, sha256: hash(bytes), contentType: typeof entry.metadata?.mimetype === 'string' ? entry.metadata.mimetype : 'application/octet-stream', data: bytes.toString('base64') });
+          const download = () => request(`/storage/v1/object/authenticated/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`);
+          if (storeImage) storage.push({ bucket, path, ...await storeImage({ bucket, path, entry, download }) });
+          else {
+            const bytes = await download();
+            storage.push({ bucket, path, bytes: bytes.length, sha256: hash(bytes), contentType: typeof entry.metadata?.mimetype === 'string' ? entry.metadata.mimetype : 'application/octet-stream', data: bytes.toString('base64') });
+          }
         }
         if (entries.length < PAGE) break;
       }
     }
   }
-  const backup = validateBackup({ version: 1, kind: 'application-data', createdAt: new Date().toISOString(), tables, storage });
+  const backup = validateBackup({ version: storeImage ? 2 : 1, kind: storeImage ? 'application-data-encrypted-media' : 'application-data', createdAt: new Date().toISOString(), tables, storage });
   const serialized = JSON.stringify(backup);
   if (serialized.includes(serviceKey) || /sb_secret_[A-Za-z0-9_-]+|-----BEGIN (?:RSA )?PRIVATE KEY-----/.test(serialized)) throw Error('Credential material detected in application data');
   return backup;
@@ -132,7 +161,10 @@ async function main() {
     console.log('Recovery verified; application data written to the requested file. Database unchanged.');
   } else if (process.argv[2] === 'backup') {
     const publicKey = process.env.SECURITY_BACKUP_PUBLIC_KEY || await readFile(new URL('../security/backup-public.pem', import.meta.url), 'utf8');
-    const backup = await collectBackup({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY, progress: message=>console.log(message) });
+    const options = { url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY, progress: message=>console.log(message) };
+    const backup = process.env.BACKUP_MEDIA_CACHE_DIR
+      ? await (await import('./incremental-backup.mjs')).collectIncrementalBackup({ ...options, publicKey, cacheDir: process.env.BACKUP_MEDIA_CACHE_DIR })
+      : await collectBackup(options);
     await writeFile(process.argv[3] || 'application-backup.enc', encryptBackup(backup, publicKey), { flag: 'wx', mode: 0o600 });
     console.log('Encrypted application backup completed.');
   } else throw Error('Usage: backup.mjs backup [encrypted-output] | restore encrypted-input explicit-json-output');
