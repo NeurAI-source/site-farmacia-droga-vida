@@ -48,6 +48,25 @@ test('optional automatic publication requires review, saves one batch and shows 
 test('disabled automatic publication saves a draft; editor cannot enable publication',async({page})=>{
  const state=await setup(page,{role:'editor'});await expect(page.getByLabel('Publicar automaticamente após confirmação')).toBeDisabled();await analyze(page);await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('Rascunho salvo');expect(state.calls.find(c=>c.action==='price-batch').autoPublish).toBe(false);
 });
+test('category suggestions require review, save selected products and protect manual choices',async({page})=>{
+ const state=await setup(page);state.catalog.products[0].name='ESM RISQUE TESTE';state.catalog.products[0].category='Perfumaria e Cuidados Pessoais';state.catalog.products[0].subcategory='Higiene pessoal';
+ state.catalog.products[1].name='ABS ALWAYS TESTE';state.catalog.products[1].category='Perfumaria e Cuidados Pessoais';state.catalog.products[1].subcategory='';state.catalog.products[1].classification={locked:true,source:'manual'};
+ await page.getByRole('button',{name:'Organizar catálogo',exact:true}).first().click();
+ const dialog=page.getByRole('dialog',{name:'Organização de categorias'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('Esmaltes');await expect(dialog).toContainText('Escolha manual protegida');
+ expect(state.calls.filter(c=>c.payload)).toHaveLength(0);
+ await dialog.getByLabel('Classificar ABS ALWAYS TESTE',{exact:true}).isEnabled().then(enabled=>expect(enabled).toBe(false));
+ await dialog.getByLabel('Classificar ESM RISQUE TESTE',{exact:true}).check();const prices=state.catalog.products.map(p=>p.priceCents);
+ await dialog.getByRole('button',{name:'Confirmar classificações selecionadas'}).click();await expect(dialog).toBeHidden();
+ expect(state.catalog.products[0].subcategory).toBe('Esmaltes');expect(state.catalog.products[0].classification.locked).toBe(true);expect(state.catalog.products[1].subcategory).toBe('');expect(state.catalog.products.map(p=>p.priceCents)).toEqual(prices);
+});
+test('category management adds defaults, edits structures and enables safe automatic completion',async({page})=>{
+ const state=await setup(page);await page.getByRole('button',{name:'Fechar',exact:true}).click();await page.getByRole('button',{name:'Categorias',exact:true}).click();
+ await page.getByRole('button',{name:'Completar categorias da farmácia'}).click();await expect(page.locator('#category-cards')).toContainText('Absorventes e protetores diários');await expect(page.locator('#category-cards')).toContainText('Esmaltes');
+ await page.getByRole('button',{name:'Nova categoria',exact:true}).click();const d=page.getByRole('dialog',{name:'Organização de categorias'});
+ await d.getByLabel('Nome da categoria',{exact:true}).fill('Acessórios de teste');await d.getByLabel('Subcategorias — uma por linha',{exact:true}).fill('Acessório A\nAcessório B');await d.getByRole('button',{name:'Salvar categoria'}).click();await expect(d).toBeHidden();await expect(page.locator('#category-cards')).toContainText('Acessório B');
+ state.catalog.products[0].name='ESM RISQUE TESTE';state.catalog.products[0].category='Beleza e cosméticos';state.catalog.products[0].subcategory='';
+ await page.getByLabel('Completar subcategorias vazias automaticamente enquanto o painel estiver aberto').check();await expect(page.locator('[data-category-status]')).toContainText('Alterações salvas');expect(state.catalog.products[0].subcategory).toBe('Esmaltes');expect(state.catalog.categoryIntelligence.automatic).toBe(true);
+});
 test('invalid and duplicated codes block the entire batch before saving',async({page})=>{
  const state=await setup(page);for(const text of ['001 5,00\nmissing 9,99','001 5,00\n001 6,00','001 -1','001 0']){await analyze(page,text);await expect(page.locator('[data-confirm]')).toBeHidden();await expect(page.locator('[data-message]')).toContainText('Nenhum preço');}expect(state.calls.some(c=>c.action==='price-batch')).toBe(false);
 });

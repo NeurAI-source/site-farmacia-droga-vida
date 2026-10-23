@@ -1,0 +1,106 @@
+import { normalize } from '../catalog-utils.js';
+
+// Explicit product terms only: brands alone never decide a classification.
+export const taxonomy = [
+  ['Higiene e cuidados pessoais', ['Absorventes e protetores diários','Higiene íntima','Sabonetes','Desodorantes','Higiene bucal','Depilação']],
+  ['Beleza e cosméticos', ['Esmaltes','Removedores de esmalte','Cuidados com as unhas','Maquiagem','Cuidados com o rosto']],
+  ['Cabelos', ['Shampoos e condicionadores','Máscaras e tratamentos','Cremes de pentear','Óleos capilares','Coloração']],
+  ['Área Infantil', ['Fraldas','Lenços umedecidos','Higiene infantil','Mamadeiras e acessórios','Chupetas','Fórmulas infantis']],
+  ['Cuidados adultos', ['Fraldas geriátricas','Incontinência','Cuidados com a pele']],
+  ['Suplementos', ['Vitaminas e minerais','Polivitamínicos','Nutrição esportiva']],
+  ['Medicamentos', []],
+  ['Saúde e Bem-estar', ['Curativos','Antissépticos','Aparelhos de saúde','Máscaras e acessórios']]
+];
+const rules = [
+  [1,1,/\b(removedor de esmalte|acetona)\b/],
+  [1,0,/\b(esmalte|esm)\b/],
+  [4,0,/\bfraldas?\b.*\b(geriatrica|adult[oa]|incontinencia)\b|\b(geriatrica|adult[oa])\b.*\bfraldas?\b/],
+  [4,1,/\b(absorvente|protetor)\b.*\bincontinencia\b/],
+  [0,0,/\b(absorventes?|abs|protetor diario|protetores diarios)\b/],
+  [0,1,/\b(sabonete|higiene)\b.*\bintim[oa]\b/],
+  [3,1,/\b(lenco|lencos|lenc)\b.*\b(umedecido|umedecidos|umid|um)\b/],
+  [3,0,/\bfraldas?\b|\bfr\b.*\b(babysec|pampers|huggies|pom pom|toquinho)\b/],
+  [3,3,/\bmamadeiras?\b/], [3,4,/\bchupetas?\b/],
+  [0,2,/\bsabonetes?\b/], [0,3,/\b(desodorante|desodorantes|des)\b/],
+  [0,4,/\b(creme dental|pasta dental|escova dental|fio dental|enxaguante bucal)\b/],
+  [0,5,/\b(depilatorio|depilatoria|lamina de barbear|aparelho de barbear)\b/],
+  [2,0,/\b(shampoo|xampu|condicionador)\b/],
+  [2,1,/\b(mascara capilar|tratamento capilar)\b/],
+  [2,2,/\b(creme de pentear|creme para pentear|leave in)\b/],
+  [2,3,/\b(oleo capilar|serum capilar)\b/],
+  [2,4,/\b(tintura|tonalizante|coloracao capilar)\b/],
+  [1,3,/\b(batom|rimel|mascara de cilios|base facial|po compacto)\b/],
+  [7,0,/\b(curativo|curativos|gaze|esparadrapo|atadura)\b/],
+  [7,1,/\b(antisseptico|antissepticos)\b/],
+  [7,2,/\b(termometro|aparelho de pressao|oximetro)\b/]
+];
+const same = (a,b) => normalize(a||'').trim() === normalize(b||'').trim();
+export const classificationOf = p => ({category:p.category||'',subcategory:p.subcategory||'',classification:p.classification||null});
+const canonical=value=>JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item);
+export function suggestClassification(product, categories) {
+  const text = normalize(product.name || '').replace(/[^a-z0-9 ]/g,' ');
+  // More specific rules above absorb their broad counterparts. Independent
+  // matches (e.g. a kit containing soap and shampoo) require human review.
+  const matches=rules.filter(([, ,pattern])=>pattern.test(text));
+  const specific=matches.filter(([c,s])=>!(c===0&&s===2&&matches.some(([a,b])=>a===0&&b===1))
+    && !(c===1&&s===0&&matches.some(([a,b])=>a===1&&b===1))
+    && !(c===3&&s===0&&matches.some(([a])=>a===4))
+    && !(c===0&&s===0&&matches.some(([a])=>a===4)));
+  const unique=[...new Map(specific.map(([c,s])=>[`${c}:${s}`,[c,s]])).values()];
+  if(unique.length!==1)return {review:true,reason:unique.length?'Produto com mais de uma classificação possível.':'Sem regra confiável. Revise manualmente.'};
+  const [ci,si]=unique[0], [canonical,subs]=taxonomy[ci];
+  // Keep the store's existing equivalent category whenever possible.
+  const aliases=ci===0||ci===1?['Perfumaria e Cuidados Pessoais']:ci===2?['Perfumaria e Cuidados Pessoais']:[];
+  const existing=categories.find(c=>same(c.name,canonical))||categories.find(c=>aliases.some(a=>same(c.name,a)));
+  const category=existing?.name||canonical;
+  const subcategory=existing?.subcategories.find(s=>same(s.name,subs[si]))?.name||subs[si];
+  return {category,subcategory,reason:'Termo explícito no nome do produto',ruleVersion:1};
+}
+export function ensureClassification(catalog, category, subcategory) {
+  let c=catalog.categories.find(c=>same(c.name,category));
+  if(!c){c={id:Math.max(0,...catalog.categories.map(c=>Number(c.id)||0))+1,name:category,icon:'⊞',active:true,sortOrder:catalog.categories.length*10+10,subcategories:[]};catalog.categories.push(c);}
+  if(subcategory&&!c.subcategories.some(s=>same(s.name,subcategory))){const id=Math.max(0,...catalog.categories.flatMap(c=>c.subcategories.map(s=>Number(s.id)||0)))+1;c.subcategories.push({id,categoryId:c.id,name:subcategory,active:true,sortOrder:c.subcategories.length*10+10});}
+  return c;
+}
+export function completeTaxonomy(catalog) {
+  const next=structuredClone(catalog);
+  for(const [name,subs] of taxonomy){ensureClassification(next,name,'');for(const sub of subs)ensureClassification(next,name,sub);}
+  return next;
+}
+export function classificationReview(catalog) {
+  return catalog.products.flatMap(p=>{
+    const suggestion=suggestClassification(p,catalog.categories);
+    if(!suggestion.review&&same(p.category,suggestion.category)&&same(p.subcategory,suggestion.subcategory))return [];
+    return [{id:p.id,name:p.name,before:classificationOf(p),...suggestion,locked:p.classification?.locked===true,
+      automatic:!suggestion.review&&!p.classification?.locked&&!p.subcategory&&same(p.category,suggestion.category)}];
+  });
+}
+export function applyClassifications(catalog, rows, mode='reviewed') {
+  const next=structuredClone(catalog), seen=new Set();
+  for(const row of rows){
+    const p=next.products.find(p=>p.id===row.id);
+    if(!p||seen.has(row.id)||row.review||row.locked||!row.category||!row.subcategory||canonical(classificationOf(p))!==canonical(row.before))throw Error('O cadastro mudou ou está protegido. Analise novamente.');
+    if(mode==='automatic'&&!row.automatic)throw Error('Esta alteração exige revisão.');
+    ensureClassification(next,row.category,row.subcategory);
+    p.category=row.category;p.subcategory=row.subcategory;
+    p.classification={locked:mode!=='automatic',source:mode,ruleVersion:1};
+    seen.add(row.id);
+  }
+  return next;
+}
+export function fillMissingClassifications(catalog) {
+  if(catalog.categoryIntelligence?.automatic!==true)return catalog;
+  const rows=classificationReview(catalog).filter(r=>r.automatic);
+  return rows.length?applyClassifications(catalog,rows,'automatic'):catalog;
+}
+export function restoreClassifications(catalog, changes) {
+  const next=structuredClone(catalog);
+  for(const row of changes){const p=next.products.find(p=>p.id===row.id);
+    if(!p||!row.before.category||canonical(classificationOf(p))!==canonical(row.after))throw Error('Há alterações posteriores ou o produto é novo. Revise o produto antes de desfazer.');
+    ensureClassification(next,row.before.category,row.before.subcategory);
+    p.category=row.before.category;p.subcategory=row.before.subcategory;
+    // A recovery is a deliberate choice, protected against the next auto pass.
+    p.classification={...(row.before.classification||{}),locked:true,source:'restored'};
+  }
+  return next;
+}
