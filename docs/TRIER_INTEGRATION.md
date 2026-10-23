@@ -81,3 +81,7 @@ Antes dessa documentação, a preparação pode ser validada com contratos fict�
 Migration `20261022150050_reliable_trier_scheduler.sql` habilita pg_cron e pg_net e instala o job `trier-inventory-sync` inicialmente desativado. Após implantar a Edge Function compatível, ativar o job pelo proprietário do banco. A capacidade aleatória é gerada no banco e guardada no Vault; não é uma chave administrativa, não sai para o frontend e autoriza somente a ação sync. Funções, Vault e schemas do agendador não são acessíveis por anon/authenticated. O job consulta lease/intervalo antes de enfileirar HTTP; a RPC existente confirma a posse atomicamente.
 
 Persistência usa no máximo quatro RPCs simultâneas. Cada uma preserva validação de código, filial, lease e auditoria; todas as operações iniciadas são aguardadas antes da finalização. O prazo total e a expiração pública de uma hora continuam iguais. Falhas temporárias ao consultar o andamento pelo GitHub repetem somente a leitura de status, sem iniciar a remarcação ou sincronização novamente.
+
+## Preços independentes do estoque — 23/10/2026
+
+A consulta paginada de melhores descontos envia `removerRestricaoEstoque=true` em todas as páginas, conforme o OpenAPI SGF. Assim, produtos atuais e futuros com saldo zero ou negativo recebem sua promoção vigente pelo código exato. Não altera estoque, não reaproveita promoções antigas do catálogo e não libera pré-pedido sem saldo. Regras de descontos condicionais, preço ecommerce próprio e validação de centavos permanecem iguais.
