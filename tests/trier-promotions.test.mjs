@@ -21,6 +21,25 @@ test('bulk best discount uses exact provider cents and never applies percentage 
  const {rows,calls}=await load([source(1)],[offer(1)]);assert.equal(calls.length,2);assert.match(calls[1].pathname,/melhor\/obter-todos-v1$/);
  const mapped=mapProduct(rows[0],officialPolicy,'2');assert.equal(mapped.priceCents,5699);assert.equal(mapped.regularPriceCents,6325);assert.equal(rows.discountStatus,'checked');
 });
+test('valid promotions apply independently of zero or negative stock, including future codes',async()=>{
+ for(const [code,stock] of [[24618,0],[987654,-2],[987655,3]]){
+  const {rows,calls}=await load([{...source(code),quantidadeEstoque:stock}],[offer(code)]);
+  assert.equal(calls[1].searchParams.get('removerRestricaoEstoque'),'true');
+  const mapped=mapProduct(rows[0],officialPolicy,'2');
+  assert.equal(mapped.priceCents,5699);assert.equal(mapped.regularPriceCents,6325);
+  assert.equal(mapped.stockQuantity,stock);assert.equal(mapped.available,stock>0);
+ }
+});
+test('every discount page removes stock restriction and preserves exact product matching',async()=>{
+ let pages=0;
+ const rows=await new TrierClient(settings,createOfficialContract(['987654']),async(url)=>{
+  if(!url.pathname.includes('/desconto/'))return Response.json([source(987654)]);
+  assert.equal(url.searchParams.get('removerRestricaoEstoque'),'true');pages++;
+  return Response.json(url.searchParams.get('primeiroRegistro')==='0'
+   ?Array.from({length:500},(_,i)=>offer(i+1)):[offer(987654)]);
+ }).products();
+ assert.equal(pages,2);assert.equal(rows.discountStatus,'checked');assert.equal(rows[0].price,56.99);
+});
 test('conditional, ambiguous, invalid, mismatched and ecommerce-specific prices stay regular',async()=>{
  for(const discounts of [[offer(1,{codigoCondicaoPagamento:3,nomeCondicaoPagamento:'DINHEIRO'})],[offer(1),offer(1)],[offer(1,{valorPromocao:-1})],[offer(1,{valorPromocao:70})],[offer(1,{valorVenda:70})],[{codigoProduto:1,valorVenda:63.25,valorPromocao:56.99}]]){
   const {rows}=await load([source(1)],discounts);assert.equal(rows[0].price,63.25);assert.equal(rows[0].regularPrice,null);

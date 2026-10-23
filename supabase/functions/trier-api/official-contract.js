@@ -4,7 +4,7 @@ import { TrierClient, TrierError, moneyToCents } from './integration.js';
 async function loadDiscounts(settings, fetcher, sleep, deadline, selected) {
   const discounts=new Map(), seen=new Set(), pageSize=500;
   for(let offset=0;;offset+=pageSize){
-    const contract={request(){const url=new URL(settings.baseUrl.replace(/\/$/,'')+'/rest/integracao/produto/desconto/melhor/obter-todos-v1');url.searchParams.set('primeiroRegistro',String(offset));url.searchParams.set('quantidadeRegistros',String(pageSize));return {url:url.href,headers:{Authorization:`Bearer ${settings.token}`,Accept:'application/json'}};},decode(payload){if(!Array.isArray(payload)||payload.length>pageSize)throw Error();return payload;}};
+    const contract={request(){const url=new URL(settings.baseUrl.replace(/\/$/,'')+'/rest/integracao/produto/desconto/melhor/obter-todos-v1');url.searchParams.set('removerRestricaoEstoque','true');url.searchParams.set('primeiroRegistro',String(offset));url.searchParams.set('quantidadeRegistros',String(pageSize));return {url:url.href,headers:{Authorization:`Bearer ${settings.token}`,Accept:'application/json'}};},decode(payload){if(!Array.isArray(payload)||payload.length>pageSize)throw Error();return payload;}};
     const rows=await new TrierClient({...settings,maxProducts:pageSize},contract,fetcher,sleep).products({deadline});
     if(offset+rows.length>20000)throw new TrierError('too_many_discounts');
     for(const row of rows){
