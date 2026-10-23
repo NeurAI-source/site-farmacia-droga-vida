@@ -69,7 +69,7 @@ test('adding opens chat, shares the header count, limits stock and keeps checkou
  await page.getByRole('button',{name:'Abrir carrinho',exact:true}).click();await page.getByRole('button',{name:'Continuar para o WhatsApp →',exact:true}).click();
  await page.locator('#order-form').getByLabel('Seu nome',{exact:true}).fill('Cliente de teste');await page.getByLabel('Forma de recebimento').selectOption('retirada');
  await expect(page.locator('#neighborhood-label')).not.toBeVisible();await page.getByRole('button',{name:'Revisar meu pré-pedido →'}).click();
- await expect(page.locator('#order-preview')).toContainText('Cliente de teste');await expect(page.locator('#order-preview')).toContainText('retirada na loja');
+ await expect(page.locator('#order-preview')).toContainText('Cliente de teste');await expect(page.locator('#order-preview')).toContainText('Retirada na loja');
  await page.context().route('https://wa.me/**',r=>r.fulfill({body:'WhatsApp interceptado pelo teste'}));
  const popup=page.waitForEvent('popup');await page.getByRole('button',{name:'Continuar no WhatsApp →',exact:true}).click();const win=await popup;await win.waitForLoadState();
  expect(decodeURIComponent(win.url())).toContain('PRÉ-PEDIDO');expect(await page.evaluate(()=>JSON.stringify({...localStorage}))).not.toContain('Cliente de teste');
