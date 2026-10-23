@@ -28,7 +28,7 @@ export function stockMarkup(product, { now = Date.now(), selectable = false } = 
   }
   return `<div class="dv-product-stock" data-stock-id="${Number(product.id)}" data-stock-selectable="${selectable}" title="${title}"><span class="dv-stock-heading">Estoque por tamanho · Loja 2</span><div class="dv-stock-grid">${variants.map(v => {
     const state=stockState(product,v.size,now), tag=selectable?'button':'span';
-    return `<${tag} class="dv-stock-chip ${state.known?(state.available?'is-available':state.restricted?'is-restricted':'is-unavailable'):'is-unknown'}" ${selectable?`type="button" data-stock-product="${Number(product.id)}" data-stock-size="${esc(v.size)}" ${state.known&&!state.available?'disabled':''}`:''} aria-label="${esc(v.size+': '+state.label)}"><strong>${esc(v.size)}</strong><span>${esc(state.short)}</span>${state.notice?`<small class="dv-stock-notice">${esc(state.notice)}</small>`:''}</${tag}>`;
+    return `<${tag} class="dv-stock-chip ${state.known?(state.available?'is-available':state.restricted?'is-restricted':'is-unavailable'):'is-unknown'}" ${selectable?`type="button" data-stock-product="${Number(product.id)}" data-stock-size="${esc(v.size)}" ${state.known&&!state.available?'disabled':''}`:''} aria-label="${esc(v.size+': '+state.label)}"><strong${String(v.size).length>5?' class="dv-stock-label-long"':''}>${esc(v.size)}</strong><span>${esc(state.short)}</span>${state.notice?`<small class="dv-stock-notice">${esc(state.notice)}</small>`:''}</${tag}>`;
   }).join('')}</div></div>`;
 }
 export function refreshStockMarkup(products, root = document) {
