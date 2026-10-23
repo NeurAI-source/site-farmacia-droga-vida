@@ -1,4 +1,5 @@
 import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
+import { productThumbnail } from './product-images.js';
 import { mountCartChat } from './cart-chat.js?v=20261021-privacy-cart';
 import { stockMarkup, stockState, refreshStockMarkup } from './product-stock.js';
 import { money, filterProducts, sanitizeCart, cartTotal, orderMessage, unitPrice, priceInfo, priceHtml } from './catalog-utils.js';
@@ -52,7 +53,7 @@ function updateCounts() {
 function productCard(p) {
   const discount = priceInfo(p).discount;
   const categoryLabel = p.subcategory ? `${p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category} · ${p.subcategory}` : (p.category === 'Perfumaria e Cuidados Pessoais' ? 'Cuidados pessoais' : p.category);
-  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(imageSrc(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(categoryLabel)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p>${stockMarkup(p,{selectable:true})}<div class="product-price">${priceHtml(p)}</div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
+  return `<article class="product-card"><button class="favorite" data-favorite="${p.id}" aria-label="${favorites.includes(p.id)?'Remover':'Adicionar'} ${escape(p.name)} ${favorites.includes(p.id)?'dos':'aos'} favoritos" aria-pressed="${favorites.includes(p.id)}">${icon('heart')}</button><button class="product-image" data-detail="${p.id}" aria-label="Ver detalhes de ${escape(p.name)}"><img src="${escape(productThumbnail(p.imageUrl))}" alt="${escape(p.name)}" loading="lazy" width="180" height="180">${discount ? `<span class="discount">-${discount}%</span>`:''}</button><p class="product-category">${escape(categoryLabel)}</p><h3><button data-detail="${p.id}">${escape(p.name)}</button></h3><p class="product-detail">${escape(p.variants.length ? 'Vários tamanhos disponíveis' : p.detail)}</p>${stockMarkup(p,{selectable:true})}<div class="product-price">${priceHtml(p)}</div><button class="add-button" data-add="${p.id}">${icon('cart')} ${p.variants.length ? 'Escolher tamanho':'Adicionar'}</button></article>`;
 }
 function renderSubfilters() {
   const host = $('#subfilters'); if (!host) return;

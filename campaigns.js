@@ -10,7 +10,7 @@ export function mountCampaignCarousel(root) {
   const viewer = createCampaignViewer({ setImage: images.setSource }), motion = matchMedia('(prefers-reduced-motion: reduce)');
   const stage = root.querySelector('.campaign-slide'), dots = root.querySelector('.campaign-dots');
   let campaigns = [], serverAnchor = 0, monoAnchor = 0, leaseUntil = 0, nextStart = Infinity, fetching = false;
-  let boundaryTimer, fetchTimer, autoTimer, lastIds = '';
+  let boundaryTimer, fetchTimer, autoTimer, lastIds = '', resumePending = false;
   const serverNow = () => serverAnchor + performance.now() - monoAnchor;
   const eligible = () => performance.now() < leaseUntil ? visibleCampaigns(campaigns, serverNow()) : [];
   const slider = createLoopSlider(stage, { motion, setImage: images.setSource, onChange: () => { draw(); restartAuto(); }, onInteraction: restartAuto,
@@ -26,6 +26,7 @@ export function mountCampaignCarousel(root) {
     }, 5200);
   }
   function draw() {
+    if (document.hidden) { root.hidden = true; clearTimeout(boundaryTimer); return; }
     if (Number.isFinite(nextStart) && serverNow() >= nextStart) { nextStart = Infinity; queueMicrotask(refresh); }
     const list = eligible(); root.hidden = !list.length; slider.setItems(list);
     if (viewer.id) { const current = list.find(c => c.id === viewer.id); if (current) viewer.update(current); else viewer.close(); }
@@ -51,7 +52,7 @@ export function mountCampaignCarousel(root) {
   root.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); slider.move(e.key === 'ArrowLeft' ? -1 : 1); restartAuto(); } });
   motion.addEventListener('change', restartAuto);
   async function refresh() {
-    if (fetching) return; fetching = true; clearTimeout(fetchTimer); const sent = performance.now();
+    if (document.hidden || fetching) return; fetching = true; clearTimeout(fetchTimer); const sent = performance.now();
     try {
       const url = new URL(`${config.url}/functions/v1/campaign-api`); url.searchParams.set('action', 'public'); url.searchParams.set('_', String(Date.now()));
       const response = await fetch(url, { headers: {apikey: config.key}, cache: 'no-store', signal: AbortSignal.timeout(10000) });
@@ -60,10 +61,22 @@ export function mountCampaignCarousel(root) {
       serverAnchor = Date.parse(data.server_now) + performance.now() - sent; monoAnchor = performance.now();
       root.dataset.campaignState = 'ready'; campaigns = data.campaigns; leaseUntil = sent + Math.min(Number(data.lease_ms) || 0, 60000); nextStart = Date.parse(data.next_start) || Infinity;
       draw();
-    } catch { draw(); } finally { fetching = false; fetchTimer = setTimeout(refresh, 20000); }
+    } catch { draw(); } finally {
+      fetching = false;
+      if (!document.hidden) {
+        // If visibility returned during an older request, obtain a fresh lease immediately.
+        fetchTimer = setTimeout(refresh, resumePending ? 0 : 20000);
+        resumePending = false;
+      }
+    }
   }
-  function restore() { if (document.hidden) return; leaseUntil = 0; viewer.close(); draw(); refresh(); }
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { root.hidden = true; viewer.close(); restartAuto(); } else restore(); });
+  function restore() { if (document.hidden) return; leaseUntil = 0; viewer.close(); draw(); if (fetching) resumePending = true; else refresh(); }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearTimeout(fetchTimer); clearTimeout(boundaryTimer);
+      root.hidden = true; viewer.close(); restartAuto();
+    } else restore();
+  });
   globalThis.addEventListener('pageshow', e => { if (e.persisted) restore(); }); globalThis.addEventListener('online', restore);
   refresh(); return {refresh};
 }

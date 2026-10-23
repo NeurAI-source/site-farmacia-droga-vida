@@ -9,6 +9,30 @@ async function config(page){await page.route('**/public-config.js',r=>r.fulfill(
 async function publicRoute(page,getData){await config(page);await page.route('https://campaign-test.supabase.co/**',async r=>{if(!r.request().url().includes('action=public'))return r.fulfill({json:{}});const data=await getData();if(data===null)return r.abort();return r.fulfill({headers:{'cache-control':'no-store'},json:data});});}
 const payload=(campaigns,other={})=>({server_now:new Date().toISOString(),next_start:null,lease_ms:60000,campaigns,...other});
 const currentArt = '.campaign-panel[aria-hidden="false"] .campaign-art';
+
+test('hidden pages stop polling and revalidate before restoring expired campaigns', async({page}) => {
+  let snapshots = 0;
+  await publicRoute(page, () => { snapshots++; return payload([makeCampaign(1)]); });
+  await page.addInitScript(() => Object.defineProperty(document, 'hidden', { configurable: true, get: () => Boolean(window.__testHidden) }));
+  await page.clock.install(); await page.goto('/');
+  await expect(page.locator('.campaign-name')).toHaveText('Campanha 1');
+  const before = snapshots;
+  await page.evaluate(() => { window.__testHidden = true; document.dispatchEvent(new Event('visibilitychange')); });
+  await page.clock.runFor(120000);
+  expect(snapshots).toBe(before); await expect(page.locator('#campaign-carousel')).toBeHidden();
+  await page.evaluate(() => { window.__testHidden = false; document.dispatchEvent(new Event('visibilitychange')); });
+  await expect.poll(() => snapshots).toBe(before + 1);
+  await expect(page.locator('#campaign-carousel')).toBeVisible();
+  await page.clock.runFor(22000); await expect.poll(() => snapshots).toBe(before + 2);
+});
+
+test('unavailable campaigns retain a bounded retry interval', async({page}) => {
+  await config(page); let snapshots = 0;
+  await page.route('https://campaign-test.supabase.co/functions/v1/campaign-api?*', async route => { snapshots++; await route.fulfill({ status: 503, json: {} }); });
+  await page.clock.install(); await page.goto('/'); await expect.poll(() => snapshots).toBe(1);
+  await page.clock.runFor(10000); expect(snapshots).toBe(1);
+  await page.clock.runFor(12000); await expect.poll(() => snapshots).toBe(2);
+});
 test('deployment loads one versioned carousel bundle even when the previous slider is cached',async({page})=>{
   const errors=[],legacyRequests=[];page.on('pageerror',e=>errors.push(e.message));
   await publicRoute(page,()=>payload([makeCampaign(1),makeCampaign(2)]));

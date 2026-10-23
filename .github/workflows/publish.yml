@@ -40,6 +40,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - run: npm ci
         if: steps.snapshot.outputs.skip != 'true'
+      - uses: actions/cache@v4
+        if: steps.snapshot.outputs.skip != 'true'
+        with:
+          path: .media-cache
+          key: public-product-previews-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: public-product-previews-v1-
       - run: npm test
         if: steps.snapshot.outputs.skip != 'true'
       - run: npm run build

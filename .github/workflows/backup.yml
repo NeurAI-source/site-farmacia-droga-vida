@@ -23,7 +23,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: node --test tests/backup.test.mjs
+      - run: node --test tests/backup.test.mjs tests/incremental-backup.test.mjs
       - name: Examinar arquivos para evitar segredos no repositório
         run: |
           if git ls-files | grep -E '(^|/)(\.env$|\.env\.(local|production|development)$|.*private.*\.pem$|\.venv/)'; then exit 1; fi
@@ -32,12 +32,18 @@ jobs:
           scan_status=$?
           set -e
           if [ "$scan_status" -ne 1 ]; then exit 1; fi
+      - uses: actions/cache@v4
+        with:
+          path: .backup-cache
+          key: encrypted-backup-media-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: encrypted-backup-media-v1-
       - name: Exportar e criptografar sem arquivos temporários em texto aberto
         run: node scripts/backup.mjs backup application-backup.enc
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SECURITY_BACKUP_PUBLIC_KEY: ${{ vars.SECURITY_BACKUP_PUBLIC_KEY }}
+          BACKUP_MEDIA_CACHE_DIR: .backup-cache
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: application-backup-${{ github.run_id }}

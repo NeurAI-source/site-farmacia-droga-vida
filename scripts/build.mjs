@@ -6,11 +6,12 @@ import { validateCatalog } from '../catalog-validation.js';
 import { securityHeaders } from './security-policy.mjs';
 import { forbiddenPath } from './security-check.mjs';
 import { adminPath } from './admin-path.mjs';
+import { buildProductPreviews } from './product-previews.mjs';
 const root = new URL('../', import.meta.url), dist = new URL('dist/', root);
 const panelPath = adminPath();
 await rm(dist, { recursive: true, force: true }); await mkdir(dist, { recursive: true });
 // Copy only public assets. Never copy the checkout or environment files.
-for (const file of ['index.html','produto.html','produto.js','produto.css','product-detail.js','robots.txt','sitemap.xml','styles.css','premium.css','app.js','analytics.js','campaign-utils.js','campaign-images.js','campaign-viewer.js','campaign-slider.js','campaigns.js','campaigns.css','catalog-utils.js','trier-inventory.js','product-stock.js','cart-chat.js','cart-stock.css','catalog-validation.js','content-evidence.js','assets']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
+for (const file of ['index.html','produto.html','produto.js','produto.css','product-detail.js','product-images.js','product-media.js','robots.txt','sitemap.xml','styles.css','premium.css','app.js','analytics.js','campaign-utils.js','campaign-images.js','campaign-viewer.js','campaign-slider.js','campaigns.js','campaigns.css','catalog-utils.js','trier-inventory.js','product-stock.js','cart-chat.js','cart-stock.css','catalog-validation.js','content-evidence.js','assets']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
 const url = process.env.SUPABASE_URL || '', key = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 if (!!url !== !!key) throw Error('Configure both public Supabase values.');
 if (url && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) throw Error('Invalid Supabase URL.');
@@ -19,10 +20,19 @@ if (key && !key.startsWith('sb_publishable_')) {
   if (payload?.role !== 'anon') throw Error('Only a public publishable/anon key may be bundled.');
 }
 await writeFile(new URL('public-config.js', dist), `export const config = ${JSON.stringify({url,key})};\n`);
+const source = process.env.CATALOG_FILE || new URL('catalog.json', root);
+const catalog = validateCatalog(JSON.parse(await readFile(source, 'utf8')));
+const media = await buildProductPreviews({ catalog, projectUrl: url,
+  cacheDir: fileURLToPath(new URL('.media-cache/', root)), outDir: fileURLToPath(dist) });
+await writeFile(new URL('product-media.js', dist), `export const productPreviews = ${JSON.stringify(media.previews)};\n`);
+console.log(`Public previews: ${media.stats.images}; originals ${media.stats.sourceBytes} bytes; previews ${media.stats.previewBytes} bytes.`);
+const mediaPlugin = { name: 'public-product-previews', setup(builder) {
+  builder.onLoad({ filter: /[\\/]product-media\.js$/ }, () => ({ contents: `export const productPreviews = ${JSON.stringify(media.previews)};`, loader: 'js' }));
+} };
 // A new entry point must never import an older cached inventory/cart module.
 // Keep each public page's entire application graph at one content-specific URL.
 for (const [entry,page] of [['app.js','index.html'],['produto.js','produto.html']]) {
-  const result=await build({entryPoints:[fileURLToPath(new URL(entry,root))],bundle:true,format:'esm',platform:'browser',target:['safari15.4'],minify:true,external:['./public-config.js'],entryNames:entry.replace('.js','-[hash]'),outdir:fileURLToPath(dist),metafile:true});
+  const result=await build({entryPoints:[fileURLToPath(new URL(entry,root))],bundle:true,format:'esm',platform:'browser',target:['safari15.4'],minify:true,external:['./public-config.js'],plugins:[mediaPlugin],entryNames:entry.replace('.js','-[hash]'),outdir:fileURLToPath(dist),metafile:true});
   const bundle=Object.keys(result.metafile.outputs).find(file=>file.endsWith('.js')).split(/[\\/]/).pop();
   const source=await readFile(new URL(page,dist),'utf8');
   const pattern=new RegExp(`src="${entry.replace('.','\\.')}\\?[^" ]*"`);
@@ -43,8 +53,6 @@ const adminFile=Object.keys(adminBundle.metafile.outputs).find(file=>file.endsWi
 const adminHtml=(await readFile(new URL('admin/index.html',root),'utf8')).replace(/src="admin\.js\?[^\"]*"/,`src="${adminFile}"`);
 await writeFile(new URL('index.html',panelDirectory),adminHtml);
 await build({ stdin: { contents: "export { createClient } from '@supabase/supabase-js'", resolveDir: fileURLToPath(root) }, bundle:true,format:'esm',platform:'browser',minify:true,outfile:fileURLToPath(new URL('vendor/supabase.js',dist)) });
-const source = process.env.CATALOG_FILE || new URL('catalog.json', root);
-const catalog = validateCatalog(JSON.parse(await readFile(source, 'utf8')));
 await writeFile(new URL('catalog.json', dist), JSON.stringify(catalog));
 await writeFile(new URL('.nojekyll', dist), '');
 await writeFile(new URL('404.html', dist), '<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Página não encontrada | Droga Vida Popular</title><body><main><h1>Página não encontrada</h1><p>Este endereço não está disponível.</p><a href="/">Voltar para a Droga Vida Popular</a></main></body></html>');

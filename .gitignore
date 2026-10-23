@@ -23,6 +23,8 @@ supabase/functions/_shared/
 # Browser verification output
 test-results/
 playwright-report/
+.media-cache/
+.backup-cache/
 
 /node_modules
 
