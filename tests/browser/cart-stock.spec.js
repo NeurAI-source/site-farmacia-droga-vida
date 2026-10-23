@@ -79,7 +79,7 @@ test('catalog size picker stays on the same page even when expanded product page
  const original=page.url();await page.locator('[data-add="8002"]').click();
  await expect(page).toHaveURL(original);await expect(page.locator('#detail-dialog')).toBeVisible();
  await expect(page.locator('#variant')).toHaveValue('');
- await expect(page.locator('#variant option[value="G"]')).toBeDisabled();
+ await expect(page.locator('#variant option[value="G"]')).toHaveAttribute('disabled','');
  await page.locator('#detail-add').click();await expect(page.locator('#cart-dialog')).not.toBeVisible();
  await expect(page.locator('#detail-dialog')).toBeVisible();
  await page.locator('#detail-dialog [data-stock-size="M"]').click();
@@ -134,8 +134,8 @@ test('blocked items expose physical counts separately and cannot enter a pre-ord
  await expect(page.locator('[data-stock-id="8002"] [data-stock-size="G"]')).toContainText('Esgotado');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
  await page.locator('[data-stock-id="8002"] [data-stock-size="M"]').click();
- await expect(page.locator('#product-page-variant option[value="XG"]')).toHaveAttribute('disabled','');
- await expect(page.locator('[data-stock-id="8002"]')).toContainText('46 pac.');
+ await expect(page.locator('#detail-dialog #variant option[value="XG"]')).toHaveAttribute('disabled','');
+ await expect(page.locator('#detail-dialog [data-stock-id="8002"]')).toContainText('46 pac.');
  await page.goto('/produto.html?id=8001');
  await page.getByRole('button',{name:'Adicionar ao pré-pedido',exact:true}).click();
  await expect(page.locator('#product-page-feedback')).toContainText('23 unidades em estoque — pré-pedido indisponível');
