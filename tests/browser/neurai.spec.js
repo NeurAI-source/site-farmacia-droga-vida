@@ -43,13 +43,48 @@ test('optional automatic publication requires review, saves one batch and shows 
  await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('Alterações salvas: 2');expect(state.batches).toHaveLength(1);expect(state.calls.find(c=>c.action==='price-batch').autoPublish).toBe(true);
  state.status='building';await page.getByRole('button',{name:'Atualizar histórico'}).click();await expect(page.locator('[data-publication]')).toHaveText('Publicação em andamento.');state.status='published';await page.getByRole('button',{name:'Atualizar histórico'}).click();await expect(page.locator('[data-publication]')).toHaveText('Publicação concluída.');
  await expect(page.locator('.neur-dialog [data-history]')).toContainText('admin@example.test');expect(errors).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
- await page.locator('.neur-dialog').screenshot({path:`test-results/neurai-${test.info().project.name}.png`});
+ await page.locator('.neur-dialog[aria-labelledby="neur-title"]').screenshot({path:`test-results/neurai-${test.info().project.name}.png`});
 });
 test('disabled automatic publication saves a draft; editor cannot enable publication',async({page})=>{
  const state=await setup(page,{role:'editor'});await expect(page.getByLabel('Publicar automaticamente após confirmação')).toBeDisabled();await analyze(page);await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('Rascunho salvo');expect(state.calls.find(c=>c.action==='price-batch').autoPublish).toBe(false);
 });
+test('category suggestions require review, save selected products and protect manual choices',async({page})=>{
+ const state=await setup(page);state.catalog.products[0].name='ESM RISQUE TESTE';state.catalog.products[0].category='Perfumaria e Cuidados Pessoais';state.catalog.products[0].subcategory='Higiene pessoal';
+ state.catalog.products[1].name='ABS ALWAYS TESTE';state.catalog.products[1].category='Perfumaria e Cuidados Pessoais';state.catalog.products[1].subcategory='';state.catalog.products[1].classification={locked:true,source:'manual'};
+ await page.getByRole('button',{name:'Organizar catálogo',exact:true}).first().click();
+ const dialog=page.getByRole('dialog',{name:'Organização de categorias'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('Esmaltes');await expect(dialog).toContainText('Escolha manual protegida');
+ expect(state.calls.filter(c=>c.payload)).toHaveLength(0);
+ await dialog.getByLabel('Classificar ABS ALWAYS TESTE',{exact:true}).isEnabled().then(enabled=>expect(enabled).toBe(false));
+ await dialog.getByLabel('Classificar ESM RISQUE TESTE',{exact:true}).check();const prices=state.catalog.products.map(p=>p.priceCents);
+ await dialog.getByRole('button',{name:'Confirmar classificações selecionadas'}).click();await expect(dialog).toBeHidden();
+ expect(state.catalog.products[0].subcategory).toBe('Esmaltes');expect(state.catalog.products[0].classification.locked).toBe(true);expect(state.catalog.products[1].subcategory).toBe('');expect(state.catalog.products.map(p=>p.priceCents)).toEqual(prices);
+});
+test('category management adds defaults, edits structures and enables safe automatic completion',async({page})=>{
+ const state=await setup(page);await page.getByRole('button',{name:'Fechar',exact:true}).click();await page.locator('.sidebar [data-view="categories"]').click();
+ await page.getByRole('button',{name:'Completar categorias da farmácia'}).click();await expect(page.locator('#category-cards')).toContainText('Absorventes e protetores diários');await expect(page.locator('#category-cards')).toContainText('Esmaltes');
+ await page.getByRole('button',{name:'Nova categoria',exact:true}).click();const d=page.getByRole('dialog',{name:'Organização de categorias'});
+ await d.getByLabel('Nome da categoria',{exact:true}).fill('Acessórios de teste');await d.getByLabel('Subcategorias — uma por linha',{exact:true}).fill('Acessório A\nAcessório B');await d.getByRole('button',{name:'Salvar categoria'}).click();await expect(d).toBeHidden();await expect(page.locator('#category-cards')).toContainText('Acessório B');
+ state.catalog.products[0].name='ESM RISQUE TESTE';state.catalog.products[0].category='Beleza e cosméticos';state.catalog.products[0].subcategory='';
+ await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('.sidebar [data-view="categories"]').click();
+ await page.getByLabel('Completar subcategorias vazias automaticamente enquanto o painel estiver aberto').check();await expect(page.locator('[data-category-status]')).toContainText('Alterações salvas');expect(state.catalog.products[0].subcategory).toBe('Esmaltes');expect(state.catalog.categoryIntelligence.automatic).toBe(true);
+});
 test('invalid and duplicated codes block the entire batch before saving',async({page})=>{
  const state=await setup(page);for(const text of ['001 5,00\nmissing 9,99','001 5,00\n001 6,00','001 -1','001 0']){await analyze(page,text);await expect(page.locator('[data-confirm]')).toBeHidden();await expect(page.locator('[data-message]')).toContainText('Nenhum preço');}expect(state.calls.some(c=>c.action==='price-batch')).toBe(false);
+});
+
+test('classification conflict preserves the reviewed draft and reports a reload instead of overwriting',async({page})=>{
+ const state=await setup(page);state.catalog.products[0].name='ESM RISQUE TESTE';state.catalog.products[0].category='Perfumaria e Cuidados Pessoais';state.catalog.products[0].subcategory='Higiene pessoal';
+ await page.getByRole('button',{name:'Organizar catálogo',exact:true}).first().click();const dialog=page.getByRole('dialog',{name:'Organização de categorias'});await dialog.getByLabel('Classificar ESM RISQUE TESTE',{exact:true}).check();
+ await page.route('**/rest/v1/rpc/save_catalog',r=>r.fulfill({status:409,json:{message:'Conflict: reload catalog'}}));
+ await dialog.getByRole('button',{name:'Confirmar classificações selecionadas'}).click();await expect(dialog.locator('[data-review-status]')).toContainText('Outro usuário');expect(state.catalog.products[0].subcategory).toBe('Higiene pessoal');expect(state.calls.some(c=>c.action==='publish')).toBe(false);
+});
+
+test('classification history recovery requires review and keeps current prices',async({page})=>{
+ const state=await setup(page);const product=state.catalog.products[0];product.category='Perfumaria e Cuidados Pessoais';product.subcategory='Esmaltes';product.classification={locked:true,source:'reviewed'};const price=product.priceCents;
+ const row={id:1,created_at:new Date().toISOString(),actor_id:id,after_version:7,changes:[{id:product.id,name:product.name,before:{category:product.category,subcategory:'Higiene pessoal',classification:null},after:{category:product.category,subcategory:product.subcategory,classification:product.classification}}]};
+ await page.route('**/rest/v1/category_history*',r=>r.fulfill({json:[row]}));
+ await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('.sidebar [data-view="categories"]').click();await page.getByRole('button',{name:'Consultar histórico de classificação'}).click();await page.locator('[data-category-history-list] summary').click();await page.getByRole('button',{name:'Revisar recuperação',exact:true}).click();const d=page.getByRole('dialog',{name:'Organização de categorias'});await expect(d).toContainText('Higiene pessoal');expect(product.subcategory).toBe('Esmaltes');
+ await d.getByRole('button',{name:'Confirmar recuperação',exact:true}).click();await expect(d).toBeHidden();expect(state.catalog.products[0].subcategory).toBe('Higiene pessoal');expect(state.catalog.products[0].priceCents).toBe(price);expect(state.catalog.products[0].classification.locked).toBe(true);
 });
 test('concurrent edit invalidates preview and publishes nothing',async({page})=>{
  const state=await setup(page);await analyze(page);state.version++;await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('catálogo mudou');expect(state.batches).toHaveLength(0);
@@ -58,14 +93,14 @@ test('lost save response recovers the same request without applying prices again
  const state=await setup(page,{lost:true});await analyze(page);await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-recover]')).toBeVisible();await page.getByRole('button',{name:'Fechar',exact:true}).click();await page.getByRole('button',{name:'Abrir assistente Neur.AI'}).click();await page.getByRole('button',{name:'Recuperar confirmação do lote'}).click();await expect(page.locator('[data-message]')).toContainText('Alterações salvas');expect(state.version).toBe(8);expect(state.batches).toHaveLength(1);const saves=state.calls.filter(c=>c.action==='price-batch');expect(saves).toHaveLength(2);expect(saves[0].batchId).toBe(saves[1].batchId);
 });
 test('failed publication retry does not resave prices; restore requires a second reviewed confirmation',async({page})=>{
- const state=await setup(page);await page.getByLabel('Publicar automaticamente após confirmação').check();await analyze(page);await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('Alterações salvas');state.status='failed';await page.getByRole('button',{name:'Atualizar histórico'}).click();await page.locator('.neur-history summary').click();await page.getByRole('button',{name:'Consultar / tentar novamente'}).click();expect(state.calls.filter(c=>c.action==='price-batch')).toHaveLength(1);
+ const state=await setup(page);await page.getByLabel('Publicar automaticamente após confirmação').check();await analyze(page);await page.getByRole('button',{name:'Confirmar remarcação',exact:true}).click();await expect(page.locator('[data-message]')).toContainText('Alterações salvas');state.status='failed';await page.getByRole('button',{name:'Atualizar histórico'}).click();await page.locator('.neur-history summary').click();await page.getByRole('button',{name:'Consultar / tentar novamente'}).click();await expect(page.getByRole('button',{name:'Atualizar histórico'})).toBeEnabled();expect(state.calls.filter(c=>c.action==='price-batch')).toHaveLength(1);
  await page.locator('.neur-history summary').click();await page.getByRole('button',{name:'Revisar recuperação dos preços'}).click();await expect(page.locator('[data-preview]')).toContainText('6,00');expect(state.batches).toHaveLength(1);await page.getByRole('button',{name:'Confirmar recuperação dos preços'}).click();await expect(page.locator('[data-message]')).toContainText('Alterações salvas');expect(state.batches).toHaveLength(2);expect(state.catalog.products.map(p=>p.priceCents)).toEqual([600,800]);
 });
 
 test('Neur.AI permanece com remarcação e check-up, sem gerador de descrições',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await setup(page);
- await expect(page.locator('.neur-dialog')).toBeVisible();
+ await expect(page.locator('.neur-dialog[aria-labelledby="neur-title"]')).toBeVisible();
  await expect(page.getByRole('heading',{name:'Remarcação em lote'})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Check-up do cadastro'})).toBeVisible();
  await expect(page.locator('.neur-dialog [data-content-ai-launch]')).toHaveCount(0);

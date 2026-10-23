@@ -3,7 +3,7 @@ import { analyzePrices, applyPrices, catalogCheckup } from './neurai-utils.js?v=
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels = { queued:'Aguardando publicação',pending:'Aguardando publicação',building:'Publicação em andamento',published:'Publicação concluída',failed:'Falha na publicação' };
 const storage = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k,v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch {} } };
-export function mountNeurAI({ getCatalog, getVersion, reloadCatalog, action, onSaved, onEdit }) {
+export function mountNeurAI({ getCatalog, getVersion, reloadCatalog, action, onSaved, onEdit, onOrganize }) {
   const launcher = document.createElement('button');
   launcher.className = 'neur-launcher'; launcher.type = 'button'; launcher.hidden = true; launcher.textContent = '✦ Neur.AI'; launcher.setAttribute('aria-haspopup','dialog'); launcher.setAttribute('aria-label','Abrir assistente Neur.AI');
   const dialog = document.createElement('dialog'); dialog.className = 'neur-dialog'; dialog.setAttribute('aria-labelledby','neur-title');
@@ -21,9 +21,11 @@ export function mountNeurAI({ getCatalog, getVersion, reloadCatalog, action, onS
     </section>
     <section class="neur-checkup"><div class="panel-heading"><h3>Histórico de remarcações</h3><button type="button" class="text-button" data-history-refresh>Atualizar histórico</button></div><p data-history-message role="status"></p><div data-history></div><div class="panel-heading"><button type="button" class="text-button" data-previous>Mais recentes</button><button type="button" class="text-button" data-next>Mais antigas</button></div></section>
     <section class="neur-checkup"><div class="panel-heading"><h3>Check-up do cadastro</h3><button type="button" class="text-button" data-refresh>Atualizar check-up</button></div><div data-checkup></div></section>
+    <section class="neur-checkup"><h3>Classificação inteligente</h3><p>Revise categorias e subcategorias sugeridas. Duplicados, nomes, apresentações e imagens precisam de conferência manual. Preços e estoque seguem a integração Trier.</p><button type="button" class="button white" data-organize-catalog>Organizar catálogo</button></section>
     <p class="muted">Análise baseada no catálogo. Não há registro de buscas por produto para gerar rankings de interesse.</p>
   </div>`;
   document.body.append(launcher,dialog);
+  dialog.querySelector('[data-organize-catalog]').onclick=()=>{dialog.close();onOrganize?.();};
   const $ = s => dialog.querySelector(s), input = $('#neur-input'), confirm = $('[data-confirm]'), preview = $('[data-preview]'), message = $('[data-message]'), automatic = $('[data-auto]');
   let rows=[], previewVersion, busy=false, canPublish=false, key='', recoveryKey='', pending=null, restoresId=null, history=[], offset=0, tracked=null, polling=false;
   function lock(value) { busy=value; dialog.querySelectorAll('button,textarea,input').forEach(el=>el.disabled=value); automatic.disabled=value||!canPublish; $('[data-analyze]').disabled=value||!!pending; input.disabled=value||!!pending; }
