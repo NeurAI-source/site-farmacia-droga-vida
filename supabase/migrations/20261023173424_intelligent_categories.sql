@@ -1,3 +1,4 @@
+-- Applied as 20261023173424: matches the production migration registry.
 -- Audit classification edits through the existing, versioned save_catalog RPC.
 -- No catalog rows or prices are changed by this migration.
 create table public.category_history (

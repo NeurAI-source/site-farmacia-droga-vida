@@ -33,7 +33,7 @@ test('database history records authenticated actor atomically, protects audit ro
  const db=new PGlite();try{
  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;create function public.is_team() returns boolean language sql as $$select auth.uid()='11111111-1111-4111-8111-111111111111'::uuid$$;grant usage on schema auth to authenticated;create table public.catalog_draft(id int primary key,catalog jsonb,version bigint);`);
  await db.query('insert into public.catalog_draft values(1,$1,1)',[JSON.stringify(catalog)]);
- await db.exec(await readFile(new URL('../supabase/migrations/20261023172617_intelligent_categories.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261023173424_intelligent_categories.sql',import.meta.url),'utf8'));
  await db.exec("set test.uid='11111111-1111-4111-8111-111111111111'");
  const next=applyClassifications(catalog,classificationReview(catalog));await db.query('update public.catalog_draft set catalog=$1,version=2',[JSON.stringify(next)]);
  const h=(await db.query('select * from public.category_history')).rows[0];assert.equal(h.actor_id,'11111111-1111-4111-8111-111111111111');assert.equal(h.changes[0].before.subcategory,'');assert.equal(h.changes[0].after.subcategory,'Esmaltes');assert.equal(h.after_version,2);

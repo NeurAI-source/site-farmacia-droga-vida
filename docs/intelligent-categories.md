@@ -38,7 +38,7 @@ Preço e estoque continuam vindo da integração Trier, sem estimativas da IA.
 
 ## Banco e segurança
 
-Migration `20261023172617_intelligent_categories.sql`: cria `category_history`,
+Migration `20261023173424_intelligent_categories.sql`: cria `category_history`,
 RLS de leitura para membros ativos e trigger de auditoria no catálogo existente.
 A identidade e os horários vêm do banco. Não há escrita direta no histórico por
 usuários do painel, e não há acesso anônimo. A trigger registra estrutura,
