@@ -74,10 +74,30 @@ test('adding opens chat, shares the header count, limits stock and keeps checkou
  const popup=page.waitForEvent('popup');await page.getByRole('button',{name:'Continuar no WhatsApp →',exact:true}).click();const win=await popup;await win.waitForLoadState();
  const sentText=new URL(win.url()).searchParams.get('text');expect(sentText).toBe(await page.locator('#order-preview').innerText());expect(sentText).toContain('🛒 PRÉ-PEDIDO');expect(sentText).toContain('👤 DADOS DO CLIENTE');expect(sentText).toContain('📦 PRODUTOS SOLICITADOS');expect(sentText).toContain('💰 RESUMO DO PRÉ-PEDIDO');expect(sentText).toContain('🏪 Recebimento');expect(sentText).toContain('✅ Poderiam');expect(sentText).not.toContain('�');expect(await page.evaluate(()=>JSON.stringify({...localStorage}))).not.toContain('Cliente de teste');
 });
+test('catalog size picker stays on the same page even when expanded product pages are enabled',async({page})=>{
+ await setup(page,{expanded:true});await page.goto('/');
+ const original=page.url();await page.locator('[data-add="8002"]').click();
+ await expect(page).toHaveURL(original);await expect(page.locator('#detail-dialog')).toBeVisible();
+ await expect(page.locator('#variant')).toHaveValue('');
+ await expect(page.locator('#variant option[value="G"]')).toHaveAttribute('disabled','');
+ await page.locator('#detail-add').click();await expect(page.locator('#cart-dialog')).not.toBeVisible();
+ await expect(page.locator('#detail-dialog')).toBeVisible();
+ await page.locator('#detail-dialog [data-stock-size="M"]').click();
+ await expect(page.locator('#variant')).toHaveValue('M');
+ await expect(page.locator('#detail-price')).toContainText('32,99');
+ await page.locator('#detail-add').click();await expect(page.locator('#cart-dialog')).toBeVisible();
+ await expect(page.locator('#detail-dialog')).not.toBeVisible();await expect(page).toHaveURL(original);
+ await expect(page.locator('#cart-items')).toContainText('M · 38 unidades por pacote');
+ await page.getByRole('button',{name:'Fechar carrinho',exact:true}).click();
+ await page.locator('#products [data-stock-id="8002"] [data-stock-size="M"]').click();
+ await expect(page.locator('#detail-dialog')).toBeVisible();await expect(page.locator('#variant')).toHaveValue('M');
+ await page.keyboard.press('Escape');await expect(page.locator('#detail-dialog')).not.toBeVisible();
+ await expect(page).toHaveURL(original);
+});
 test('individual product page selects size, adds to the same chat and never forces return to the homepage',async({page})=>{
  await setup(page,{expanded:true});await page.goto('/');
- await page.locator('[data-stock-id="8002"] [data-stock-size="M"]').click();
- await expect(page).toHaveURL(/produto.html\?id=8002/);await expect(page.locator('#product-page-variant')).toHaveValue('M');
+ await page.getByRole('button',{name:'Ver detalhes de FR BABYSEC TESTE',exact:true}).click();
+ await expect(page).toHaveURL(/produto.html\?id=8002/);await page.locator('#product-page-variant').selectOption('M');await expect(page.locator('#product-page-variant')).toHaveValue('M');
  await expect(page.locator('[data-stock-size="G"]')).toBeDisabled();
  await page.getByRole('button',{name:'Adicionar ao pré-pedido',exact:true}).click();await expect(page.locator('#cart-dialog')).toBeVisible();
  await expect(page.locator('#cart-items')).toContainText('M · 38 unidades por pacote');await expect(page).toHaveURL(/produto.html/);
@@ -114,8 +134,8 @@ test('blocked items expose physical counts separately and cannot enter a pre-ord
  await expect(page.locator('[data-stock-id="8002"] [data-stock-size="G"]')).toContainText('Esgotado');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
  await page.locator('[data-stock-id="8002"] [data-stock-size="M"]').click();
- await expect(page.locator('#product-page-variant option[value="XG"]')).toHaveAttribute('disabled','');
- await expect(page.locator('[data-stock-id="8002"]')).toContainText('46 pac.');
+ await expect(page.locator('#detail-dialog #variant option[value="XG"]')).toHaveAttribute('disabled','');
+ await expect(page.locator('#detail-dialog [data-stock-id="8002"]')).toContainText('46 pac.');
  await page.goto('/produto.html?id=8001');
  await page.getByRole('button',{name:'Adicionar ao pré-pedido',exact:true}).click();
  await expect(page.locator('#product-page-feedback')).toContainText('23 unidades em estoque — pré-pedido indisponível');
