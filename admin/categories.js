@@ -8,7 +8,7 @@ export function mountCategories({getCatalog,getVersion,reload,save,client,onEdit
     <label class="feature-check"><input type="checkbox" data-automatic> Completar subcategorias vazias automaticamente enquanto o painel estiver aberto</label><p class="muted">Apenas sugestões inequívocas dentro da categoria atual. Escolhas manuais ficam protegidas. Outros ajustes exigem revisão.</p>
     <p data-category-status role="status" aria-live="polite"></p><button class="text-button" type="button" data-category-history>Consultar histórico de classificação</button><div data-category-history-list></div>`;
   document.querySelector('#categories-view').prepend(root);
-  const dialog=document.createElement('dialog');dialog.className='neur-dialog';dialog.setAttribute('aria-label','Organização de categorias');document.body.append(dialog);
+  const dialog=document.createElement('dialog');dialog.className='neur-dialog category-dialog';dialog.setAttribute('aria-label','Organização de categorias');document.body.append(dialog);
   let busy=false,rows=[],reviewVersion,history=[];
   const status=root.querySelector('[data-category-status]');
   const automatic=root.querySelector('[data-automatic]');

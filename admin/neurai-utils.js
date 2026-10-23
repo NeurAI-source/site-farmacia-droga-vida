@@ -80,6 +80,7 @@ export function catalogCheckup(products) {
   products.forEach(p => { const key = normalize([p.name,p.brand,p.detail].join(' ')).trim(); names.set(key, (names.get(key) || 0) + 1); });
   return products.flatMap(p => {
     const issues = [];
+    if (!p.detail?.trim()) issues.push('Apresentação não informada: confira a embalagem');
     const variants = Array.isArray(p.variants) ? p.variants : [];
     if (variants.length) {
       const missing = variants.filter(v => !v.shortCode).map(v => v.size);
