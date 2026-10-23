@@ -12,3 +12,7 @@
 /* Keep verified normal prices and their labels on one line. */
 .product-price .price-before,.product-page-price .price-before{display:block;flex-basis:100%;white-space:nowrap}
 .product-price .price-before del,.product-page-price .price-before del{display:inline}
+
+/* Keep long presentation names centered inside their stock tile. */
+.dv-product-stock .dv-stock-chip strong{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center}
+.dv-product-stock .dv-stock-chip strong.dv-stock-label-long{font-size:10px;line-height:1.25;letter-spacing:-.2px}
