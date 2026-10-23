@@ -59,7 +59,7 @@ export function mountCartChat({ getProducts, getCart, setCart }) {
       if(remove)cart.splice(index,1);else{const p=getProducts().find(p=>p.id===item.id),limit=stockState(p,item.variant).limit,delta=Number(button.dataset.delta);item.qty=delta>0?Math.min(limit,item.qty+1):item.qty-1;}
       setCart(sanitizeCart(cart.filter(i=>i.qty>0),getProducts()));added=false;update();render();
     }
-    if(button.hasAttribute('data-chat-send')){const issue=cartStockIssue(getCart(),getProducts());if(issue){step=0;render();return;}window.open(`https://wa.me/5517996630482?text=${encodeURIComponent(orderMessage(getCart(),getProducts(),customer))}`,'_blank','noopener,noreferrer');}
+    if(button.hasAttribute('data-chat-send')){const issue=cartStockIssue(getCart(),getProducts());if(issue){step=0;render();return;}window.open(`https://api.whatsapp.com/send?phone=5517996630482&text=${encodeURIComponent(orderMessage(getCart(),getProducts(),customer))}`,'_blank','noopener,noreferrer');}
   });
   dialog.addEventListener('input',event=>{if(['name','neighborhood'].includes(event.target.name)){customer[event.target.name]=event.target.value;event.target.setCustomValidity('');}});
   dialog.addEventListener('change',event=>{if(event.target.name==='receipt'){customer.receipt=event.target.value;const delivery=customer.receipt==='entrega';$('#neighborhood-label').hidden=!delivery;$('#order-neighborhood').required=delivery;$('#delivery-note').hidden=!delivery;$('#order-neighborhood').setCustomValidity('');}});
