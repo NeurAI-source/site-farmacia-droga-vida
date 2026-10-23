@@ -4,6 +4,7 @@ import { allowedOrigin } from '../cors.js';
 import { publicationHistory } from './publication-history.js';
 import { uploadProductImage } from './product-image.js';
 import { checked, dispatchNext, neuraiAction, requestPublication } from './publication.js';
+import { accessAction, accessActions } from './access.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
@@ -42,18 +43,11 @@ Deno.serve(async req => {
       try { return reply(await neuraiAction({ body, db, user, env })); }
       catch (error) { return reply({ error: error instanceof Error ? error.message : 'Não foi possível concluir.' }, 409); }
     }
-    if (member.role !== 'admin') return reply({ error: 'Somente administradores podem fazer isso.' }, 403);
-    if (body.action === 'list-users') {
-      const { data: members, error } = await db.from('team_members').select('user_id,role,active').order('user_id');
-      if (error) throw error;
-      const users = [];
-      for (const entry of members || []) {
-        const { data, error: lookupError } = await db.auth.admin.getUserById(entry.user_id);
-        if (lookupError) throw lookupError;
-        users.push({ id: entry.user_id, email: data.user.email, role: entry.role, active: entry.active, isSelf: entry.user_id === user.id });
-      }
-      return reply({ users });
+    if (accessActions.includes(body.action)) {
+      try { return reply(await accessAction({body,db,user})); }
+      catch(error) { return reply({error:error instanceof Error?error.message:'Não foi possível gerenciar o acesso.'},409); }
     }
+    if (member.role !== 'admin') return reply({ error: 'Somente administradores podem fazer isso.' }, 403);
     if (body.action === 'delete-user') {
       if (typeof body.userId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.userId) || typeof body.confirmEmail !== 'string')
         return reply({ error: 'Selecione um usuário e confirme o e-mail.' }, 400);
@@ -61,21 +55,10 @@ Deno.serve(async req => {
       const { data: target } = await db.auth.admin.getUserById(body.userId);
       if (!target.user?.email || body.confirmEmail.trim().toLowerCase() !== target.user.email.toLowerCase())
         return reply({ error: 'O e-mail de confirmação não corresponde ao usuário.' }, 400);
-      const { error: prepareError } = await db.rpc('prepare_panel_user_deletion', { actor_id: user.id, target_id: body.userId });
+      const { error: prepareError } = await db.rpc('panel_access_prepare_delete', { actor_id: user.id, target_id: body.userId });
       if (prepareError) return reply({ error: 'Não foi possível remover este usuário. Sua conta e o último administrador são protegidos.' }, 409);
       const { error: deleteError } = await db.auth.admin.deleteUser(body.userId);
       if (deleteError) return reply({ error: 'O acesso foi desativado, mas a exclusão não foi concluída. Tente novamente ou consulte o responsável pelo sistema.' }, 409);
-      return reply({ ok: true });
-    }
-    if (body.action === 'create-user') {
-      const { email, password, role } = body;
-      if (typeof email !== 'string' || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-        || typeof password !== 'string' || password.length < 12 || password.length > 128 || !['admin','editor','owner','manager'].includes(role))
-        return reply({ error: 'Informe e-mail, senha com pelo menos 12 caracteres e cargo válido.' }, 400);
-      const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
-      if (error) return reply({ error: 'Não foi possível cadastrar esse e-mail. Confira se já está cadastrado.' }, 400);
-      const { error: insertError } = await db.from('team_members').insert({ user_id: data.user.id, role });
-      if (insertError) { await db.auth.admin.deleteUser(data.user.id); throw insertError; }
       return reply({ ok: true });
     }
     if (body.action === 'publish') {

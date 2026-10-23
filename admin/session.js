@@ -37,50 +37,6 @@ $('#login-form').onsubmit = async e => {
   finally { button.disabled = false; }
 };
 $('#logout').onclick = async () => { await client.auth.signOut(); location.reload(); };
-const roleLabels = { admin: 'Administrador', editor: 'Editor', owner: 'Proprietário(a)', manager: 'Gerente' };
-let selectedUser;
-async function loadUsers() {
-  $('#users-status').textContent = 'Carregando usuários…';
-  $('#users-list').replaceChildren();
-  try {
-    const { users } = await adminAction('list-users');
-    for (const user of users) {
-      const row = document.createElement('div'); row.className = 'user-row';
-      const details = document.createElement('div');
-      const email = document.createElement('strong'); email.textContent = user.email;
-      const cargo = document.createElement('span'); cargo.textContent = (roleLabels[user.role] || 'Usuário') + (user.active ? '' : ' · Acesso desativado');
-      details.append(email, cargo); row.append(details);
-      if (user.isSelf) { const you = document.createElement('span'); you.textContent = 'Você'; row.append(you); }
-      else { const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'text-button'; remove.textContent = 'Excluir'; remove.setAttribute('aria-label', 'Excluir ' + user.email);
-        remove.onclick = () => { selectedUser = user; $('#delete-user-form').reset(); $('#delete-user-description').textContent = user.email; $('#delete-user-status').textContent = ''; $('#delete-user-dialog').showModal(); }; row.append(remove); }
-      $('#users-list').append(row);
-    }
-    $('#users-status').textContent = users.length ? '' : 'Nenhum usuário cadastrado.';
-  } catch (error) { $('#users-status').textContent = error.message; }
-}
-$('#manage-users').onclick = () => { $('#users-dialog').showModal(); loadUsers(); };
-$('#close-users').onclick = () => $('#users-dialog').close();
-$('#add-user').onclick = () => { $('#user-status').textContent = ''; $('#user-dialog').showModal(); };
-$('#cancel-delete-user').onclick = () => $('#delete-user-dialog').close();
-$('#delete-user-form').onsubmit = async e => {
-  e.preventDefault();
-  if (!selectedUser || $('#delete-user-email').value.trim().toLowerCase() !== selectedUser.email.toLowerCase()) { $('#delete-user-status').textContent = 'Digite o e-mail exato do usuário selecionado.'; return; }
-  const button = e.target.querySelector('[type=submit]'); button.disabled = true;
-  try { await adminAction('delete-user', { userId: selectedUser.id, confirmEmail: $('#delete-user-email').value.trim() }); $('#delete-user-dialog').close(); selectedUser = null; await loadUsers(); $('#users-status').textContent = 'Usuário excluído com sucesso.'; }
-  catch (error) { $('#delete-user-status').textContent = error.message; }
-  finally { button.disabled = false; }
-};
-$('#close-user').onclick = () => $('#user-dialog').close();
-$('#user-form').onsubmit = async e => {
-  e.preventDefault();
-  const button = e.target.querySelector('[type=submit]'); button.disabled = true;
-  const fields = new FormData(e.target);
-  try {
-    await adminAction('create-user', Object.fromEntries(fields));
-    e.target.reset(); $('#user-status').textContent = 'Usuário cadastrado com sucesso.'; await loadUsers();
-  } catch (error) { $('#user-status').textContent = error.message; }
-  finally { button.disabled = false; }
-};
 export async function refreshTraffic() {
   const { data, error } = await client.rpc('traffic_summary');
   if (error) { $('#traffic-summary').textContent = 'Não foi possível carregar os acessos.'; return; }
