@@ -63,7 +63,7 @@ jobs:
       - name: Implantar no GitHub Pages
         id: deployment
         if: steps.snapshot.outputs.skip != 'true' && vars.CLOUDFLARE_ACCOUNT_ID == ''
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
       - name: Publicar no Cloudflare Pages
         id: cloudflare
         if: steps.snapshot.outputs.skip != 'true' && vars.CLOUDFLARE_ACCOUNT_ID != ''
