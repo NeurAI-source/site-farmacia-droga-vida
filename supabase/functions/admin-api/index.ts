@@ -5,6 +5,7 @@ import { publicationHistory } from './publication-history.js';
 import { uploadProductImage } from './product-image.js';
 import { checked, dispatchNext, neuraiAction, requestPublication } from './publication.js';
 import { accessAction, accessActions } from './access.js';
+import { registrationAction, registrationActions } from './registration.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
@@ -35,6 +36,10 @@ Deno.serve(async req => {
       return reply(await uploadProductImage(req, db, user));
     }
     const body = await readJson(req, 50000);
+    if(registrationActions.includes(body.action)){
+      try{return reply(await registrationAction({body,db,user}));}
+      catch(error){return reply({error:error instanceof Error?error.message:'Não foi possível importar.'},409);}
+    }
     if (['publication-history','publication-detail'].includes(body.action)) {
       try { return reply(await publicationHistory({body,db,env})); }
       catch { return reply({error:'Não foi possível consultar esta publicação.'},409); }
