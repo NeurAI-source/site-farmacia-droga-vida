@@ -1,5 +1,6 @@
 import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
 import { productThumbnail } from './product-images.js';
+import { orderProductsByBrand } from './product-order.js';
 import { mountCartChat } from './cart-chat.js?v=20261021-privacy-cart';
 import { stockMarkup, stockState, refreshStockMarkup } from './product-stock.js';
 import { money, filterProducts, sanitizeCart, cartTotal, orderMessage, unitPrice, priceInfo, priceHtml } from './catalog-utils.js';
@@ -66,7 +67,7 @@ function renderSubfilters() {
 function renderProducts() {
   renderSubfilters();
   const filtered = filterProducts(products, { category, subcategory, query, favorites: favoriteOnly ? favorites : null });
-  const displayed = all || category !== 'Todos' || query || favoriteOnly ? filtered : filtered.filter(p => p.featured);
+  const displayed = all || category !== 'Todos' || query || favoriteOnly ? orderProductsByBrand(filtered) : filtered.filter(p => p.featured);
   $('#products-title').textContent = favoriteOnly ? 'Seus favoritos' : query ? 'Resultado da busca' : category !== 'Todos' ? (subcategory || category) : all ? 'Todos os produtos' : 'Produtos em destaque';
   $('#results').textContent = `${displayed.length} ${displayed.length === 1 ? 'produto encontrado':'produtos encontrados'}${query ? ` para “${query}”` : ''}`;
   $('#products').innerHTML = displayed.length ? displayed.slice(0,limit).map(productCard).join('') : `<div class="empty"><h3>${favoriteOnly ? 'Seus favoritos ficam aqui.' : 'Não encontramos produtos nesta seleção.'}</h3><p>${favoriteOnly ? 'Toque no coração dos produtos que você gosta.' : 'Nossa equipe pode consultar a disponibilidade para você.'}</p><a class="button red-button" href="${whatsapp('Olá! Gostaria de consultar '+(query || subcategory || category)+'.')}" target="_blank" rel="noopener noreferrer">Consultar no WhatsApp ${icon('arrow')}</a></div>`;

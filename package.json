@@ -11,6 +11,9 @@
     "pretest": "npm run prepare:functions",
     "test:ui": "playwright test"
   },
+  "overrides": {
+    "undici": "7.30.1"
+  },
   "engines": {
     "node": ">=22"
   },
