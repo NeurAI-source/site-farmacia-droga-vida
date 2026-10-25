@@ -59,6 +59,10 @@ test('all product sort modes preserve independent cards and ignore insertion ord
  const products=[{id:1,name:'Z',brand:'Dove',category:'C',priceCents:500,createdAt:'2025',updatedAt:'2025'},{id:2,name:'A',brand:'Dove',category:'A',priceCents:100,createdAt:'2026',updatedAt:'2026'}];
  for(const mode of ['brand','name','category','price','createdAt','updatedAt'])assert.equal(sortRegistrationProducts(products,mode)[0].id,2);assert.equal(products[0].id,1);
 });
+test('price ordering uses the same lowest variant price advertised on the card',()=>{
+ const products=[{id:1,priceCents:9999,variants:[{size:'M',priceCents:500},{size:'G',priceCents:700}]},{id:2,priceCents:600,variants:[]}];
+ assert.equal(sortRegistrationProducts(products,'price')[0].id,1);
+});
 const settings={enabled:true,baseUrl:'https://example.invalid/sgfpod1',token:'fixture-server-only',storeId:'2',timeoutMs:1000,retries:0,maxResponseBytes:500000,maxProducts:10000};
 const wire=(i,patch={})=>({codigo:i,nome:'SHAMPOO DOVE 250ML',valorVenda:19.99,quantidadeEstoque:4,ativo:true,codigoBarras:7891234567890,...patch});
 test('official lookup uses documented code/EAN filters, server Bearer, GET only, and allowlisted fields',async()=>{

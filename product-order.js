@@ -1,4 +1,4 @@
-import { normalize } from './catalog-utils.js';
+import { normalize,priceInfo } from './catalog-utils.js';
 
 // Some ERP records put the manufacturer in brand. Recognize the commercial
 // labels present in product names without changing their stored data.
@@ -15,7 +15,7 @@ const collator=new Intl.Collator('pt-BR',{sensitivity:'base',numeric:true});
 export function sortCatalogProducts(products,by='brand') {
   if(by==='brand')return orderProductsByBrand(products);
   if(!['name','category','price','createdAt','updatedAt'].includes(by))return [...products];
-  return [...products].sort((a,b)=>by==='price'?a.priceCents-b.priceCents:by==='createdAt'||by==='updatedAt'?String(b[by]||'').localeCompare(String(a[by]||'')):collator.compare(a[by]||'',b[by]||'')||collator.compare(a.name||'',b.name||''));
+  return [...products].sort((a,b)=>by==='price'?priceInfo(a).priceCents-priceInfo(b).priceCents:by==='createdAt'||by==='updatedAt'?String(b[by]||'').localeCompare(String(a[by]||'')):collator.compare(a[by]||'',b[by]||'')||collator.compare(a.name||'',b.name||''));
 }
 export function orderProductsByBrand(products) {
   const candidates=new Map();

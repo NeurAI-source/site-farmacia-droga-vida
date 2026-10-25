@@ -1,6 +1,6 @@
 import { normalize } from './catalog-utils.js';
 import { suggestClassification, ensureClassification } from './admin/category-intelligence.js';
-import { commercialBrands, orderProductsByBrand } from './product-order.js';
+import { commercialBrands, sortCatalogProducts } from './product-order.js';
 export const PENDING_IMAGE='assets/product-pending.svg';
 export const codeKey=v=>/^\d+$/.test(String(v||''))?String(Number(v)):String(v||'').trim().toUpperCase();
 const words=v=>normalize(v||'').replace(/[^a-z0-9]+/g,' ').trim();
@@ -108,6 +108,5 @@ export function reviewRegistration(catalog,inventory=[],now=Date.now()) {
   });
 }
 export function sortRegistrationProducts(products,by='brand') {
-  if(by==='brand')return orderProductsByBrand(products);
-  return [...products].sort((a,b)=>by==='price'?a.priceCents-b.priceCents:by==='createdAt'||by==='updatedAt'?String(b[by]||'').localeCompare(String(a[by]||'')):String(a[by]||'').localeCompare(String(b[by]||''),'pt-BR',{numeric:true,sensitivity:'base'}));
+  return sortCatalogProducts(products,by);
 }

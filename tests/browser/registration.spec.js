@@ -82,6 +82,10 @@ test('photo preparation completing after another product opens never leaks the o
  await page.addInitScript(()=>{const original=window.createImageBitmap.bind(window);window.createImageBitmap=file=>new Promise(resolve=>window.__resolveBitmap=async()=>resolve(await original(file)));});
  const state=await setup(page);await page.locator('#new-product').click();await page.locator('[data-prepare-photo]').setInputFiles('assets/products/3.png');await page.locator('#close-editor').click();await page.locator('#new-product').click();await page.evaluate(()=>window.__resolveBitmap());await expect(page.locator('.registration-photo-compare')).toBeHidden();await expect(page.locator('[data-approve-photo]')).toBeHidden();expect(state.calls.some(c=>c.upload)).toBe(false);
 });
+test('public price ordering follows displayed variant prices while keeping independent cards',async({page})=>{
+ const template=original.products[0];await page.route('**/catalog.json*',route=>route.fulfill({json:{...original,products:[{...template,id:8001,name:'FAMÍLIA TESTE',active:true,featured:true,priceCents:9999,variants:[{id:80,size:'M',packageQuantity:30,priceCents:500,stockQuantity:0}]},{...template,id:8002,name:'SIMPLES TESTE',active:true,featured:true,priceCents:600,variants:[]}]}}));
+ await page.goto('/');await page.getByLabel('Ordenar produtos',{exact:true}).selectOption('price');await expect(page.locator('.product-card')).toHaveCount(2);await expect(page.locator('.product-card').first()).toContainText('FAMÍLIA TESTE');
+});
 test('review shows pending photo and duplicate checks; editor can prepare drafts but does not gain publication permission',async({page})=>{
  const state=await setup(page,{role:'editor'});state.catalog.products[0].imagePending=true;state.catalog.products[0].imageUrl=PENDING_IMAGE;state.catalog.products[0].active=false;
  await page.locator('.sidebar [data-view="review"]').click();await expect(page.locator('[data-review-list]')).toContainText('Pendente de foto real');await expect(page.locator('#publish')).toBeHidden();
