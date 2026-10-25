@@ -59,6 +59,21 @@ test('category suggestions require review, save selected products and protect ma
  await dialog.getByRole('button',{name:'Confirmar classificações selecionadas'}).click();await expect(dialog).toBeHidden();
  expect(state.catalog.products[0].subcategory).toBe('Esmaltes');expect(state.catalog.products[0].classification.locked).toBe(true);expect(state.catalog.products[1].subcategory).toBe('');expect(state.catalog.products.map(p=>p.priceCents)).toEqual(prices);
 });
+test('new collagen product suggests Supplements and creates its missing subcategory only when saved',async({page})=>{
+ const state=await setup(page),before=structuredClone(state.catalog.products);
+ state.catalog.categories.find(c=>c.name==='Suplementos').subcategories=state.catalog.categories.find(c=>c.name==='Suplementos').subcategories.filter(s=>s.name!=='Colágenos');
+ await page.getByRole('button',{name:'Fechar',exact:true}).click();await page.locator('#new-product').click();
+ const form=page.locator('#product-form');await form.locator('[name=name]').fill('LAVITAN COLAGENO HIDROLISADO 300G');
+ await form.locator('[name=detail]').fill('300g');
+ await expect(form.locator('[name=category]')).toHaveValue('Suplementos');await expect(form.locator('[name=subcategory]')).toHaveValue('Colágenos');
+ expect(state.calls.filter(c=>c.payload)).toHaveLength(0);
+ await form.locator('[name=imageUrl]').fill('assets/products/3.png');await form.locator('[name=price]').fill('39.99');
+ await form.getByRole('button',{name:'Salvar produto',exact:true}).click();await expect(page.locator('#editor')).toBeHidden();
+ expect(state.catalog.products.slice(0,before.length)).toEqual(before);
+ expect(state.catalog.products.at(-1).subcategory).toBe('Colágenos');expect(state.catalog.products.at(-1).classification.locked).toBe(true);
+ expect(state.catalog.categories.find(c=>c.name==='Suplementos').subcategories.some(s=>s.name==='Colágenos')).toBe(true);
+ expect(state.calls.some(c=>c.action==='publish')).toBe(false);
+});
 test('category management adds defaults, edits structures and enables safe automatic completion',async({page})=>{
  const state=await setup(page);await page.getByRole('button',{name:'Fechar',exact:true}).click();await page.locator('.sidebar [data-view="categories"]').click();
  await page.getByRole('button',{name:'Completar categorias da farmácia'}).click();await expect(page.locator('#category-cards')).toContainText('Absorventes e protetores diários');await expect(page.locator('#category-cards')).toContainText('Esmaltes');
