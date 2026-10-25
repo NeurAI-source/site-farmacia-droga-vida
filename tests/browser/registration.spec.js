@@ -100,7 +100,7 @@ test('a unique official top-level group fills its existing category without inve
 });
 
 test('melatonin lookup prepares missing category options and saves them only with the reviewed product',async({page})=>{
- const state=await setup(page);state.catalog.categories=state.catalog.categories.filter(c=>c.name!=='Suplementos');state.rows[0].name='LAVITAN MELATONINA 30CP';await page.reload();await expect(page.locator('#login-screen')).toBeHidden();const before=structuredClone(state.catalog);
+ const state=await setup(page);state.catalog.products=state.catalog.products.filter(p=>p.category!=='Suplementos');state.catalog.categories=state.catalog.categories.filter(c=>c.name!=='Suplementos');state.rows[0].name='LAVITAN MELATONINA 30CP';await page.reload();await expect(page.locator('#login-screen')).toBeHidden();const before=structuredClone(state.catalog);
  await page.locator('#new-product').click();const f=page.locator('#product-form');await f.locator('[name=shortCode]').fill('900001');await f.locator('[name=ean]').click();await expect(f.locator('[name=category]')).toHaveValue('Suplementos');await expect(f.locator('[name=subcategory]')).toHaveValue('Melatonina');expect(state.catalog).toEqual(before);
  await f.locator('[name=imageUrl]').fill('assets/products/3.png');await f.getByRole('button',{name:'Salvar produto',exact:true}).click();await expect(page.locator('#editor')).toBeHidden();expect(state.catalog.products.at(-1)).toMatchObject({category:'Suplementos',subcategory:'Melatonina',shortCode:'900001'});expect(state.catalog.categories.find(c=>c.name==='Suplementos').subcategories.some(s=>s.name==='Melatonina')).toBe(true);expect(state.calls.some(c=>c.action==='publish')).toBe(false);
 });
