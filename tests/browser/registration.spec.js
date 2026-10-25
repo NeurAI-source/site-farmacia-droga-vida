@@ -67,6 +67,14 @@ test('concurrent catalog changes stop import without overwriting another editor'
  const state=await setup(page);const count=state.catalog.products.length;await selectRows(page);state.version++;
  const dialog=page.getByRole('dialog',{name:'Revisar importação da Trier'});await dialog.getByRole('button',{name:'Confirmar importação no rascunho'}).click();await expect(dialog.locator('[data-commit-status]')).toContainText('catálogo mudou');expect(state.catalog.products).toHaveLength(count);expect(state.ledger.size).toBe(0);
 });
+test('closing the scanner while camera permission is pending stops the stream when it arrives',async({page})=>{
+ await page.addInitScript(()=>{window.BarcodeDetector=class{async detect(){return [];}};window.__cameraStopped=0;Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:()=>new Promise(resolve=>window.__resolveCamera=()=>resolve({getTracks:()=>[{stop(){window.__cameraStopped++;}}]}))}});});
+ await setup(page);await page.locator('.sidebar [data-view="registration"]').click();await page.getByRole('button',{name:'Usar câmera para EAN',exact:true}).click();await page.getByRole('button',{name:'Fechar câmera',exact:true}).click();await page.evaluate(()=>window.__resolveCamera());await expect.poll(()=>page.evaluate(()=>window.__cameraStopped)).toBe(1);
+});
+test('photo preparation completing after another product opens never leaks the old image into the new editor',async({page})=>{
+ await page.addInitScript(()=>{const original=window.createImageBitmap.bind(window);window.createImageBitmap=file=>new Promise(resolve=>window.__resolveBitmap=async()=>resolve(await original(file)));});
+ const state=await setup(page);await page.locator('#new-product').click();await page.locator('[data-prepare-photo]').setInputFiles('assets/products/3.png');await page.locator('#close-editor').click();await page.locator('#new-product').click();await page.evaluate(()=>window.__resolveBitmap());await expect(page.locator('.registration-photo-compare')).toBeHidden();await expect(page.locator('[data-approve-photo]')).toBeHidden();expect(state.calls.some(c=>c.upload)).toBe(false);
+});
 test('review shows pending photo and duplicate checks; editor can prepare drafts but does not gain publication permission',async({page})=>{
  const state=await setup(page,{role:'editor'});state.catalog.products[0].imagePending=true;state.catalog.products[0].imageUrl=PENDING_IMAGE;state.catalog.products[0].active=false;
  await page.locator('.sidebar [data-view="review"]').click();await expect(page.locator('[data-review-list]')).toContainText('Pendente de foto real');await expect(page.locator('#publish')).toBeHidden();
