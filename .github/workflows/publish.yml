@@ -56,7 +56,7 @@ jobs:
           REQUIRE_PRIVATE_ADMIN_PATH: '1'
       - uses: actions/configure-pages@v5
         if: steps.snapshot.outputs.skip != 'true' && vars.CLOUDFLARE_ACCOUNT_ID == ''
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         if: steps.snapshot.outputs.skip != 'true' && vars.CLOUDFLARE_ACCOUNT_ID == ''
         with:
           path: dist
