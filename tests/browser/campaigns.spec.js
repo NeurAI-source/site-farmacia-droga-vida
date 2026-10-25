@@ -146,7 +146,7 @@ test('3D depth and tilt are real; a large gallery remains bounded and every imag
   await page.getByRole('button',{name:'Oferta 50: Campanha 50',exact:true}).click();await expect(page.locator('.campaign-name')).toHaveText('Campanha 50');await expect(page.locator('.campaign-panel')).toHaveCount(9);
 });
 async function adminRoute(page,role='admin',initial=[]) {
-  await config(page);const rows=initial,assets=new Map();let saves=[];
+  await config(page);const rows=initial,assets=new Map(),calls=[],state={failDelete:false,conflictArchive:false};let saves=[];
   const user={id,email:'admin@example.test',aud:'authenticated',role:'authenticated'};
   const token=`${Buffer.from('{}').toString('base64url')}.${Buffer.from(JSON.stringify({sub:id,role:'authenticated',aal:'aal2',exp:4102444800})).toString('base64url')}.test`;
   await page.addInitScript(({user,token})=>localStorage.setItem('sb-campaign-test-auth-token',JSON.stringify({access_token:token,refresh_token:'test-refresh',token_type:'bearer',expires_at:4102444800,user})),{user,token});
@@ -161,11 +161,11 @@ async function adminRoute(page,role='admin',initial=[]) {
       else{const b=r.request().postDataJSON();if(b.action==='list')data={campaigns:rows,has_more:false,server_now:new Date().toISOString()};
       else if(b.action==='get')data={campaign:rows.find(c=>c.id===b.id)};
       else if(b.action==='save'){saves.push(b.campaign);const c={...b.campaign,version:b.campaign.version+1,cover_url:assets.get(b.campaign.cover_id)||asset,pages:b.campaign.pages.map(id=>({id,url:assets.get(id)||asset}))};const i=rows.findIndex(x=>x.id===c.id);if(i<0)rows.push(c);else rows[i]=c;data={id:c.id};}
-      else{const c=rows.find(c=>c.id===b.campaign.id);if(b.action==='duplicate')rows.push({...structuredClone(c),id:crypto.randomUUID(),title:c.title+' (cópia)',version:1,publication_state:'draft',active:false});if(b.action==='deactivate')c.active=false;if(b.action==='archive'){c.active=false;c.publication_state='archived';}if(b.action==='delete')rows.splice(rows.indexOf(c),1);data={id:c.id};}}
+      else{const c=rows.find(c=>c.id===b.campaign.id);calls.push(structuredClone(b));if(b.action==='delete'&&state.failDelete)return r.fulfill({status:503,json:{error:'Falha de conexão de teste.'}});if(b.action==='archive'&&state.conflictArchive){state.conflictArchive=false;c.version++;c.title='Editada por outra pessoa';}if(['archive','delete'].includes(b.action)&&b.campaign.version!==c.version)return r.fulfill({status:409,json:{error:'Campanha alterada por outra pessoa. Atualize e tente novamente.'}});if(b.action==='duplicate')rows.push({...structuredClone(c),id:crypto.randomUUID(),title:c.title+' (cópia)',version:1,publication_state:'draft',active:false});if(b.action==='deactivate'){c.active=false;c.version++;}if(b.action==='archive'){c.active=false;c.publication_state='archived';c.version++;}if(b.action==='delete')rows.splice(rows.indexOf(c),1);data={id:c.id};}}
     }
     await r.fulfill({json:data});
   });
-  return {rows,saves};
+  return Object.assign(state,{rows,saves,calls});
 }
 test('admin creates a multipage flyer, previews, reorders, publishes, edits, duplicates, archives and deletes',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));const state=await adminRoute(page);await page.goto('/admin/');await expect(page.locator('#login-screen')).toBeHidden();
@@ -180,8 +180,43 @@ test('admin creates a multipage flyer, previews, reorders, publishes, edits, dup
   await page.locator('#campaign-status-filter').selectOption('archived');await page.getByRole('button',{name:'Excluir',exact:true}).click();await expect(page.locator('.campaign-row')).toHaveCount(0);expect(state.rows).toHaveLength(1);
   await page.locator('.sidebar [data-view="products"]').click();await expect(page.locator('#rows tr')).toHaveCount(catalog.products.length);expect(errors).toEqual([]);
 });
+for(const kind of ['post','flyer'])test(`admin deletes a ${kind} directly after confirmation, preserving other campaigns`,async({page})=>{
+  const state=await adminRoute(page,'admin',[makeCampaign(1,{kind,publication_state:kind==='post'?'draft':'published'}),makeCampaign(2,{kind})]);
+  await page.goto('/admin/');await page.locator('[data-view="campaigns"]').click();
+  if(kind==='flyer')await page.getByRole('tab',{name:'Encartes',exact:true}).click();
+  await expect(page.locator('.campaign-row')).toHaveCount(2);
+  page.once('dialog',async d=>{expect(d.message()).toContain('não pode ser desfeita');await d.dismiss();});
+  await page.getByRole('button',{name:'Excluir',exact:true}).first().click();
+  expect(state.calls).toEqual([]);expect(state.rows).toHaveLength(2);
+  page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir',exact:true}).first().click();
+  await expect(page.locator('#campaign-feedback')).toHaveText('Campanha excluída.');
+  await expect(page.locator('.campaign-row')).toHaveCount(1);
+  expect(state.rows[0].id).toBe(makeCampaign(2).id);
+  expect(state.calls.map(c=>[c.action,c.campaign.version])).toEqual([['archive',1],['delete',2]]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+test('failed deletion keeps the archived campaign and allows a safe retry without archiving twice',async({page})=>{
+  const state=await adminRoute(page,'admin',[makeCampaign(1,{kind:'post'})]);state.failDelete=true;
+  await page.goto('/admin/');await page.locator('[data-view="campaigns"]').click();page.on('dialog',d=>d.accept());
+  await page.getByRole('button',{name:'Excluir',exact:true}).click();
+  await expect(page.locator('#campaign-feedback')).toContainText('foi arquivada');
+  expect(state.rows).toHaveLength(1);expect(state.rows[0].publication_state).toBe('archived');
+  state.failDelete=false;await page.locator('#campaign-status-filter').selectOption('archived');
+  await page.getByRole('button',{name:'Excluir',exact:true}).click();
+  await expect(page.locator('#campaign-feedback')).toHaveText('Campanha excluída.');
+  expect(state.rows).toHaveLength(0);expect(state.calls.map(c=>[c.action,c.campaign.version])).toEqual([['archive',1],['delete',2],['delete',2]]);
+});
+test('a simultaneous edit stops the deletion before archiving or deleting',async({page})=>{
+  const state=await adminRoute(page,'admin',[makeCampaign(1,{kind:'post'})]);state.conflictArchive=true;
+  await page.goto('/admin/');await page.locator('[data-view="campaigns"]').click();page.once('dialog',d=>d.accept());
+  await page.getByRole('button',{name:'Excluir',exact:true}).click();
+  await expect(page.locator('#campaign-feedback')).toContainText('outra pessoa');
+  expect(state.rows).toHaveLength(1);expect(state.rows[0].publication_state).toBe('published');
+  expect(state.calls.map(c=>c.action)).toEqual(['archive']);
+});
 test('editors only save drafts; admin and campaign layout fit desktop and mobile',async({page})=>{
   await adminRoute(page,'editor',[makeCampaign(1,{kind:'post',pages:[]})]);await page.goto('/admin/');await page.locator('[data-view="campaigns"]').click();await expect(page.locator('.campaign-row')).toHaveCount(1);await page.screenshot({path:`test-results/admin-${test.info().project.name}.png`,fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await expect(page.getByRole('button',{name:'Excluir',exact:true})).toHaveCount(0);
   await page.locator('#campaign-new').click();await expect(page.getByRole('button',{name:'Publicar campanha'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Salvar rascunho'})).toBeVisible();
 });
 test('logged-out visitors cannot open the administrative campaign forms',async({page})=>{
