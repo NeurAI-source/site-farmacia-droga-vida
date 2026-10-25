@@ -41,3 +41,4 @@ header .brand{width:248px;height:90px;border-radius:10px;box-shadow:0 3px 12px #
 header .brand img{left:0;width:100%;height:auto;top:50%;transform:translateY(-50%)}
 @media(max-width:1000px){header .brand{width:208px;height:78px}}
 @media(max-width:600px){header .brand{width:180px;height:70px;border-radius:8px}}
+.catalog-sort{max-width:210px;padding:8px;border:1px solid #e5dddd;border-radius:10px;background:#fff;color:inherit;font:inherit;font-size:14px}.catalog-meta{flex-wrap:wrap;gap:10px}

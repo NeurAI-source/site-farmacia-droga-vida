@@ -1,17 +1,22 @@
-import { normalize } from './catalog-utils.js';
+import { normalize,priceInfo } from './catalog-utils.js';
 
 // Some ERP records put the manufacturer in brand. Recognize the commercial
 // labels present in product names without changing their stored data.
-const commercialBrands = [
+export const commercialBrands = [
   ['Sempre Livre'], ['Always'], ['Intimus'], ['Carefree'], ['Diana'],
   ['Babysec'], ['Pampers'], ['Huggies'], ['Pom Pom'], ['Toquinho de Gente'],
   ['Giovanna Baby','Giovan Baby'], ['Dermacyd'], ['Dove'], ['Nivea'],
   ['Risqué','Risque'], ['Colorama'], ['Impala'], ['Rexona'], ['Colgate'],
   ['Oral B','Oral-B'], ['Johnson','Johnsons'], ['Granado'], ['Bepantol'],
-  ['Nutren'], ['Ensure'], ['Ninho'], ['Nan'], ['Aptamil'], ['Neslac']
+  ['Nutren'], ['Ensure'], ['Ninho'], ['Nan'], ['Aptamil'], ['Neslac'], ['Lavitan'], ['Cimed']
 ];
 const key=value=>normalize(value||'').replace(/[^a-z0-9]+/g,' ').trim();
 const collator=new Intl.Collator('pt-BR',{sensitivity:'base',numeric:true});
+export function sortCatalogProducts(products,by='brand') {
+  if(by==='brand')return orderProductsByBrand(products);
+  if(!['name','category','price','createdAt','updatedAt'].includes(by))return [...products];
+  return [...products].sort((a,b)=>by==='price'?priceInfo(a).priceCents-priceInfo(b).priceCents:by==='createdAt'||by==='updatedAt'?String(b[by]||'').localeCompare(String(a[by]||'')):collator.compare(a[by]||'',b[by]||'')||collator.compare(a.name||'',b.name||''));
+}
 export function orderProductsByBrand(products) {
   const candidates=new Map();
   for(const aliases of commercialBrands)for(const alias of aliases)candidates.set(key(alias),key(aliases[0]));

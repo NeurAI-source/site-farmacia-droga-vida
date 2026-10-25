@@ -29,6 +29,7 @@ export function validateCatalog(data) {
     if (!text(c.name, 160) || !c.name || !Array.isArray(c.subcategories) || !c.subcategories.every(s => text(s.name, 160))) fail();
   }
   for (const p of data.products) {
+    if(p.active&&(p.imagePending===true||p.imageUrl==='assets/product-pending.svg'))throw Error('Adicione uma foto real antes de ativar o produto.');
     if (!count(p.id) || ids.has(p.id) || !text(p.name, 120) || !p.name.trim() || !image(p.imageUrl)
       || !count(p.priceCents) || p.priceCents < 1 || !count(p.oldPriceCents) || !count(p.stockQuantity)
       || !data.categories.some(c => c.name === p.category) || !Array.isArray(p.variants)

@@ -4,9 +4,10 @@ import { repository } from './repository.js';
 import { verifiedServerRequest, verifiedScheduledRequest } from './server-auth.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 import { createOfficialContract, officialPolicy as policy } from './official-contract.js';
+import { discoveryAction } from './discovery.js';
 export function createHandler(db, env, {background} = {}) { return async req => {
   const origin = allowedOrigin(env('SITE_ORIGINS') || env('SITE_ORIGIN'),req.headers.get('origin'));
-  const headers = {'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'authorization, apikey, content-type',...(origin ? {'Access-Control-Allow-Origin':origin} : {})};
+  const headers = {'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info',...(origin ? {'Access-Control-Allow-Origin':origin} : {})};
   const reply = (data,status=200) => new Response(JSON.stringify(data),{status,headers});
   if (req.method==='OPTIONS') return reply({},origin ? 200 : 403);
   try {
@@ -35,6 +36,7 @@ export function createHandler(db, env, {background} = {}) { return async req => 
     if (req.method!=='POST') return reply({error:'method_not_allowed'},405);
     const scheduled = await verifiedScheduledRequest(req.headers,db);
     const internal = scheduled || await verifiedServerRequest(req.headers, env);
+    let registrationUser=null,memberRole=null;
     if (!internal) {
       if (!origin) return reply({error:'origin_forbidden'},403);
       const token = req.headers.get('authorization')?.replace(/^Bearer /i,'') || '';
@@ -42,10 +44,16 @@ export function createHandler(db, env, {background} = {}) { return async req => 
       if (error || !user) return reply({error:'unauthorized'},401);
       if (!await verifiedSession(db,token,user)) return reply({error:'invalid_session',code:'invalid_session'},403);
       const {data:member} = await db.from('team_members').select('role').eq('user_id',user.id).eq('active',true).single();
-      if (!member || !['admin','owner'].includes(member.role)) return reply({error:'forbidden'},403);
+      if (!member) return reply({error:'forbidden'},403);
+      registrationUser=user;memberRole=member.role;
       await panelQuota(db,user.id);
     }
-    const body = await readJson(req,1024);
+    const body = await readJson(req,4096);
+    if(['registration-search','registration-preview'].includes(body.action)){
+      if(!registrationUser||internal)return reply({error:'forbidden'},403);
+      return reply(await discoveryAction({body,db,env,user:registrationUser}));
+    }
+    if(!internal&&!['admin','owner'].includes(memberRole))return reply({error:'forbidden'},403);
     if(scheduled&&body.action!=='sync')return reply({error:'forbidden'},403);
     if (body.action==='status') {
       const {data,error} = await db.from('trier_sync_state').select('run_id,started_at,finished_at,lease_until,summary').eq('id',1).single();

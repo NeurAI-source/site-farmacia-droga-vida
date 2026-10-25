@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 const original=JSON.parse(readFileSync(new URL('../../catalog.json',import.meta.url)));
 const id='11111111-1111-4111-8111-111111111111';
 async function setup(page,{role='admin',lost=false,seedContent=false}={}){
- const catalog=structuredClone(original);catalog.products=catalog.products.slice(0,2).map((p,i)=>({...p,shortCode:i?'1':'001',variants:[],priceCents:i?800:600}));
+ const catalog=structuredClone(original);catalog.products=catalog.products.slice(0,2).map((p,i)=>({...p,shortCode:i?(seedContent?'002':'1'):'001',variants:[],priceCents:i?800:600}));
  if(seedContent){
   catalog.products[0].content={description:'Descrição histórica preservada',warnings:'Advertência conferida'};
   catalog.products[0].contentSources=['https://fabricante.com.br/produto'];

@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 export const TABLES = Object.freeze({
   team_members: 'user_id', catalog_draft: 'id', publications: 'id', site_visits: 'day,session_id',
-  price_batches: 'id', category_history: 'id', panel_role_creation: 'role', panel_access_history: 'id', campaign_assets: 'id', campaigns: 'id', campaign_pages: 'campaign_id,position',
+  price_batches: 'id', registration_batches:'id',registration_history:'id',category_history: 'id', panel_role_creation: 'role', panel_access_history: 'id', campaign_assets: 'id', campaigns: 'id', campaign_pages: 'campaign_id,position',
   product_content_history: 'product_id,catalog_version', product_ai_usage: 'id',
   trier_inventory: 'product_id,variant_id', trier_sync_state: 'id', trier_inventory_audit: 'id',
   banners: 'id', categories: 'id', deliveries: 'id', delivery_drivers: 'user_id',
@@ -27,7 +27,7 @@ export function validateBackup(value) {
   const encryptedMedia = value?.version === 2 && value.kind === 'application-data-encrypted-media';
   if ((!encryptedMedia && (value?.version !== 1 || value.kind !== 'application-data')) || !Number.isFinite(Date.parse(value.createdAt)) || !value.tables || !Array.isArray(value.storage)) throw Error('Invalid application backup');
   // Backups made before classification history existed remain recoverable.
-  const additive=['category_history','panel_role_creation','panel_access_history'];
+  const additive=['category_history','panel_role_creation','panel_access_history','registration_batches','registration_history'];
   if (Object.keys(value.tables).filter(k=>!additive.includes(k)).sort().join() !== Object.keys(TABLES).filter(k=>!additive.includes(k)).sort().join()) throw Error('Unexpected or missing backup tables');
   for (const rows of Object.values(value.tables)) if (!Array.isArray(rows) || rows.length > MAX_ROWS || rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) throw Error('Invalid backup rows');
   if (value.storage.length > MAX_ROWS) throw Error('Too many storage objects');

@@ -47,7 +47,7 @@ const html = (await readFile(new URL('index.html',dist),'utf8')).replace('campai
 await writeFile(new URL('index.html',dist),html);
 const panelDirectory = new URL(`${panelPath}/`,dist);
 await mkdir(panelDirectory,{recursive:true});
-for (const file of ['admin.css','campaigns.css']) await cp(new URL(`admin/${file}`,root),new URL(file,panelDirectory));
+for (const file of ['admin.css','campaigns.css','registration.css']) await cp(new URL(`admin/${file}`,root),new URL(file,panelDirectory));
 const adminBundle=await build({entryPoints:[fileURLToPath(new URL('admin/admin.js',root))],bundle:true,format:'esm',platform:'browser',minify:true,external:['../vendor/supabase.js','../public-config.js'],entryNames:'admin-[hash]',outdir:fileURLToPath(panelDirectory),metafile:true});
 const adminFile=Object.keys(adminBundle.metafile.outputs).find(file=>file.endsWith('.js')).split(/[\\/]/).pop();
 const adminHtml=(await readFile(new URL('admin/index.html',root),'utf8')).replace(/src="admin\.js\?[^\"]*"/,`src="${adminFile}"`);
