@@ -3,6 +3,7 @@ import { validateCatalog } from '../catalog-validation.js';
 const action = process.argv[2];
 if (action === 'prepare') {
   await mkdir('supabase/functions/_shared', { recursive: true });
+  await cp('product-identities.js', 'supabase/functions/_shared/product-identities.js');
   await cp('catalog-validation.js', 'supabase/functions/_shared/catalog-validation.js');
   await cp('campaign-utils.js', 'supabase/functions/_shared/campaign-utils.js');
   process.exit(0);

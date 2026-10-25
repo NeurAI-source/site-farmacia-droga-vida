@@ -20,6 +20,7 @@ const rules = [
   [0,1,/\b(sabonete|higiene)\b.*\bintim[oa]\b/],
   [3,1,/\b(lenco|lencos|lenc)\b.*\b(umedecido|umedecidos|umid|um)\b/],
   [3,0,/\bfraldas?\b|\bfr\b.*\b(babysec|pampers|huggies|pom pom|toquinho)\b/],
+  [3,5,/\b(formula infantil|formulas infantis|aptamil|nan|nestogeno)\b.*\b(\d+\s*g|gramas?)\b/],
   [3,3,/\bmamadeiras?\b/], [3,4,/\bchupetas?\b/],
   [0,2,/\bsabonetes?\b/], [0,3,/\b(desodorante|desodorantes|des)\b/],
   [0,4,/\b(creme dental|pasta dental|escova dental|fio dental|enxaguante bucal)\b/],
@@ -40,7 +41,15 @@ const rules = [
   [5,0,/\b(vitamina|vit)\s*[abcdek](?:\d{1,2})?\b|\bvitaminas e minerais\b|\b(magnesio|zinco|selenio|calcio)\b.*\b(caps?|capsulas?|cp|comp|comprimidos?|gomas?)\b/],
   [5,5,/\b(biotina|suplemento para cabelo|suplemento para cabelos)\b/]
 ];
-const same = (a,b) => normalize(a||'').trim() === normalize(b||'').trim();
+const categoryAliases = new Map([
+  ['shampoo','shampoos'],['condicionador','condicionadores'],
+  ['formula infantil','formulas infantis'],['formulas','formulas infantis'],
+  ['lenco umedecido','lencos umedecidos'],['fralda','fraldas'],
+  ['oleo capilar','oleos capilares'],['colageno','colagenos'],
+  ['vitaminas','vitaminas e minerais'],['polivitaminico','polivitaminicos']
+]);
+const equivalent = value => { const key=normalize(value||'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();return categoryAliases.get(key)||key; };
+const same = (a,b) => equivalent(a)===equivalent(b);
 export const classificationOf = p => ({category:p.category||'',subcategory:p.subcategory||'',classification:p.classification||null});
 const canonical=value=>JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item);
 export function suggestClassification(product, categories) {
@@ -64,7 +73,8 @@ export function suggestClassification(product, categories) {
   const aliases=ci===0||ci===1?['Perfumaria e Cuidados Pessoais']:ci===2?['Perfumaria e Cuidados Pessoais']:[];
   const existing=categories.find(c=>same(c.name,canonical))||categories.find(c=>aliases.some(a=>same(c.name,a)));
   const category=existing?.name||canonical;
-  const subcategory=existing?.subcategories.find(s=>same(s.name,subs[si]))?.name||subs[si];
+  const specificSub=ci===2&&si===0 ? (/\b(shampoo|xampu)\b/.test(text)&&!/\bcondicionador\b/.test(text)?'shampoos':/\bcondicionador\b/.test(text)&&!/\b(shampoo|xampu)\b/.test(text)?'condicionadores':'') : '';
+  const subcategory=existing?.subcategories.find(s=>same(s.name,subs[si]))?.name||existing?.subcategories.find(s=>specificSub&&same(s.name,specificSub))?.name||subs[si];
   return {category,subcategory,reason:'Termo explícito no nome do produto',ruleVersion:2};
 }
 export function ensureClassification(catalog, category, subcategory) {

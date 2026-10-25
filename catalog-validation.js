@@ -1,4 +1,5 @@
-export function validateCatalog(data) {
+import { newIdentityCollisions } from './product-identities.js';
+export function validateCatalog(data, {previousCatalog,strictIdentities=false}={}) {
   const fail = () => { throw new Error('Catálogo inválido. Confira produtos, preços, imagens e categorias.'); };
   if (!data || !Array.isArray(data.products) || !Array.isArray(data.categories) || !data.categories.length || data.products.length > 10000) fail();
   const text = (v, max) => typeof v === 'string' && v.length <= max;
@@ -45,10 +46,14 @@ export function validateCatalog(data) {
     const sizes = new Set();
     for (const v of p.variants) {
       if (!Number.isSafeInteger(v.id) || v.id < 0 || !text(v.size, 15) || !v.size.trim() || sizes.has(v.size.toUpperCase()) || !count(v.packageQuantity) || v.packageQuantity < 1 || !count(v.stockQuantity)) fail();
+      if(v.ean!=null&&(!text(v.ean,20)||(v.ean&&!/^[0-9]{8,14}$/.test(v.ean))))fail();
+      if(v.oldPriceCents!=null&&!count(v.oldPriceCents))fail();
       registerCode(v.shortCode || '');
       if (v.priceCents != null && (!count(v.priceCents) || v.priceCents < 1)) fail();
       sizes.add(v.size.toUpperCase());
     }
   }
+  const collision=(strictIdentities||previousCatalog?newIdentityCollisions(data.products,previousCatalog?.products||[]):[])[0];
+  if(collision)throw Error(`Identificador repetido (${collision.type}): ${collision.value}. Confira produtos e apresentações.`);
   return data;
 }

@@ -1,8 +1,9 @@
+import { canonicalCode, identityItems } from './product-identities.js';
 import { normalize } from './catalog-utils.js';
 import { suggestClassification, ensureClassification } from './admin/category-intelligence.js';
 import { commercialBrands, sortCatalogProducts } from './product-order.js';
 export const PENDING_IMAGE='assets/product-pending.svg';
-export const codeKey=v=>/^\d+$/.test(String(v||''))?String(Number(v)):String(v||'').trim().toUpperCase();
+export const codeKey=canonicalCode;
 const words=v=>normalize(v||'').replace(/[^a-z0-9]+/g,' ').trim();
 export function suggestRegistration(row,categories,brands=[]) {
   const original=String(row.name||'').trim(), text=` ${words(original)} `;
@@ -21,22 +22,32 @@ export function suggestRegistration(row,categories,brands=[]) {
     const unique=[...new Map(matches.map(m=>[m.category+'\n'+m.subcategory,m])).values()];
     if(unique.length===1)classification={...unique[0],reason:'Grupo/categoria oficial coincide com uma subcategoria existente'};
   }
-  const size=String(row.size||'').trim().slice(0,15)||original.match(/\b(P|M|G|XG|XXG|XXXG|RN|GRANDINHOS)\b/i)?.[1]?.toUpperCase()||'';
+  const size=String(row.size||'').trim().slice(0,15)||original.match(/\b(P|M|G|XG|XXG|XXXG|RN|GRANDINHOS)\b/i)?.[1]?.toUpperCase()||(/formula|aptamil|nestogeno|\bnan\b/.test(words(original))&&detail.length<=15?detail:'');
   return {name,brand,detail,size,category:classification.category||'',subcategory:classification.subcategory||'',
     description:row.description||'',confidence:classification.review?'review':'suggested',reason:classification.reason};
+}
+function similarProductNames(a,b) {
+  const expand=s=>words(s).replace(/(\d)(ml|mg|kg|g|l)\b/g,'$1 $2').replace(/\b(sh|shamp|xampu)\b/g,'shampoo').replace(/\b(cond|condic)\b/g,'condicionador').replace(/\b(fr|frd)\b/g,'fralda');
+  const x=new Set(expand(a).split(' ').filter(Boolean)),y=new Set(expand(b).split(' ').filter(Boolean));
+  if(x.size<2||y.size<2)return words(a)===words(b)&&!!words(a);
+  const common=[...x].filter(t=>y.has(t)).length;
+  return common>=2&&common/(x.size+y.size-common)>=0.7;
 }
 export function findDuplicates(candidate,products,excludeId) {
   const matches=[];
   for(const p of products){if(p.id===excludeId)continue;
-    for(const v of [null,...(p.variants||[])]){
-      const item=v||p, code=item.shortCode,ean=item.ean||(v?'':p.ean);
-      const reasons=[];
-      if(candidate.shortCode&&code&&codeKey(candidate.shortCode)===codeKey(code))reasons.push('Código reduzido');
-      if(candidate.ean&&ean&&String(candidate.ean)===String(ean))reasons.push('EAN');
-      if(candidate.trier?.id&&item.trier?.id===candidate.trier.id)reasons.push('Identificador Trier');
-      if(reasons.length)matches.push({productId:p.id,variantId:v?.id||null,name:p.name,size:v?.size||'',reasons,exact:true});
+    for(const item of identityItems(p)){
+      const reasons=new Set();
+      for(const source of identityItems(candidate)){
+        if(source.shortCode&&item.shortCode&&codeKey(source.shortCode)===codeKey(item.shortCode))reasons.add('Código reduzido');
+        if(source.ean&&item.ean&&String(source.ean)===String(item.ean))reasons.add('EAN');
+        const sourceId=source.trier?.id||source.externalId;
+        if(sourceId&&item.trier?.id===sourceId)reasons.add('Identificador Trier');
+      }
+      if(reasons.size)matches.push({productId:p.id,variantId:item===p?null:item.id,name:p.name,size:item===p?'':item.size,reasons:[...reasons],exact:true});
     }
-    if(!matches.some(m=>m.productId===p.id)&&words(candidate.name)===words(p.name)&&(!candidate.brand||!p.brand||words(candidate.brand)===words(p.brand)))matches.push({productId:p.id,name:p.name,reasons:['Nome e marca semelhantes'],exact:false});
+    const sameBrand=!candidate.brand||!p.brand||words(candidate.brand)===words(p.brand);
+    if(!matches.some(m=>m.productId===p.id)&&sameBrand&&similarProductNames(candidate.name,p.name))matches.push({productId:p.id,name:p.name,reasons:['Nome e marca semelhantes'],exact:false});
   }
   return matches;
 }
@@ -100,10 +111,12 @@ export function reviewRegistration(catalog,inventory=[],now=Date.now()) {
     const proposed=suggestRegistration(p,catalog.categories,catalog.products.map(p=>p.brand));
     if(!p.brand||proposed.brand&&words(proposed.brand)!==words(p.brand))add('brand','Marca para revisar');if(!p.detail)add('detail','Apresentação incompleta');
     for(const v of p.variants.length?p.variants:[p])if(!/^\d{1,12}$/.test(v.shortCode||''))add('code','Código Trier ausente ou inválido');
-    if(p.variants.some(v=>!v.shortCode||!v.size||!v.packageQuantity))add('variants','Variação incompleta');
+    if(p.variants.some(v=>!v.shortCode||!v.size||!v.packageQuantity||v.trier?.code&&codeKey(v.shortCode)!==codeKey(v.trier.code)))add('variants','Variação incompleta');
     if(findDuplicates(p,catalog.products,p.id).length)add('duplicate','Possível duplicado: confira os identificadores');
     const linked=inventory.filter(r=>r.product_id===p.id);
-    if(p.trier&&(!linked.length||linked.some(r=>!r.last_trier_sync_at||now-Date.parse(r.last_trier_sync_at)>3600000)))add('sync','Sincronização ausente ou antiga');
+    const identities=(p.variants.length?p.variants:[p]).filter(v=>/^\d{1,12}$/.test(v.shortCode||''));
+    if(identities.some(v=>!linked.some(r=>(r.variant_id||0)===(v===p?0:v.id)&&(!r.trier_reduced_code||codeKey(r.trier_reduced_code)===codeKey(v.shortCode))&&Number.isFinite(Date.parse(r.last_trier_sync_at))&&now-Date.parse(r.last_trier_sync_at)<=3600000)))add('sync','Sincronização ausente, antiga ou apresentação sem vínculo');
+    if(linked.some(r=>r.external_status==='invalid'||r.external_status==='error'))add('sync-error','Falha no item sincronizado: conferir integração');
     return issues.length?[{id:p.id,name:p.name,issues,suggestion:suggestRegistration(p,catalog.categories,catalog.products.map(p=>p.brand))}]:[];
   });
 }
