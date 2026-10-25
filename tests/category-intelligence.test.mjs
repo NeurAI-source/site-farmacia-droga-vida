@@ -22,8 +22,8 @@ test('supplements recognize collagen and abbreviated names without classifying c
   ['MAGNESIO 60 CAPS','Vitaminas e minerais'],
   ['BIOTINA VITAMINA B7 60 CAPS','Cabelo, pele e unhas']
  ]){const result=suggestClassification({name},categories);assert.equal(result.category,'Suplementos',name);assert.equal(result.subcategory,sub,name);assert.equal(result.ruleVersion,2);}
- for(const name of ['LAVITAN','CIMED','LAVITAN 300G','NUTREN ACTIVE COM 14 VITAMINAS','KIT COLAGENO E VITAMINA C','COLAGENO E WHEY'])assert.equal(suggestClassification({name},categories).review,true,name);
- for(const name of ['SHAMPOO COM COLAGENO','SERUM FACIAL VITAMINA C','CREME COLAGENO','MASCARA CAPILAR BIOTINA'])assert.notEqual(suggestClassification({name},categories).category,'Suplementos',name);
+ for(const name of ['LAVITAN','CIMED','LAVITAN 300G','NUTREN ACTIVE COM 14 VITAMINAS','OXIDO DE ZINCO 60G','KIT COLAGENO E VITAMINA C','COLAGENO E WHEY'])assert.equal(suggestClassification({name},categories).review,true,name);
+ for(const name of ['SHAMPOO COM COLAGENO','SERUM FACIAL VITAMINA C','CREME COLAGENO','MASCARA CAPILAR BIOTINA','POMADA VITAMINA A','PROTETOR SOLAR COM ZINCO'])assert.notEqual(suggestClassification({name},categories).category,'Suplementos',name);
 });
 test('new collagen suggestions add missing options only on confirmation and preserve manual classifications',()=>{
  const input=structuredClone(catalog);input.categoryIntelligence={automatic:true};

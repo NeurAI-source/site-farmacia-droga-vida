@@ -37,7 +37,7 @@ const rules = [
   [5,4,/\bomega\s*(3|6|9)\b|\boleo de peixe\b/],
   [5,2,/\b(whey|creatina|bcaa|glutamina)\b/],
   [5,1,/\b(polivitaminico|polivitaminicos|multivitaminico|multivitaminicos)\b/],
-  [5,0,/\b(vitamina|vit)\s*[abcdek](?:\d{1,2})?\b|\bvitaminas e minerais\b|\b(magnesio|zinco|selenio|calcio)\b/],
+  [5,0,/\b(vitamina|vit)\s*[abcdek](?:\d{1,2})?\b|\bvitaminas e minerais\b|\b(magnesio|zinco|selenio|calcio)\b.*\b(caps?|capsulas?|cp|comp|comprimidos?|gomas?)\b/],
   [5,5,/\b(biotina|suplemento para cabelo|suplemento para cabelos)\b/]
 ];
 const same = (a,b) => normalize(a||'').trim() === normalize(b||'').trim();
@@ -50,7 +50,7 @@ export function suggestClassification(product, categories) {
   // matches (e.g. a kit containing soap and shampoo) require human review.
   // Ingredients in cosmetics (e.g. collagen shampoo or vitamin C face serum)
   // do not identify an oral supplement. Never classify by Lavitan/Cimed alone.
-  const topical=/\b(creme|serum|shampoo|xampu|condicionador|mascara|locao|sabonete|esmalte|capilar|facial|uso externo)\b/.test(text);
+  const topical=/\b(creme|serum|shampoo|xampu|condicionador|mascara|locao|sabonete|esmalte|capilar|facial|pomada|protetor solar|hidratante|dental|bucal|uso externo)\b/.test(text);
   const matches=rules.filter(([c, ,pattern])=>!(c===5&&topical)&&pattern.test(text));
   const specific=matches.filter(([c,s])=>!(c===0&&s===2&&matches.some(([a,b])=>a===0&&b===1))
     && !(c===1&&s===0&&matches.some(([a,b])=>a===1&&b===1))
