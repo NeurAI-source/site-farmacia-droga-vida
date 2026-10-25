@@ -94,7 +94,7 @@ test('additive database migration: atomic audit, concurrency, idempotency, RLS a
  await db.exec(`insert into public.team_members values('${actor}','admin',true);set test.uid='${actor}';grant select,update on public.catalog_draft to service_role;grant select on public.team_members to service_role;`);
  await db.query('insert into public.catalog_draft(id,catalog) values(1,$1)',[JSON.stringify(base)]);
  await db.exec(await readFile(new URL('../supabase/migrations/20261025141849_intelligent_registration.sql',import.meta.url),'utf8'));
- await db.exec(await readFile(new URL('../supabase/migrations/20261025152350_registration_identity_hardening.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261025153435_registration_identity_hardening.sql',import.meta.url),'utf8'));
  const before=(await db.query('select catalog from public.catalog_draft')).rows[0].catalog;assert.deepEqual(before,base);
  const next=structuredClone(base);next.products[0].name+=' conferido';next.products[0].shortCode='12345';const id=crypto.randomUUID(),req={key:'request'};
  const commit=async(version,request=req)=>{await db.exec('set role service_role');try{return (await db.query('select public.registration_save($1,$2,$3,$4,$5,$6) result',[actor,id,version,JSON.stringify(next),JSON.stringify(request),'[]'])).rows[0].result;}finally{await db.exec('reset role');}};

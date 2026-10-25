@@ -59,7 +59,7 @@ test('SQL guard permits existing EAN collisions and rejects additional owners wi
  const {PGlite}=await import('@electric-sql/pglite');const db=new PGlite();try{
  await db.exec(`create role anon;create role authenticated;create schema panel_private;create table public.catalog_draft(catalog jsonb);create function public.catalog_count(jsonb) returns boolean language sql immutable as $$select true$$;`);
  const before={products:[{id:1,ean:'7891234567890',variants:[]},{id:2,ean:'7891234567890',variants:[]},{id:3,variants:[]}]};await db.query('insert into public.catalog_draft values($1)',[JSON.stringify(before)]);
- await db.exec(await readFile(new URL('../supabase/migrations/20261025152350_registration_identity_hardening.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261025153435_registration_identity_hardening.sql',import.meta.url),'utf8'));
  const edit=structuredClone(before);edit.products[0].name='Conferido';await db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(edit)]);
  const collision=structuredClone(edit);collision.products[2].ean='7891234567890';await assert.rejects(()=>db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(collision)]),/Identificador repetido/);
  assert.deepEqual((await db.query('select catalog from public.catalog_draft')).rows[0].catalog,edit);

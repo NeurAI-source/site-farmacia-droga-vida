@@ -133,4 +133,4 @@ Nenhum download de imagens arbitrárias ou reconstrução de embalagem foi adici
 Validação de importação autenticada em produção exige uma sessão administrativa
 real; não criar produtos de teste nem substituir essa sessão pela service_role.
 
-Migration adicional: `20261025152350_registration_identity_hardening.sql`.
+Migration adicional: `20261025153435_registration_identity_hardening.sql`.
