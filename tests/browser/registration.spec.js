@@ -21,9 +21,9 @@ async function setup(page,{role='admin',offline=false,lost=false}={}){
      const b=req.postDataJSON();state.calls.push(b);if(state.offline)return route.fulfill({status:503,json:{error:'provider_unavailable'}});
      if(b.action==='registration-search'){
        if(!['browse','name','code','ean'].includes(b.mode)||(b.mode==='code'||b.mode==='ean')&&!b.query)return route.fulfill({status:400,json:{error:'invalid_query'}});
-       data={rows:state.rows.filter(r=>b.mode==='code'?r.shortCode===b.query:b.mode==='ean'?r.ean===b.query:true),nextOffset:2,hasMore:false};
+       data={rows:state.rows.filter(r=>b.mode==='code'?String(Number(r.shortCode))===String(Number(b.query)):b.mode==='ean'?r.ean===b.query:true),nextOffset:2,hasMore:false};
      }
-     if(b.action==='registration-preview'){const rows=state.rows.filter(r=>b.codes.includes(r.shortCode)),previewId='preview:'+crypto.randomUUID();state.previews.set(previewId,rows);data={rows,previewId};}
+     if(b.action==='registration-preview'){if(state.lookupBarrier)await state.lookupBarrier;const rows=state.rows.filter(r=>b.codes.some(code=>String(Number(code))===String(Number(r.shortCode)))),previewId='preview:'+crypto.randomUUID();state.previews.set(previewId,rows);data={rows,previewId};}
    }else if(url.pathname.endsWith('/admin-api')){
      const b=req.postDataJSON();state.calls.push(b);
      if(b.action==='registration-inventory')data={inventory:[]};
@@ -41,9 +41,9 @@ async function setup(page,{role='admin',offline=false,lost=false}={}){
 
 test('classic registration is restored without import or review navigation or background requests',async({page})=>{
  const state=await setup(page);await expect(page.locator('.sidebar [data-view="registration"]')).toHaveCount(0);await expect(page.locator('.sidebar [data-view="review"]')).toHaveCount(0);
- await page.locator('#new-product').click();const f=page.locator('#product-form');await expect(f.locator('.registration-editor-section')).toHaveCount(0);await expect(f.locator('[data-find-trier]')).toHaveCount(0);await expect(f.locator('#image-upload')).toBeVisible();
+ await page.locator('#new-product').click();expect(state.calls.some(c=>String(c.action||'').startsWith('registration-'))).toBe(false);const f=page.locator('#product-form');await expect(f.locator('.registration-editor-section')).toHaveCount(0);await expect(f.locator('[data-find-trier]')).toHaveCount(0);await expect(f.locator('#image-upload')).toBeVisible();
  await f.locator('[name=name]').fill('Produto manual de teste');await f.locator('[name=shortCode]').fill('990001');await f.locator('[name=brand]').fill('Marca teste');await f.locator('[name=price]').fill('19.99');await f.locator('[name=stockQuantity]').fill('2');await f.locator('[name=imageUrl]').fill('assets/products/3.png');
- await f.getByRole('button',{name:'Salvar produto',exact:true}).click();await expect(page.locator('#editor')).toBeHidden();expect(state.catalog.products.at(-1)).toMatchObject({name:'Produto manual de teste',priceCents:1999,shortCode:'990001',stockQuantity:2});expect(state.calls.some(c=>String(c.action||'').startsWith('registration-'))).toBe(false);expect(state.calls.some(c=>c.action==='publish')).toBe(false);
+ await f.getByRole('button',{name:'Salvar produto',exact:true}).click();await expect(page.locator('#editor')).toBeHidden();expect(state.catalog.products.at(-1)).toMatchObject({name:'Produto manual de teste',priceCents:1999,shortCode:'990001',stockQuantity:2});expect(state.calls.some(c=>c.action==='registration-commit')).toBe(false);expect(state.calls.some(c=>c.action==='publish')).toBe(false);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
 test('classic image upload retains its preview and does not save or publish by itself',async({page})=>{
@@ -59,4 +59,28 @@ test('editing an imported variant preserves EAN, ERP metadata, previous price an
  const f=page.locator('#product-form');await f.locator('[name=badge]').fill('Conferido');await f.getByRole('button',{name:'Salvar produto',exact:true}).click();await expect(page.locator('#editor')).toBeHidden();
  const after=state.catalog.products.find(item=>item.id===p.id).variants;
  for(let i=0;i<before.length;i++){expect(after[i].trier).toEqual(before[i].trier);expect(after[i].ean).toBe(before[i].ean);expect(after[i].oldPriceCents).toBe(2499);expect(after[i].customSource).toBe('keep');expect(after[i].id).toBe(before[i].id);}
+});
+
+test('leaving the reduced code fills available fields in the simple editor without saving or publishing',async({page})=>{
+ const state=await setup(page);const before=structuredClone(state.catalog);await page.locator('#new-product').click();const f=page.locator('#product-form');await f.locator('[name=shortCode]').fill('00900001');expect(state.calls.some(c=>c.action==='registration-search')).toBe(false);await f.locator('[name=ean]').click();
+ await expect(f.locator('[name=name]')).toHaveValue('Shampoo Dove 250 mL');await expect(f.locator('[name=ean]')).toHaveValue('7900000000001');await expect(f.locator('[name=brand]')).toHaveValue('Dove');await expect(f.locator('[name=detail]')).toHaveValue('250 mL');await expect(f.locator('[name=price]')).toHaveValue('19.99');await expect(f.locator('[name=oldPrice]')).toHaveValue('24.99');await expect(f.locator('[data-trier-lookup-status]')).toContainText('sugestões pelo nome');expect(state.catalog).toEqual(before);expect(state.calls.some(c=>c.action==='registration-commit'||c.action==='publish')).toBe(false);
+ await f.locator('[name=imageUrl]').fill('assets/products/3.png');await f.getByRole('button',{name:'Salvar produto',exact:true}).click();await expect(page.locator('#editor')).toBeHidden();expect(state.catalog.products.at(-1)).toMatchObject({shortCode:'00900001',ean:'7900000000001',brand:'Dove',priceCents:1999,trier:{code:'900001',storeId:'2'}});
+});
+test('lookup preserves manual text and prices and a new code clears only previous automatic values',async({page})=>{
+ await setup(page);await page.locator('#new-product').click();const f=page.locator('#product-form');await f.locator('[name=name]').fill('Meu nome comercial');await f.locator('[name=price]').fill('17.99');await f.locator('[name=shortCode]').fill('900001');await f.locator('[name=ean]').click();await expect(f.locator('[name=ean]')).toHaveValue('7900000000001');await expect(f.locator('[name=name]')).toHaveValue('Meu nome comercial');await expect(f.locator('[name=price]')).toHaveValue('17.99');await expect(f.locator('[name=oldPrice]')).toHaveValue('');
+ await f.locator('[name=shortCode]').fill('900002');await expect(f.locator('[name=ean]')).toHaveValue('');await f.locator('[name=ean]').click();await expect(f.locator('[name=ean]')).toHaveValue('7900000000002');await expect(f.locator('[name=detail]')).toHaveValue('200 mL');await expect(f.locator('[name=name]')).toHaveValue('Meu nome comercial');await expect(f.locator('[name=price]')).toHaveValue('17.99');await expect(f.locator('[name=oldPrice]')).toHaveValue('');
+});
+test('failed lookup leaves manual registration usable and a barcode in the reduced-code field explains the mismatch',async({page})=>{
+ const state=await setup(page,{offline:true});await page.locator('#new-product').click();const f=page.locator('#product-form');await f.locator('[name=name]').fill('Cadastro manual');await f.locator('[name=shortCode]').fill('900001');await f.locator('[name=ean]').click();await expect(f.locator('[data-trier-lookup-status]')).toContainText('Seus campos foram preservados');await expect(f.locator('[name=name]')).toHaveValue('Cadastro manual');await expect(f.getByRole('button',{name:'Salvar produto',exact:true})).toBeEnabled();
+ const calls=state.calls.length;await f.locator('[name=shortCode]').fill('7900000000001');await f.locator('[name=ean]').click();await expect(f.locator('[data-trier-lookup-status]')).toContainText('não o código de barras');expect(state.calls).toHaveLength(calls);
+});
+test('an existing official code offers editing the saved product instead of silently duplicating it',async({page})=>{
+ const state=await setup(page);const p=state.catalog.products[0];p.shortCode='900001';await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('#new-product').click();const f=page.locator('#product-form');await f.locator('[name=shortCode]').fill('900001');await f.locator('[name=ean]').click();await expect(f.locator('[data-trier-lookup-status]')).toContainText('já está cadastrado');await expect(f.locator('[name=name]')).toHaveValue('');await f.getByRole('button',{name:'Editar cadastro existente',exact:true}).click();await expect(f.locator('[name=name]')).toHaveValue(p.name);expect(state.calls.some(c=>c.payload)).toBe(false);
+});
+test('a lookup response arriving after another editor opens cannot fill the wrong product',async({page})=>{
+ const state=await setup(page);state.lookupBarrier=new Promise(resolve=>state.releaseLookup=resolve);await page.locator('#new-product').click();const f=page.locator('#product-form');await f.locator('[name=shortCode]').fill('900001');await f.locator('[name=ean]').click();await expect.poll(()=>state.calls.some(c=>c.action==='registration-preview')).toBe(true);await page.locator('#close-editor').click();await page.locator('#new-product').click();const response=page.waitForResponse(r=>r.url().endsWith('/trier-api')&&r.request().postDataJSON()?.action==='registration-preview');state.releaseLookup();await response;await page.evaluate(()=>new Promise(requestAnimationFrame));await expect(f.locator('[name=name]')).toHaveValue('');await expect(f.locator('[name=ean]')).toHaveValue('');await expect(f.locator('[data-trier-lookup-status]')).toContainText('Cadastro e foto continuam manuais');
+});
+
+test('a regular price and unknown brand do not invent a promotion or infer a laboratory as brand',async({page})=>{
+ const state=await setup(page);state.rows[0]={...state.rows[0],name:'PRODUTO NOVO',laboratory:'Dove',regularPriceCents:null,discountStatus:'unavailable'};await page.locator('#new-product').click();const f=page.locator('#product-form');await f.locator('[name=shortCode]').fill('900001');await f.locator('[name=ean]').click();await expect(f.locator('[name=price]')).toHaveValue('19.99');await expect(f.locator('[name=oldPrice]')).toHaveValue('');await expect(f.locator('[name=brand]')).toHaveValue('');await expect(f.locator('[name=detail]')).toHaveValue('');
 });

@@ -145,3 +145,23 @@ continuam no fluxo anterior. Metadados de apresentações, proteção de duplica
 histórico, dados já salvos e sincronização recorrente Trier foram preservados.
 As migrations e funções de importação ficam preservadas, sem remover tabelas ou
 registros. Não há ativação de IA generativa nesta restauração.
+
+## Consulta simples no cadastro manual
+
+O código reduzido do produto sem tamanhos pode ser consultado ao sair do campo,
+ao pressionar Enter ou pelo botão Consultar código na Trier. Não há debounce nem
+consulta por dígito. Reutiliza registration-search/registration-preview autenticados
+para verificar o código exato, filial 2 e o par de preços promocionais oficial.
+A consulta preenche nome, EAN, marca/apresentação sugeridas, preços e quantidade
+somente em campos novos não editados ou campos vazios do cadastro existente.
+Dados já preenchidos só são substituídos pelo botão explícito e confirmação.
+Marca e apresentação são deduzidas por regras do nome, nunca presumindo que
+laboratório é marca. Nenhuma informação ausente é inventada. Foto continua manual.
+
+Códigos duplicados oferecem editar o cadastro existente. Trocar o código limpa
+somente dados anteriormente preenchidos pela consulta, preservando digitação manual.
+Respostas atrasadas não podem preencher outro produto ou outro código. Falha, cache
+antigo, ausência de produto ou preço inválido preservam o formulário manual. O
+preenchimento não salva nem publica e não escreve no ERP. Tamanhos/apresentações
+continuam no fluxo manual por código individual; essa consulta não agrupa variantes.
+Nenhuma migration, secret novo ou Edge Function nova é necessária.
