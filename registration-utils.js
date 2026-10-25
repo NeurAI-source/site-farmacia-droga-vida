@@ -82,6 +82,12 @@ export function buildRegistration(catalog,rows,choices,now=new Date().toISOStrin
     const p={id:nextId++,name:String(choice.name||suggestion.name||r.name).trim(),shortCode:r.shortCode,ean:r.ean||'',brand:String(choice.brand??suggestion.brand),detail:String(choice.detail??suggestion.detail),category:cat,subcategory:sub,imageUrl:PENDING_IMAGE,imagePending:true,
       priceCents:r.priceCents,oldPriceCents:r.regularPriceCents||0,stockQuantity:Math.max(0,r.stockQuantity),badge:'',active:false,featured:false,availableStore1:false,availableStore2:true,variants:[],tone:'amber',sortOrder:next.products.length,createdAt:now,updatedAt:now,trier:source,
       classification:{locked:true,source:'reviewed'},registration:{pending:true,source:'trier'},...(r.description?{content:{description:r.description.slice(0,2400)}}:{})};
+    if(words(sub)==='fraldas'){
+      const size=String(choice.size||suggestion.size||'').trim(),quantity=Number(choice.packageQuantity);
+      if(!size||size.length>15||!Number.isInteger(quantity)||quantity<1)throw Error(`Informe tamanho e quantidade por pacote da fralda ${r.shortCode}.`);
+      p.variants=[{id:variantId++,productId:p.id,size,packageQuantity:quantity,shortCode:r.shortCode,ean:r.ean||'',priceCents:r.priceCents,oldPriceCents:r.regularPriceCents||0,stockQuantity:Math.max(0,r.stockQuantity),sortOrder:0,trier:source}];
+      p.shortCode='';p.ean='';const {id:_id,code:_code,...groupSource}=source;p.trier=groupSource;
+    }
     next.products.push(p);report.push({code:r.shortCode,status:'created',productId:p.id});
   }
   return {catalog:next,report};

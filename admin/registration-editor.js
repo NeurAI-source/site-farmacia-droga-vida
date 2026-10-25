@@ -36,7 +36,7 @@ export function mountRegistrationEditor({form,dialog,getCatalog,upload,onSearch,
     [...form.querySelectorAll('button')].find(b=>b.textContent==='Sugerir categoria pelo nome')?.click();
     intro.querySelector('[data-editor-source]').textContent=`Sugestões pelo nome: ${s.name}. ${s.confidence==='review'?'Categoria para revisão manual.':'Confira marca, apresentação e categoria antes de salvar.'}`;
   };
-  document.addEventListener('dv-product-edit',e=>{const p=e.detail,t=p.trier;
+  document.addEventListener('dv-product-edit',e=>{const p=e.detail,t=p.variants?.find(v=>v.trier)?.trier||p.trier;
     intro.querySelector('[data-editor-source]').textContent=t?`Trier · filial ${t.storeId} · código ${t.code} · consultado em ${new Date(t.syncedAt).toLocaleString('pt-BR')}`:'Cadastro manual · confira antes de salvar.';
     integration.querySelector('[data-integration-detail]').textContent=t?`Nome na Trier: ${t.sourceName}. Situação na consulta: ${t.active?'ativo':'inativo'}. Quantidade consultada: ${t.stockQuantity}. A sincronização recorrente mantém o cache público pelo código.`:'Origem manual. Sem confirmação de estoque da Trier até a sincronização existente.';
     if(p.imagePending)intro.querySelector('[data-editor-source]').textContent+=' · Foto pendente: adicione a embalagem real antes de ativar.';

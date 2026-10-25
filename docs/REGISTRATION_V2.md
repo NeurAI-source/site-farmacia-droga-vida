@@ -30,6 +30,9 @@ informados. Identidade oficial nunca é deduzida por nome. EAN e códigos iguais
 exigem resolução no cadastro existente; nomes semelhantes exigem confirmação de
 produto separado. Atualizações preservam nome, foto, categoria e marca;
 substituição de preço/quantidade exige a caixa de confirmação específica.
+Fraldas novas exigem tamanho e quantidade por pacote conferidos. Cada código
+entra em uma variante própria, compatível com o seletor existente, sem agrupar
+automaticamente outros tamanhos ou famílias. O vínculo a outro produto é explícito.
 
 Novos produtos são inativos e pendentes de foto. `product-pending.svg` é uma
 indicação textual de pendência, não uma foto de produto inventada. Não podem ser

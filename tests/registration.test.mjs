@@ -44,6 +44,13 @@ test('variant linkage requires explicit target, unique size, package quantity an
  assert.throws(()=>buildRegistration(input,[row()],[{...choice,packageQuantity:''}]),/quantidade/);
  assert.throws(()=>buildRegistration(result.catalog,[{...row('456'),ean:''}],[{...choice,code:'456'}]),/tamanho/);
 });
+test('a new diaper keeps the existing size-picker structure with one reviewed exact variant',()=>{
+ const input=small(),r={...row(),name:'FRALDA PAMPERS G 60 UN',size:'G'};
+ assert.throws(()=>buildRegistration(input,[r],[{code:'123',mode:'new'}]),/quantidade por pacote/);
+ const result=buildRegistration(input,[r],[{code:'123',mode:'new',size:'G',packageQuantity:60}]);const p=result.catalog.products[0];validateCatalog(result.catalog);
+ assert.equal(p.shortCode,'');assert.equal(p.variants.length,1);assert.equal(p.variants[0].shortCode,'123');assert.equal(p.variants[0].size,'G');assert.equal(p.variants[0].packageQuantity,60);
+ assert.equal(findDuplicates({...r,trier:{id:r.externalId}},[p])[0].variantId,p.variants[0].id);
+});
 test('review identifies incomplete registrations and ignoring one fingerprint does not hide later changes',()=>{
  const catalog=buildRegistration(small(),[row()],[{code:'123',mode:'new'}]).catalog;const p=catalog.products[0];let issues=reviewRegistration(catalog);assert.ok(issues[0].issues.some(i=>i.key==='image'));assert.ok(issues[0].issues.some(i=>i.key==='sync'));
  p.reviewIgnores=issues[0].issues.map(i=>({key:i.key,fingerprint:JSON.stringify([p.name,p.brand,p.category,p.subcategory,p.imageUrl,p.shortCode,p.ean,p.variants])}));assert.equal(reviewRegistration(catalog).length,0);p.name+=' alterado';assert.equal(reviewRegistration(catalog).length,1);
