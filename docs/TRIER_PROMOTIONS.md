@@ -35,3 +35,9 @@ no atendimento. Sem par válido, exibe-se somente o preço de venda.
 
 Testes usam fixtures, banco local PGlite e APIs interceptadas, incluindo WebKit
 com perfil iPhone. Nenhum produto real é usado como dado de teste de escrita.
+
+Se o preço atual do produto já for exatamente o `valorPromocao` do par universal
+confirmado, o preço atual é mantido e o `valorVenda` da mesma oferta é anexado
+como De. A comparação usa centavos exatos, código único e as mesmas validações
+de condição de pagamento. Preço de e-commerce diferente tanto do normal quanto
+do promocional continua preservado sem De presumido.

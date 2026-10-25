@@ -42,17 +42,17 @@ function syncCategoryChoices(){
 const suggestion=document.createElement('p');suggestion.className='full muted';suggestion.setAttribute('role','status');
 const suggestButton=document.createElement('button');suggestButton.type='button';suggestButton.className='text-button';suggestButton.textContent='Sugerir categoria pelo nome';
 field('category').parentElement.append(suggestButton);field('category').parentElement.append(suggestion);
-function suggestCategory(automatic=false){
+function suggestCategory(automatic=false,proposal=null){
  if(automatic&&(editing||categoryTouched))return;
- const result=suggestClassification({name:field('name').value},data.categories);
- if(result.review){suggestion.textContent=result.reason;return;}
+ const result=proposal||suggestClassification({name:field('name').value},data.categories);
+ if(result.review){suggestion.textContent=result.reason;return false;}
  // Options are prepared locally; categories are persisted only on Save.
  if(![...field('category').options].some(o=>o.value===result.category))field('category').add(new Option(result.category,result.category));
  field('category').value=result.category;
  const category=data.categories.find(c=>c.name===result.category);
  field('subcategory').innerHTML='<option value="">Sem subcategoria</option>'+(category?.subcategories||[]).map(s=>`<option>${esc(s.name)}</option>`).join('');
  if(![...field('subcategory').options].some(o=>o.value===result.subcategory))field('subcategory').add(new Option(result.subcategory,result.subcategory));
- field('subcategory').value=result.subcategory;suggestion.textContent='Sugestão: '+result.category+' → '+result.subcategory+'. Confira antes de salvar.';categoryTouched=true;syncVariantMode();
+ field('subcategory').value=result.subcategory;suggestion.textContent='Sugestão: '+result.category+' → '+result.subcategory+'. Confira antes de salvar.';categoryTouched=true;syncVariantMode();return true;
 }
 suggestButton.onclick=()=>suggestCategory();field('name').addEventListener('blur',()=>suggestCategory(true));
 const protectLabel=document.createElement('label');protectLabel.className='full';
@@ -60,7 +60,7 @@ protectLabel.innerHTML='<span><input type="checkbox" data-protect-classification
 field('category').parentElement.after(protectLabel);const protect=protectLabel.querySelector('input');protect.onchange=()=>{categoryTouched=true;};
 setInterval(async()=>{if(!data?.categoryIntelligence?.automatic||saving||document.hidden||document.querySelector('dialog[open]')||document.activeElement?.matches('input,select,textarea'))return;try{await reloadCatalog();const next=fillMissingClassifications(data);if(next!==data){await save(next);render();}}catch(error){notify(error.message);}},60000);
 const productImageUpload = mountProductImageUpload({dialog:$('#editor'),input:$('#image-upload'),urlField:field('imageUrl'),status:$('#image-upload-status'),upload:uploadProductImage,preview:previewImage});
-const simpleLookup=mountSimpleTrierLookup({form,dialog:$('#editor'),request:(action,body)=>invokeAdminRequest(client,'trier-api',{body:{action,...body}}),getCatalog:()=>data,getEditing:()=>editing,onEdit:edit,onFilled:()=>suggestCategory(true)});
+const simpleLookup=mountSimpleTrierLookup({form,dialog:$('#editor'),request:(action,body)=>invokeAdminRequest(client,'trier-api',{body:{action,...body}}),getCatalog:()=>data,getEditing:()=>editing,onEdit:edit,onFilled:({suggestion:proposed,categoryAllowed})=>categoryAllowed?suggestCategory(false,{category:proposed.category,subcategory:proposed.subcategory,review:!proposed.category,reason:proposed.reason}):false,restoreCategory:subcategories});
 function subcategories(selected=''){const category=data.categories.find(c=>c.name===field('category').value);field('subcategory').innerHTML='<option value="">Sem subcategoria</option>'+(category?.subcategories||[]).map(s=>`<option ${s.name===selected?'selected':''}>${esc(s.name)}</option>`).join('')}
 const isDiaper=()=>field('subcategory').value==='Fraldas';
 function syncVariantMode(){

@@ -165,3 +165,12 @@ antigo, ausência de produto ou preço inválido preservam o formulário manual.
 preenchimento não salva nem publica e não escreve no ERP. Tamanhos/apresentações
 continuam no fluxo manual por código individual; essa consulta não agrupa variantes.
 Nenhuma migration, secret novo ou Edge Function nova é necessária.
+
+A consulta simples também aplica sugestões de categoria/subcategoria a novos
+formulários sem seleção manual, usando o nome original e grupos oficiais
+equivalentes às categorias existentes. Trocar o código limpa a classificação
+automática anterior; escolhas manuais e classificações existentes são preservadas.
+O botão de substituição explícita inclui categoria/subcategoria na confirmação.
+Um De em branco pode ser completado quando o Por existente é exatamente o preço
+promocional confirmado; preço manual diferente continua protegido. O painel
+informa quando não há par universal confirmado ou a consulta de promoções falha.
