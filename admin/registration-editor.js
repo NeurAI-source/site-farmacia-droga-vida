@@ -50,11 +50,11 @@ export function mountRegistrationEditor({form,dialog,getCatalog,upload,onSearch,
   treatment.querySelector('[data-prepare-photo]').onchange=async e=>{
     const file=e.target.files[0];if(!file||busy)return;
     const status=treatment.querySelector('[data-photo-status]');if(form.querySelector('[aria-busy="true"]')){status.textContent='Aguarde o upload em andamento.';return;}
-    clean();const requestGeneration=generation;try{if(file.size>5242880||!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Use JPG, PNG ou WebP de até 5 MB.');
+    clean();status.textContent='Preparando PNG 1200 × 1200…';const requestGeneration=generation;try{if(file.size>5242880||!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Use JPG, PNG ou WebP de até 5 MB.');
       const bitmap=await createImageBitmap(file);if(requestGeneration!==generation){bitmap.close();return;}if(bitmap.width*bitmap.height>40000000){bitmap.close();throw Error('Imagem muito grande para tratar neste dispositivo.');}
-      const canvas=document.createElement('canvas');canvas.width=canvas.height=1200;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,1200,1200);
+      const canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(1200,1200):document.createElement('canvas');canvas.width=canvas.height=1200;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,1200,1200);
       const scale=Math.min(1080/bitmap.width,1080/bitmap.height);ctx.drawImage(bitmap,(1200-bitmap.width*scale)/2,(1200-bitmap.height*scale)/2,bitmap.width*scale,bitmap.height*scale);bitmap.close();
-      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(requestGeneration!==generation)return;if(!blob||blob.size>5242880)throw Error('Não foi possível gerar PNG dentro do limite de 5 MB.');preparedFile=new File([blob],'produto-1200.png',{type:'image/png'});
+      const blob=canvas.convertToBlob?await canvas.convertToBlob({type:'image/png'}):await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(requestGeneration!==generation)return;if(!blob||blob.size>5242880)throw Error('Não foi possível gerar PNG dentro do limite de 5 MB.');preparedFile=new File([blob],'produto-1200.png',{type:'image/png'});
       urls=[URL.createObjectURL(file),URL.createObjectURL(blob)];treatment.querySelector('[data-original]').src=urls[0];treatment.querySelector('[data-treated]').src=urls[1];treatment.querySelector('.registration-photo-compare').hidden=false;treatment.querySelector('[data-approve-photo]').hidden=false;status.textContent='Compare a embalagem e aprove antes de enviar. A foto atual foi preservada.';
     }catch(error){status.textContent=error.message;}finally{e.target.value='';}
   };
