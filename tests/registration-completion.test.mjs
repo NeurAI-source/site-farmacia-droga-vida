@@ -16,6 +16,7 @@ test('candidate variants are compared with every existing identity and nearby na
  const existing=[{id:1,name:'Shampoo Dove 250 mL',brand:'Dove',variants:[{id:10,shortCode:'0012',ean:'7891234567890',trier:{id:'provider-12'}}]}];
  for(const identity of [{shortCode:'12'},{ean:'7891234567890'},{trier:{id:'provider-12'}}])assert.equal(findDuplicates({name:'Outra família',variants:[identity]},existing)[0].exact,true);
  assert.equal(findDuplicates({name:'Dove Shamp 250 ml',brand:'Dove'},existing)[0].exact,false);
+ assert.equal(findDuplicates({name:'SHAMPOO DOVE 250ML',brand:'Dove'},existing)[0].exact,false);
  assert.equal(findDuplicates({name:'Shampoo Dove 500 ml',brand:'Outra'},existing).length,0);
  assert.equal(findDuplicates({variants:[{shortCode:'12'}]},existing,1).length,0);
 });

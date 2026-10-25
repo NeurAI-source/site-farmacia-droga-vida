@@ -27,7 +27,7 @@ export function suggestRegistration(row,categories,brands=[]) {
     description:row.description||'',confidence:classification.review?'review':'suggested',reason:classification.reason};
 }
 function similarProductNames(a,b) {
-  const expand=s=>words(s).replace(/\b(sh|shamp|xampu)\b/g,'shampoo').replace(/\b(cond|condic)\b/g,'condicionador').replace(/\b(fr|frd)\b/g,'fralda');
+  const expand=s=>words(s).replace(/(\d)(ml|mg|kg|g|l)\b/g,'$1 $2').replace(/\b(sh|shamp|xampu)\b/g,'shampoo').replace(/\b(cond|condic)\b/g,'condicionador').replace(/\b(fr|frd)\b/g,'fralda');
   const x=new Set(expand(a).split(' ').filter(Boolean)),y=new Set(expand(b).split(' ').filter(Boolean));
   if(x.size<2||y.size<2)return words(a)===words(b)&&!!words(a);
   const common=[...x].filter(t=>y.has(t)).length;
