@@ -91,3 +91,16 @@ test('review shows pending photo and duplicate checks; editor can prepare drafts
  await page.locator('.sidebar [data-view="review"]').click();await expect(page.locator('[data-review-list]')).toContainText('Pendente de foto real');await expect(page.locator('#publish')).toBeHidden();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+test('editing an imported variant preserves EAN, ERP metadata, previous price and other fields',async({page})=>{
+ const state=await setup(page);const p=state.catalog.products.find(p=>p.variants.length);p.shortCode='';
+ p.variants=p.variants.map((v,i)=>({...v,shortCode:String(910000+i),priceCents:1999,oldPriceCents:2499,ean:'79000000000'+String(i+10),trier:{id:'variant-'+v.id,code:String(910000+i),storeId:'2'},customSource:'keep'}));
+ const before=structuredClone(p.variants);await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('.sidebar [data-view="products"]').click();await page.locator(`#rows [data-edit="${p.id}"]`).click();
+ const f=page.locator('#product-form');await expect(f.locator('[data-field=ean]').first()).toHaveValue(before[0].ean);await f.locator('[name=badge]').fill('Conferido');await f.getByRole('button',{name:'Salvar produto',exact:true}).click();await expect(page.locator('#editor')).toBeHidden();
+ const after=state.catalog.products.find(item=>item.id===p.id).variants;
+ for(let i=0;i<before.length;i++){expect(after[i].trier).toEqual(before[i].trier);expect(after[i].ean).toBe(before[i].ean);expect(after[i].oldPriceCents).toBe(2499);expect(after[i].customSource).toBe('keep');expect(after[i].id).toBe(before[i].id);}
+});
+test('photo adjustments invalidate approval and existing photos can be reused without a new upload',async({page})=>{
+ const state=await setup(page);await page.locator('#new-product').click();await page.locator('[data-prepare-photo]').setInputFiles('assets/products/3.png');await expect(page.locator('[data-approve-photo]')).toBeVisible();
+ await page.locator('[data-crop=left]').fill('5');await expect(page.locator('[data-approve-photo]')).toBeHidden();await page.locator('[data-photo-sharpen]').check();await page.locator('[data-reprepare-photo]').click();await expect(page.locator('[data-photo-status]')).toContainText('Compare a embalagem');await expect(page.locator('[data-approve-photo]')).toBeVisible();
+ const picker=page.getByLabel('Reutilizar foto de um produto cadastrado');const option=await picker.locator('option').nth(1).getAttribute('value');await picker.selectOption(option);await page.getByRole('button',{name:'Usar foto selecionada',exact:true}).click();await expect(page.locator('#product-form [name=imageUrl]')).toHaveValue(option);expect(state.calls.some(c=>c.upload)).toBe(false);
+});

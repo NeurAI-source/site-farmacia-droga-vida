@@ -94,6 +94,7 @@ test('additive database migration: atomic audit, concurrency, idempotency, RLS a
  await db.exec(`insert into public.team_members values('${actor}','admin',true);set test.uid='${actor}';grant select,update on public.catalog_draft to service_role;grant select on public.team_members to service_role;`);
  await db.query('insert into public.catalog_draft(id,catalog) values(1,$1)',[JSON.stringify(base)]);
  await db.exec(await readFile(new URL('../supabase/migrations/20261025141849_intelligent_registration.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261025152350_registration_identity_hardening.sql',import.meta.url),'utf8'));
  const before=(await db.query('select catalog from public.catalog_draft')).rows[0].catalog;assert.deepEqual(before,base);
  const next=structuredClone(base);next.products[0].name+=' conferido';next.products[0].shortCode='12345';const id=crypto.randomUUID(),req={key:'request'};
  const commit=async(version,request=req)=>{await db.exec('set role service_role');try{return (await db.query('select public.registration_save($1,$2,$3,$4,$5,$6) result',[actor,id,version,JSON.stringify(next),JSON.stringify(request),'[]'])).rows[0].result;}finally{await db.exec('reset role');}};
@@ -101,6 +102,12 @@ test('additive database migration: atomic audit, concurrency, idempotency, RLS a
  await assert.rejects(()=>commit(1,{different:true}),/Lote/);
  await db.exec('set role authenticated');assert.equal((await db.query('select * from public.registration_history')).rows.length,1);await assert.rejects(()=>db.query('select * from public.trier_registration_cache'),/permission/);await assert.rejects(()=>db.query('delete from public.registration_history'),/permission/);await assert.rejects(()=>db.query('select public.registration_save($1,$2,2,$3,$4,$5)',[actor,crypto.randomUUID(),JSON.stringify(next),'{}','[]']),/permission/);await db.exec('reset role');
  const collision=structuredClone(next),first=collision.products.find(p=>p.shortCode);collision.products.push({...first,id:999999,shortCode:'0'+first.shortCode});if(/^\d+$/.test(first.shortCode))await assert.rejects(()=>db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(collision)]),/Código Trier repetido/);
+ const eanCollision=structuredClone(next);eanCollision.products[0].ean='7891234567890';eanCollision.products[1].variants=[{id:999,size:'800 g',packageQuantity:1,stockQuantity:1,ean:'7891234567890'}];
+ await assert.rejects(()=>db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(eanCollision)]),/Identificador repetido/);
+ const trierCollision=structuredClone(next);trierCollision.products[0].trier={id:'same-official'};trierCollision.products[1].trier={id:'same-official'};
+ await assert.rejects(()=>db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(trierCollision)]),/Identificador repetido/);
+ const invalidVariant=structuredClone(next);invalidVariant.products[0].variants=[{id:999,size:'P',packageQuantity:1,stockQuantity:1,ean:'not-an-ean'}];
+ await assert.rejects(()=>db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(invalidVariant)]),/EAN/);
  const pending=structuredClone(next);pending.products[0].imagePending=true;pending.products[0].active=true;await assert.rejects(()=>db.query('insert into public.publications(catalog,created_by) values($1,$2)',[JSON.stringify(pending),actor]),/fotos pendentes/);
  }finally{await db.close();}
 });

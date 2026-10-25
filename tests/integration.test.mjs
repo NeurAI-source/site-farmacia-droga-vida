@@ -57,6 +57,8 @@ test('reduced codes preserve leading zeros, allow old catalogs, and reject dupli
   const copy = structuredClone(original);
   copy.products[0].shortCode = '001234';
   copy.products[1].shortCode = '1234';
+  assert.throws(() => validateCatalog(copy,{strictIdentities:true}), /repetido/);
+  copy.products[1].shortCode = '1235';
   assert.equal(validateCatalog(copy).products[0].shortCode, '001234');
   copy.products[1].shortCode = '001234';
   assert.throws(() => validateCatalog(copy), /repetido/);

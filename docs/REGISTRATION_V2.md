@@ -98,3 +98,39 @@ Validação: testes puros, API oficial interceptada, SQL/RLS isolado em PGlite e
 interface desktop, Android e iPhone WebKit. Testes de escrita nunca usam a base
 real. Registrar no relatório final o estado real da implantação e as limitações
 de testes autenticados em produção, sem confundir mocks com consulta real.
+
+## Correções e complementos — 25/10/2026
+
+- O editor manual preserva metadados desconhecidos, EAN, preço anterior e origem
+  Trier das apresentações. Alterar o código reduzido remove a origem antiga para
+  não atribuir uma sincronização de outro código à nova apresentação.
+- Duplicados comparam também as apresentações do candidato. Abreviações comuns
+  e palavras reordenadas geram alerta aproximado, nunca fusão automática.
+- Salvamentos conferem novas colisões de código/EAN/ID; o banco protege também
+  `save_catalog`. Colisões de EAN/ID preexistentes podem continuar sendo editadas
+  e reduzidas, sem aumentar seus vínculos. A migration não reescreve registros.
+- Categorias reutilizam equivalências explícitas no singular/plural. Shampoo e
+  condicionador separados continuam distintos. Fórmulas com apresentação em
+  gramas recebem sugestão revisável; nada é agrupado automaticamente.
+- A revisão confere sincronização por apresentação, código e data válida.
+- Fotos: reutilização de imagem existente com prévia; recorte manual de margens,
+  recorte opcional de bordas brancas, contraste/cor controlados e nitidez leve.
+  Os ajustes partem da foto original, geram PNG 1200 × 1200 e invalidam a aprovação
+  anterior sempre que os controles mudam. A embalagem é conferida lado a lado.
+  O recorte de bordas brancas é opcional: bordas brancas da própria embalagem
+  exigem conferência. O fundo complexo e etiquetas sobre rótulos não são apagados
+  nem reconstruídos; use outra foto real quando ocultarem informações.
+
+### Dependências externas que continuam pendentes
+
+A função remota antiga `product-content-ai` foi inspecionada: responde HTTP 410,
+“Endpoint desativado.” Seu estado ACTIVE no painel Supabase não significa que
+exista um modelo de IA ativo. Ela permanece desativada. Sugestões locais seguem
+explicitamente identificadas como regras. Conectar IA generativa requer definir
+provedor, modelo e credencial de servidor; nenhuma integração paga foi ativada.
+Busca externa de fotos exige uma fonte autorizada/licenciada e seu contrato.
+Nenhum download de imagens arbitrárias ou reconstrução de embalagem foi adicionado.
+Validação de importação autenticada em produção exige uma sessão administrativa
+real; não criar produtos de teste nem substituir essa sessão pela service_role.
+
+Migration adicional: `20261025152350_registration_identity_hardening.sql`.

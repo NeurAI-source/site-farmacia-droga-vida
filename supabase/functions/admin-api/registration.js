@@ -3,7 +3,7 @@ import { validateCatalog } from '../_shared/catalog-validation.js';
 const check=r=>{if(r.error)throw Error('Não foi possível salvar. O catálogo pode ter mudado; recarregue e revise.');return r.data;};
 export const registrationActions=['registration-commit','registration-result','registration-inventory'];
 export async function registrationAction({body,db,user}) {
-  if(body.action==='registration-inventory')return {inventory:check(await db.from('trier_inventory').select('product_id,variant_id,last_trier_sync_at,external_price_cents,external_regular_price_cents,availability').eq('store_id','2'))};
+  if(body.action==='registration-inventory')return {inventory:check(await db.from('trier_inventory').select('product_id,variant_id,trier_reduced_code,last_trier_sync_at,external_price_cents,external_regular_price_cents,availability,external_status').eq('store_id','2'))};
   if(typeof body.batchId!=='string'||!/^[0-9a-f-]{36}$/i.test(body.batchId))throw Error('Lote inválido.');
   const existing=check(await db.from('registration_batches').select('actor_id,request,version,report').eq('id',body.batchId).maybeSingle());
   if(body.action==='registration-result'){
@@ -20,6 +20,6 @@ export async function registrationAction({body,db,user}) {
   if(!cache||cache.actor_id!==user.id||Date.parse(cache.expires_at)<Date.now())throw Error('Prévia vencida. Consulte a Trier e revise novamente.');
   const draft=check(await db.from('catalog_draft').select('catalog,version').eq('id',1).single());
   if(draft.version!==body.version)throw Error('O catálogo mudou. Recarregue e revise antes de importar.');
-  const result=buildRegistration(draft.catalog,cache.payload.rows,body.choices);validateCatalog(result.catalog);
+  const result=buildRegistration(draft.catalog,cache.payload.rows,body.choices);validateCatalog(result.catalog,{previousCatalog:draft.catalog});
   return check(await db.rpc('registration_save',{actor_id:user.id,batch_id:body.batchId,expected_version:body.version,payload:result.catalog,request_body:body,report_rows:result.report}));
 }
