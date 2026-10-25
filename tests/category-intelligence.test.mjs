@@ -8,6 +8,34 @@ test('explicit terms classify abbreviations and reject brands, kits and unknown 
  for(const [name,sub] of [['ESM RISQUE 8ML','Esmaltes'],['ABS ALWAYS NOTURNO','Absorventes e protetores diários'],['Fralda geriátrica adulta','Fraldas geriátricas'],['Fralda Babysec Mega','Fraldas'],['Removedor de esmalte','Removedores de esmalte'],['Sabonete íntimo','Higiene íntima']])assert.equal(suggestClassification({name},catalog.categories).subcategory,sub);
  for(const name of ['Risqué','Always','Produto novo','Kit sabonete e shampoo'])assert.equal(suggestClassification({name},catalog.categories).review,true);
 });
+test('supplements recognize collagen and abbreviated names without classifying cosmetics or brands alone',()=>{
+ const categories=completeTaxonomy(catalog).categories;
+ for(const [name,sub] of [
+  ['LAVITAN COLÁGENO HIDROLISADO VERISOL 300G COM VITAMINAS','Colágenos'],
+  ['LAVITAN COLAG HIDROL 300G HIB LIM','Colágenos'],
+  ['COLAGENO TIPO II 60 CAPS','Colágenos'],
+  ['ÔMEGA-3 1000MG VITAMINA E','Ômega e ácidos graxos'],
+  ['CREATINA MONOHIDRATADA 300G','Nutrição esportiva'],
+  ['WHEY PROTEIN CHOCOLATE','Nutrição esportiva'],
+  ['POLIVITAMINICO A Z','Polivitamínicos'],
+  ['VIT D3 2000UI','Vitaminas e minerais'],
+  ['MAGNESIO 60 CAPS','Vitaminas e minerais'],
+  ['BIOTINA VITAMINA B7 60 CAPS','Cabelo, pele e unhas']
+ ]){const result=suggestClassification({name},categories);assert.equal(result.category,'Suplementos',name);assert.equal(result.subcategory,sub,name);assert.equal(result.ruleVersion,2);}
+ for(const name of ['LAVITAN','CIMED','LAVITAN 300G','NUTREN ACTIVE COM 14 VITAMINAS','KIT COLAGENO E VITAMINA C','COLAGENO E WHEY'])assert.equal(suggestClassification({name},categories).review,true,name);
+ for(const name of ['SHAMPOO COM COLAGENO','SERUM FACIAL VITAMINA C','CREME COLAGENO','MASCARA CAPILAR BIOTINA'])assert.notEqual(suggestClassification({name},categories).category,'Suplementos',name);
+});
+test('new collagen suggestions add missing options only on confirmation and preserve manual classifications',()=>{
+ const input=structuredClone(catalog);input.categoryIntelligence={automatic:true};
+ input.products=[{...input.products[0],name:'LAVITAN COLAGENO 300G',category:'Suplementos'},
+  {...input.products[0],id:2,name:'COLAGENO 60 CAPS',category:'Suplementos',classification:{locked:true,source:'manual'}},
+  {...input.products[0],id:3,name:'COLAGENO 300G',category:'Suplementos',subcategory:'Cabelo, pele e unhas'},
+  {...input.products[0],id:4,name:'COLAGENO 300G',category:'Perfumaria e Cuidados Pessoais'}];
+ const next=fillMissingClassifications(input);assert.equal(next.products[0].subcategory,'Colágenos');assert.equal(next.products[0].classification.ruleVersion,2);
+ assert.deepEqual(next.products.slice(1),input.products.slice(1));
+ assert.equal(input.categories.some(c=>c.name==='Suplementos'),false,'suggestions never mutate the source catalogue');
+ for(const key of ['priceCents','stockQuantity','shortCode','variants','imageUrl'])assert.deepEqual(next.products[0][key],input.products[0][key]);
+});
 test('automatic mode is opt-in, fills only empty subcategories and preserves every commercial field',()=>{
  assert.equal(fillMissingClassifications(catalog),catalog);
  const input=structuredClone(catalog);input.categoryIntelligence={automatic:true};input.products.push({...input.products[0],id:2,subcategory:'Higiene pessoal'},{...input.products[0],id:3,classification:{locked:true,source:'manual'}});

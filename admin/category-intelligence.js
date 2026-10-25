@@ -7,7 +7,7 @@ export const taxonomy = [
   ['Cabelos', ['Shampoos e condicionadores','Máscaras e tratamentos','Cremes de pentear','Óleos capilares','Coloração']],
   ['Área Infantil', ['Fraldas','Lenços umedecidos','Higiene infantil','Mamadeiras e acessórios','Chupetas','Fórmulas infantis']],
   ['Cuidados adultos', ['Fraldas geriátricas','Incontinência','Cuidados com a pele']],
-  ['Suplementos', ['Vitaminas e minerais','Polivitamínicos','Nutrição esportiva']],
+  ['Suplementos', ['Vitaminas e minerais','Polivitamínicos','Nutrição esportiva','Colágenos','Ômega e ácidos graxos','Cabelo, pele e unhas']],
   ['Medicamentos', []],
   ['Saúde e Bem-estar', ['Curativos','Antissépticos','Aparelhos de saúde','Máscaras e acessórios']]
 ];
@@ -32,20 +32,31 @@ const rules = [
   [1,3,/\b(batom|rimel|mascara de cilios|base facial|po compacto)\b/],
   [7,0,/\b(curativo|curativos|gaze|esparadrapo|atadura)\b/],
   [7,1,/\b(antisseptico|antissepticos)\b/],
-  [7,2,/\b(termometro|aparelho de pressao|oximetro)\b/]
+  [7,2,/\b(termometro|aparelho de pressao|oximetro)\b/],
+  [5,3,/\b(colageno|colagenos|colag)\b/],
+  [5,4,/\bomega\s*(3|6|9)\b|\boleo de peixe\b/],
+  [5,2,/\b(whey|creatina|bcaa|glutamina)\b/],
+  [5,1,/\b(polivitaminico|polivitaminicos|multivitaminico|multivitaminicos)\b/],
+  [5,0,/\b(vitamina|vit)\s*[abcdek](?:\d{1,2})?\b|\bvitaminas e minerais\b|\b(magnesio|zinco|selenio|calcio)\b/],
+  [5,5,/\b(biotina|suplemento para cabelo|suplemento para cabelos)\b/]
 ];
 const same = (a,b) => normalize(a||'').trim() === normalize(b||'').trim();
 export const classificationOf = p => ({category:p.category||'',subcategory:p.subcategory||'',classification:p.classification||null});
 const canonical=value=>JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item);
 export function suggestClassification(product, categories) {
-  const text = normalize(product.name || '').replace(/[^a-z0-9 ]/g,' ');
+  const text = normalize(product.name || '').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  if(/\b(kit|combo)\b/.test(text))return {review:true,reason:'Kit ou combo: confira a classificação manualmente.'};
   // More specific rules above absorb their broad counterparts. Independent
   // matches (e.g. a kit containing soap and shampoo) require human review.
-  const matches=rules.filter(([, ,pattern])=>pattern.test(text));
+  // Ingredients in cosmetics (e.g. collagen shampoo or vitamin C face serum)
+  // do not identify an oral supplement. Never classify by Lavitan/Cimed alone.
+  const topical=/\b(creme|serum|shampoo|xampu|condicionador|mascara|locao|sabonete|esmalte|capilar|facial|uso externo)\b/.test(text);
+  const matches=rules.filter(([c, ,pattern])=>!(c===5&&topical)&&pattern.test(text));
   const specific=matches.filter(([c,s])=>!(c===0&&s===2&&matches.some(([a,b])=>a===0&&b===1))
     && !(c===1&&s===0&&matches.some(([a,b])=>a===1&&b===1))
     && !(c===3&&s===0&&matches.some(([a])=>a===4))
-    && !(c===0&&s===0&&matches.some(([a])=>a===4)));
+    && !(c===0&&s===0&&matches.some(([a])=>a===4))
+    && !(c===5&&s===0&&matches.some(([a,b])=>a===5&&b!==0)));
   const unique=[...new Map(specific.map(([c,s])=>[`${c}:${s}`,[c,s]])).values()];
   if(unique.length!==1)return {review:true,reason:unique.length?'Produto com mais de uma classificação possível.':'Sem regra confiável. Revise manualmente.'};
   const [ci,si]=unique[0], [canonical,subs]=taxonomy[ci];
@@ -54,7 +65,7 @@ export function suggestClassification(product, categories) {
   const existing=categories.find(c=>same(c.name,canonical))||categories.find(c=>aliases.some(a=>same(c.name,a)));
   const category=existing?.name||canonical;
   const subcategory=existing?.subcategories.find(s=>same(s.name,subs[si]))?.name||subs[si];
-  return {category,subcategory,reason:'Termo explícito no nome do produto',ruleVersion:1};
+  return {category,subcategory,reason:'Termo explícito no nome do produto',ruleVersion:2};
 }
 export function ensureClassification(catalog, category, subcategory) {
   let c=catalog.categories.find(c=>same(c.name,category));
@@ -83,7 +94,7 @@ export function applyClassifications(catalog, rows, mode='reviewed') {
     if(mode==='automatic'&&!row.automatic)throw Error('Esta alteração exige revisão.');
     ensureClassification(next,row.category,row.subcategory);
     p.category=row.category;p.subcategory=row.subcategory;
-    p.classification={locked:mode!=='automatic',source:mode,ruleVersion:1};
+    p.classification={locked:mode!=='automatic',source:mode,ruleVersion:row.ruleVersion||1};
     seen.add(row.id);
   }
   return next;

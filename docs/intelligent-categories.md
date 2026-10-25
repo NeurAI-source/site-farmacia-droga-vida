@@ -18,6 +18,14 @@ o adaptador atual ainda não os importa. Não são apresentados como fonte usada
 - No cadastro, **Sugerir categoria pelo nome** preenche uma sugestão que precisa
   ser conferida antes de salvar. Novos produtos recebem a sugestão ao terminar
   de preencher o nome. A marca sozinha nunca determina a categoria.
+  Colágeno (inclusive `COLAG`) sugere **Suplementos → Colágenos**;
+  ômega, vitaminas, polivitamínicos, biotina, whey e creatina também têm regras.
+  Colágeno com vitaminas continua em Colágenos; ingredientes de cosméticos não
+  transformam shampoo, creme ou sérum em suplemento. Kits exigem revisão.
+  A sugestão usa o nome digitado, não reconhecimento da embalagem por foto.
+  Opções ausentes são preparadas no formulário e persistidas ao salvar; também
+  podem ser adicionadas por **Completar categorias da farmácia**, sem trocar
+  classificações existentes.
 - **Neur.AI → Organizar catálogo**, também disponível em Categorias, mostra o
   valor anterior e a sugestão. Marque as linhas desejadas e confirme. Escolhas
   manuais protegidas só podem ser alteradas no editor do produto.
