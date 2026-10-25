@@ -8,6 +8,10 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    container:
+      # Official image, same version as package-lock; browsers and OS libraries included.
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:d3d829f1d491e9d9b8fa2203ace73ad30614514959d3bf9304162d6d9ec040b6
+      options: --ipc=host --init
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,7 +20,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:ui
       - uses: actions/upload-artifact@v4
         if: failure()
