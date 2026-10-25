@@ -7,7 +7,7 @@ export const taxonomy = [
   ['Cabelos', ['Shampoos e condicionadores','Máscaras e tratamentos','Cremes de pentear','Óleos capilares','Coloração']],
   ['Área Infantil', ['Fraldas','Lenços umedecidos','Higiene infantil','Mamadeiras e acessórios','Chupetas','Fórmulas infantis']],
   ['Cuidados adultos', ['Fraldas geriátricas','Incontinência','Cuidados com a pele']],
-  ['Suplementos', ['Vitaminas e minerais','Polivitamínicos','Nutrição esportiva','Colágenos','Ômega e ácidos graxos','Cabelo, pele e unhas']],
+  ['Suplementos', ['Vitaminas e minerais','Polivitamínicos','Nutrição esportiva','Colágenos','Ômega e ácidos graxos','Cabelo, pele e unhas','Melatonina']],
   ['Medicamentos', []],
   ['Saúde e Bem-estar', ['Curativos','Antissépticos','Aparelhos de saúde','Máscaras e acessórios']]
 ];
@@ -34,6 +34,7 @@ const rules = [
   [7,0,/\b(curativo|curativos|gaze|esparadrapo|atadura)\b/],
   [7,1,/\b(antisseptico|antissepticos)\b/],
   [7,2,/\b(termometro|aparelho de pressao|oximetro)\b/],
+  [5,6,/\b(melatonina|melatonin)\b/],
   [5,3,/\b(colageno|colagenos|colag)\b/],
   [5,4,/\bomega\s*(3|6|9)\b|\boleo de peixe\b/],
   [5,2,/\b(whey|creatina|bcaa|glutamina)\b/],
@@ -46,6 +47,7 @@ const categoryAliases = new Map([
   ['formula infantil','formulas infantis'],['formulas','formulas infantis'],
   ['lenco umedecido','lencos umedecidos'],['fralda','fraldas'],
   ['oleo capilar','oleos capilares'],['colageno','colagenos'],
+  ['melatoninas','melatonina'],['melatonin','melatonina'],
   ['vitaminas','vitaminas e minerais'],['polivitaminico','polivitaminicos']
 ]);
 const equivalent = value => { const key=normalize(value||'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();return categoryAliases.get(key)||key; };

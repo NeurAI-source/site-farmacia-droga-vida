@@ -71,3 +71,17 @@ test('database history records authenticated actor atomically, protects audit ro
  await db.exec('reset role;set role anon');await assert.rejects(()=>db.query('select * from public.category_history'),/permission denied/);
  }finally{await db.close();}
 });
+
+test('melatonin has its own classification, reuses equivalent options and keeps ambiguous products for review',()=>{
+ for(const name of ['MELATONINA 0,21MG 30 CAPS','LAVITAN MELATONINA GOTAS 20ML','MELATONIN 60 GUMMIES','MELATONINA VITAMINA B6 30CP']){
+  const result=suggestClassification({name},[]);assert.equal(result.category,'Suplementos',name);assert.equal(result.subcategory,'Melatonina',name);
+ }
+ const existing=[{id:91,name:'Suplementos',subcategories:[{id:92,name:'Melatoninas'}]}];
+ const suggestion=suggestClassification({name:'MELATONINA 30CP'},existing);assert.equal(suggestion.subcategory,'Melatoninas');
+ const next=completeTaxonomy({categories:existing,products:[]});assert.equal(next.categories.find(c=>c.id===91).subcategories.filter(s=>/melatonin/i.test(s.name)).length,1);
+ assert.ok(completeTaxonomy(catalog).categories.find(c=>c.name==='Suplementos').subcategories.some(s=>s.name==='Melatonina'));
+ for(const name of ['LAVITAN','MELATON','KIT MELATONINA E COLAGENO','MELATONINA E WHEY'])assert.equal(suggestClassification({name},[]).review,true,name);
+ for(const name of ['CREME COM MELATONINA','SERUM FACIAL MELATONINA'])assert.notEqual(suggestClassification({name},[]).category,'Suplementos',name);
+ const input={categories:[],products:[{id:1,name:'MELATONINA 30CP',category:'',subcategory:'',priceCents:1999,shortCode:'990001',classification:null}]};
+ const rows=classificationReview(input);assert.equal(input.categories.length,0);const applied=applyClassifications(input,rows);assert.equal(applied.products[0].subcategory,'Melatonina');assert.equal(applied.products[0].priceCents,1999);assert.equal(applied.products[0].shortCode,'990001');
+});

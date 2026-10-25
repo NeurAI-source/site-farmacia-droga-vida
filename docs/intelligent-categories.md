@@ -20,6 +20,10 @@ o adaptador atual ainda não os importa. Não são apresentados como fonte usada
   de preencher o nome. A marca sozinha nunca determina a categoria.
   Colágeno (inclusive `COLAG`) sugere **Suplementos → Colágenos**;
   ômega, vitaminas, polivitamínicos, biotina, whey e creatina também têm regras.
+  Melatonina (ou `MELATONIN`) sugere **Suplementos → Melatonina**, inclusive
+  quando a opção ainda precisa ser criada. A opção existente `Melatoninas` é
+  reutilizada. Para produtos já salvos, use **Sugerir categoria pelo nome**,
+  confira e salve; a atualização não recategoriza o catálogo por conta própria.
   Colágeno com vitaminas continua em Colágenos; ingredientes de cosméticos não
   transformam shampoo, creme ou sérum em suplemento. Kits exigem revisão.
   A sugestão usa o nome digitado, não reconhecimento da embalagem por foto.
