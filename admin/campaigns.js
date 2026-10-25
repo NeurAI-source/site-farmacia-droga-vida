@@ -47,7 +47,7 @@ export function mountCampaignManager(member) {
     $('#campaign-stats').innerHTML=[['Campanhas ativas',all.filter(c=>campaignStatus(c,now)==='active').length,'No site agora'],['Programadas',all.filter(c=>campaignStatus(c,now)==='scheduled').length,'Publicação automática'],['Vencidas',all.filter(c=>campaignStatus(c,now)==='expired').length,'Mantidas no histórico'],['Total cadastrado',all.length,'Posts e encartes']].map(([label,n,note])=>`<article class="stat"><span>${label}</span><strong>${n}</strong><small>${note}</small></article>`).join('');
     const query=normalized($('#campaign-search').value),status=$('#campaign-status-filter').value,period=$('#campaign-period-filter').value;
     const rows=all.filter(c=>c.kind===kind&&normalized(c.title).includes(query)&&(status?campaignStatus(c,now)===status:c.publication_state!=='archived')&&(!period||period==='current'&&Date.parse(c.starts_at)<=now&&now<Date.parse(c.ends_at)||period==='future'&&Date.parse(c.starts_at)>now||period==='ended'&&Date.parse(c.ends_at)<=now));
-    $('#campaign-list').innerHTML=rows.length?rows.map(c=>{const state=campaignStatus(c,now);return `<article class="campaign-row"><img src="${esc(c.cover_url)}" alt="Capa de ${esc(c.title)}" loading="lazy"><div class="campaign-row-info"><div><strong>${esc(c.title)}</strong><span class="campaign-badge ${state}">${labels[state]}</span></div><p>${date(c.starts_at)} até ${date(Date.parse(c.ends_at)-1)}</p><small>Ordem ${c.sort_order} · ${c.kind==='post'?'Post promocional':'Encarte'}</small></div><div class="campaign-row-actions">${[['edit','Editar'],['preview','Prévia'],['duplicate','Duplicar'],...(c.active&&c.publication_state!=='archived'?[['deactivate','Desativar']]:[]),...(c.publication_state!=='archived'?[['archive','Arquivar']]:admin?[['delete','Excluir']]:[])].map(([a,l])=>`<button type="button" data-action="${a}" data-id="${c.id}" class="text-button">${l}</button>`).join('')}</div></article>`;}).join(''):'<div class="campaign-empty"><span>▧</span><h3>Nenhuma campanha por aqui</h3><p>Cadastre uma campanha ou ajuste os filtros para consultar o histórico.</p></div>';
+    $('#campaign-list').innerHTML=rows.length?rows.map(c=>{const state=campaignStatus(c,now);return `<article class="campaign-row"><img src="${esc(c.cover_url)}" alt="Capa de ${esc(c.title)}" loading="lazy"><div class="campaign-row-info"><div><strong>${esc(c.title)}</strong><span class="campaign-badge ${state}">${labels[state]}</span></div><p>${date(c.starts_at)} até ${date(Date.parse(c.ends_at)-1)}</p><small>Ordem ${c.sort_order} · ${c.kind==='post'?'Post promocional':'Encarte'}</small></div><div class="campaign-row-actions">${[['edit','Editar'],['preview','Prévia'],['duplicate','Duplicar'],...(c.active&&c.publication_state!=='archived'?[['deactivate','Desativar']]:[]),...(c.publication_state!=='archived'?[['archive','Arquivar']]:[]),...(admin?[['delete','Excluir']]:[])].map(([a,l])=>`<button type="button" data-action="${a}" data-id="${c.id}" class="text-button">${l}</button>`).join('')}</div></article>`;}).join(''):'<div class="campaign-empty"><span>▧</span><h3>Nenhuma campanha por aqui</h3><p>Cadastre uma campanha ou ajuste os filtros para consultar o histórico.</p></div>';
   }
   function current(state='draft'){
     return validateCampaign({id:editing?.id||f.dataset.newId,version:editing?.version||0,title:field('title').value,kind:field('kind').value,cover_id:cover?.id,pages:field('kind').value==='flyer'?pages.map(p=>p.id):[],link_url:field('link_url').value,starts_at:saoPauloISO(field('starts_at').value),ends_at:saoPauloISO(field('ends_at').value,true),sort_order:Number(field('sort_order').value),active:field('active').checked,publication_state:state});
@@ -89,7 +89,27 @@ export function mountCampaignManager(member) {
   root.addEventListener('click',async e=>{
     const tab=e.target.closest('[data-kind]');if(tab){kind=tab.dataset.kind;root.querySelectorAll('[data-kind]').forEach(t=>t.setAttribute('aria-selected',String(t===tab)));render();}
     const b=e.target.closest('[data-action]');if(!b||busy)return;const c=all.find(c=>c.id===b.dataset.id);b.disabled=true;
-    try{if(b.dataset.action==='edit'||b.dataset.action==='preview'){const {campaign}=await api('get',{id:c.id});if(b.dataset.action==='edit')edit(campaign);else showPreview(campaign);}else{const action=b.dataset.action;if(['delete','archive'].includes(action)&&!confirm(action==='delete'?`Excluir definitivamente a campanha “${c.title}”?`:`Arquivar “${c.title}” e retirar do site?`))return;await api(action,{campaign:{id:c.id,version:c.version}});await load();message(action==='duplicate'?'Cópia criada como rascunho inativo. Revise o período antes de publicar.':'Campanha atualizada.');}}catch(error){message(error.message);}finally{b.disabled=false;}
+    let archivedForDelete=false;
+    try{
+      if(b.dataset.action==='edit'||b.dataset.action==='preview'){
+        const {campaign}=await api('get',{id:c.id});if(b.dataset.action==='edit')edit(campaign);else showPreview(campaign);
+      }else{
+        const action=b.dataset.action;
+        if(['delete','archive'].includes(action)&&!confirm(action==='delete'?`Excluir definitivamente ${c.kind==='flyer'?'o encarte':'o post'} “${c.title}”? Ele será retirado do carrossel e suas páginas serão removidas. Esta ação não pode ser desfeita.`:`Arquivar “${c.title}” e retirar do site?`))return;
+        busy=true;
+        let version=c.version;
+        // Reuse the server rule: only admins may delete an archived campaign.
+        // Keep the expected version so another user's edit cannot be deleted.
+        if(action==='delete'&&c.publication_state!=='archived'){
+          await api('archive',{campaign:{id:c.id,version}});archivedForDelete=true;version++;
+        }
+        await api(action,{campaign:{id:c.id,version}});
+        await load();message(action==='delete'?'Campanha excluída.':action==='duplicate'?'Cópia criada como rascunho inativo. Revise o período antes de publicar.':'Campanha atualizada.');
+      }
+    }catch(error){
+      if(b.dataset.action==='delete')await load();
+      message(archivedForDelete?`A campanha foi arquivada, mas a exclusão não foi concluída. Selecione “Arquivada” no filtro de status e tente excluir novamente. ${error.message}`:error.message);
+    }finally{busy=false;b.disabled=false;}
   });
   $('#campaign-new').onclick=()=>edit();$('#campaign-reload').onclick=load;
   for(const id of ['campaign-search','campaign-status-filter','campaign-period-filter'])$('#'+id).oninput=render;
@@ -100,6 +120,6 @@ export function mountCampaignManager(member) {
   dialog.querySelector('#campaign-pages').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.remove!==undefined)pages.splice(Number(b.dataset.remove),1);else{const i=Number(b.dataset.up??b.dataset.down),j=i+(b.dataset.up!==undefined?-1:1);[pages[i],pages[j]]=[pages[j],pages[i]];}drawForm();};
   dialog.querySelector('#campaign-preview-form').onclick=()=>{try{const c=current();showPreview({...c,cover_url:cover.url,pages:c.kind==='flyer'?pages:[]});}catch(e){dialog.querySelector('#campaign-form-feedback').textContent=e.message;}};
   f.onsubmit=async e=>{e.preventDefault();if(busy)return;const feedback=dialog.querySelector('#campaign-form-feedback');try{const campaign=current(e.submitter?.value||'draft');if(campaign.publication_state==='published'&&Date.parse(campaign.ends_at)<=Date.now()+clockOffset)throw Error('Atualize o período antes de publicar uma campanha vencida.');lock(true);feedback.textContent='Salvando campanha…';await api('save',{campaign});dialog.close();kind=campaign.kind;root.querySelectorAll('[data-kind]').forEach(t=>t.setAttribute('aria-selected',String(t.dataset.kind===kind)));await load();message(campaign.publication_state==='published'?'Campanha aprovada. A exibição seguirá o período e o status configurados.':'Rascunho salvo. Somente a equipe autorizada pode visualizá-lo.');}catch(error){feedback.textContent=error.message;}finally{lock(false);}};
-  setInterval(()=>{if(loaded&&!root.hidden&&!dialog.open&&!preview.open)render();},30000);
+  setInterval(()=>{if(loaded&&!busy&&!root.hidden&&!dialog.open&&!preview.open)render();},30000);
   return {show(){if(!loaded)load();else render();}};
 }
