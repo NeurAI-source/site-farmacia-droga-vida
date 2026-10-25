@@ -104,3 +104,11 @@ test('photo adjustments invalidate approval and existing photos can be reused wi
  await page.locator('[data-crop=left]').fill('5');await expect(page.locator('[data-approve-photo]')).toBeHidden();await page.locator('[data-photo-sharpen]').check();await page.locator('[data-reprepare-photo]').click();await expect(page.locator('[data-photo-status]')).toContainText('Compare a embalagem');await expect(page.locator('[data-approve-photo]')).toBeVisible();
  const picker=page.getByLabel('Reutilizar foto de um produto cadastrado');const option=await picker.locator('option').nth(1).getAttribute('value');await picker.selectOption(option);await page.getByRole('button',{name:'Usar foto selecionada',exact:true}).click();await expect(page.locator('#product-form [name=imageUrl]')).toHaveValue(option);expect(state.calls.some(c=>c.upload)).toBe(false);
 });
+
+test('a barcode entered as reduced code explains the correct filter without making a Trier request',async({page})=>{
+ const state=await setup(page);await page.locator('.sidebar [data-view="registration"]').click();const form=page.locator('[data-search-form]');
+ await form.locator('[name=query]').fill('7900000000001');await form.getByRole('button',{name:'Consultar Trier',exact:true}).click();
+ await expect(page.locator('[data-import-status]')).toContainText('Esse número parece um código de barras');expect(state.calls.some(c=>c.action==='registration-search')).toBe(false);
+ await form.locator('[name=mode]').selectOption('ean');await form.getByRole('button',{name:'Consultar Trier',exact:true}).click();await expect(page.locator('[data-results]')).toContainText('SHAMPOO DOVE');
+ expect(state.calls.find(c=>c.action==='registration-search')).toMatchObject({mode:'ean',query:'7900000000001'});
+});

@@ -7,7 +7,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNew,setView,notify}) {
   const root=document.createElement('section');root.id='registration-view';root.className='view';root.hidden=true;
   root.innerHTML=`<section class="panel registration-intro"><p class="eyebrow">CADASTRO INTELIGENTE 2.0</p><h2>Importar da Trier</h2><p>Consulte a filial 2, selecione e revise. Nada é cadastrado ou publicado automaticamente.</p>
-    <form data-search-form class="registration-search"><label>Buscar por<select name="mode"><option value="code">Código reduzido</option><option value="ean">EAN / leitor</option><option value="name">Nome</option><option value="browse">Listar produtos</option></select></label><label>Consulta<input name="query" maxlength="120" autocomplete="off" placeholder="Código, EAN ou nome"></label><label class="feature-check"><input name="activeOnly" type="checkbox" checked> Somente ativos na Trier</label><button class="button red" type="submit">Consultar Trier</button><button type="button" class="button white" data-scan>Usar câmera para EAN</button></form>
+    <form data-search-form class="registration-search"><label>Buscar por<select name="mode"><option value="code">Código reduzido</option><option value="ean">Código de barras (EAN) / leitor</option><option value="name">Nome</option><option value="browse">Listar produtos</option></select></label><label>Consulta<input name="query" maxlength="120" autocomplete="off" placeholder="Código, EAN ou nome"></label><label class="feature-check"><input name="activeOnly" type="checkbox" checked> Somente ativos na Trier</label><button class="button red" type="submit">Consultar Trier</button><button type="button" class="button white" data-scan>Usar câmera para EAN</button></form>
     <p role="status" data-import-status></p><p class="muted">Nome: busca local no backend em páginas limitadas, pois o endpoint oficial não oferece filtro de nome. Leitores USB/Bluetooth podem digitar no campo EAN.</p>
     <div class="registration-actions"><button class="button white" data-select-page>Selecionar página</button><button class="button white" data-select-all>Selecionar todos os resultados filtrados</button><label>Marca<select data-brand><option value="">Todas</option></select></label><label>Categoria sugerida<select data-category><option value="">Todas</option></select></label><button class="button white" data-clear>Limpar seleção</button><button class="button red" data-prepare>Revisar selecionados</button><span data-count>0 selecionados</span></div>
     <div class="table-scroll"><table><thead><tr><th>Selecionar</th><th>Produto</th><th>Origem / situação</th><th>Sugestão Neur.AI</th><th>Cadastro existente</th></tr></thead><tbody data-results></tbody></table></div><div class="registration-actions"><button class="button white" data-previous>Página anterior</button><button class="button white" data-next>Próxima página</button></div></section>`;
@@ -29,8 +29,15 @@ export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNe
     $('[data-previous]').disabled=busy||!previous.length;$('[data-next]').disabled=busy||!hasMore;
   }
   function params(){return {mode:searchForm.elements.mode.value,query:searchForm.elements.query.value.trim(),activeOnly:searchForm.elements.activeOnly.checked};}
+  function validateSearch(){
+    const {mode,query}=params();let message='';
+    if(mode==='code'&&!/^\d{1,12}$/.test(query))message=/^\d{13,14}$/.test(query)?'Esse número parece um código de barras. Em “Buscar por”, selecione “Código de barras (EAN) / leitor” e consulte novamente.':'Informe o código reduzido da Trier (1 a 12 dígitos). Para código de barras, selecione a opção EAN.';
+    if(mode==='ean'&&!/^\d{8,14}$/.test(query))message='Informe o código de barras com 8 a 14 dígitos, sem letras, espaços ou traços.';
+    if(mode==='name'&&query.length<3)message='Digite pelo menos 3 caracteres do nome do produto.';
+    if(message){status(message);searchForm.elements.query.focus();return false;}return true;
+  }
   async function search(newOffset=0){
-    if(busy)return;lock(true);status('Consultando a Trier pelo backend…');
+    if(busy||!validateSearch())return;lock(true);status('Consultando a Trier pelo backend…');
     try{const result=await request('registration-search',{...params(),offset:newOffset});offset=newOffset;nextOffset=result.nextOffset;hasMore=result.hasMore;
       rows=result.rows.map(r=>({...r,suggestion:suggestRegistration(r,getCatalog().categories,getCatalog().products.map(p=>p.brand)),duplicates:findDuplicates(r,getCatalog().products)}));
       for(const [sel,values] of [['[data-brand]',rows.map(r=>r.suggestion.brand)],['[data-category]',rows.map(r=>r.suggestion.category)]]){const control=$(sel),value=control.value;control.innerHTML='<option value="">Todas</option>'+[...new Set(values.filter(Boolean))].map(s=>`<option>${esc(s)}</option>`).join('');control.value=value;}
@@ -43,7 +50,7 @@ export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNe
   function selectPage(){for(const r of filtered())selected.set(r.shortCode,r);draw();}
   $('[data-select-page]').onclick=selectPage;$('[data-clear]').onclick=()=>{selected.clear();draw();};
   $('[data-select-all]').onclick=async()=>{
-    if(busy)return;lock(true);let cursor=0,count=0;const settings=params(),brand=$('[data-brand]').value,category=$('[data-category]').value;
+    if(busy||!validateSearch())return;lock(true);let cursor=0,count=0;const settings=params(),brand=$('[data-brand]').value,category=$('[data-category]').value;
     try{do{status(`Selecionando resultados filtrados… ${count} registros examinados (limite 2.000).`);const result=await request('registration-search',{...settings,offset:cursor});if(result.stale)throw Error();
       for(const r of result.rows){const suggestion=suggestRegistration(r,getCatalog().categories,getCatalog().products.map(p=>p.brand));if((!brand||brand===suggestion.brand)&&(!category||category===suggestion.category))selected.set(r.shortCode,r);}
       count+=result.nextOffset-cursor;if(!result.hasMore)break;if(result.nextOffset<=cursor)throw Error();cursor=result.nextOffset;
