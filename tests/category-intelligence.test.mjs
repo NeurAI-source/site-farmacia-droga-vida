@@ -85,3 +85,16 @@ test('melatonin has its own classification, reuses equivalent options and keeps 
  const input={categories:[],products:[{id:1,name:'MELATONINA 30CP',category:'',subcategory:'',priceCents:1999,shortCode:'990001',classification:null}]};
  const rows=classificationReview(input);assert.equal(input.categories.length,0);const applied=applyClassifications(input,rows);assert.equal(applied.products[0].subcategory,'Melatonina');assert.equal(applied.products[0].priceCents,1999);assert.equal(applied.products[0].shortCode,'990001');
 });
+
+test('verified abbreviated product lines classify without expanding ambiguous names or brands',()=>{
+ for(const [name,category,subcategory] of [
+  ['LAVITAN COL HID HI/LI PO 300G','Suplementos','Colágenos'],
+  ['LAVITAN AZ ORIGINAL 60CP','Suplementos','Polivitamínicos'],
+  ['LAVITAN A-Z ORIGINAL 90 COMPRIMIDOS','Suplementos','Polivitamínicos'],
+  ['LAVITAN MEMO NEURO 60CP','Suplementos','Vitaminas e minerais'],
+  ['SH DOVE 250ML','Cabelos','Shampoos e condicionadores'],
+  ['COND DOVE 200ML','Cabelos','Shampoos e condicionadores']
+ ])assert.deepEqual(((r)=>[r.category,r.subcategory])(suggestClassification({name},[])),[category,subcategory],name);
+ for(const name of ['COL HID 300G','LAVITAN','LAVITAN AZ','MEMO NEURO 60CP','LAVITAN MEMO NEURO','LAVITAN AZ ORIGINAL KIT 60CP','LAVITAN COL HID E WHEY 300G'])assert.equal(suggestClassification({name},[]).review,true,name);
+ for(const name of ['SH LAVITAN COL HID 300G','CREME LAVITAN AZ ORIGINAL 60CP','SERUM LAVITAN MEMO NEURO 60CP'])assert.notEqual(suggestClassification({name},[]).category,'Suplementos',name);
+});

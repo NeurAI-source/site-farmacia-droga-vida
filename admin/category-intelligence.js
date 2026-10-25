@@ -55,14 +55,23 @@ const same = (a,b) => equivalent(a)===equivalent(b);
 export const classificationOf = p => ({category:p.category||'',subcategory:p.subcategory||'',classification:p.classification||null});
 const canonical=value=>JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item);
 export function suggestClassification(product, categories) {
-  const text = normalize(product.name || '').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const text = normalize(product.name || '').replace(/\b(sh|shamp)\b/g,'shampoo').replace(/\b(cond|condic)\b/g,'condicionador').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   if(/\b(kit|combo)\b/.test(text))return {review:true,reason:'Kit ou combo: confira a classificação manualmente.'};
   // More specific rules above absorb their broad counterparts. Independent
   // matches (e.g. a kit containing soap and shampoo) require human review.
   // Ingredients in cosmetics (e.g. collagen shampoo or vitamin C face serum)
   // do not identify an oral supplement. Never classify by Lavitan/Cimed alone.
   const topical=/\b(creme|serum|shampoo|xampu|condicionador|mascara|locao|sabonete|esmalte|capilar|facial|pomada|protetor solar|hidratante|dental|bucal|uso externo)\b/.test(text);
-  const matches=rules.filter(([c, ,pattern])=>!(c===5&&topical)&&pattern.test(text));
+  // Verified product-line aliases, never the brand alone. Keep these narrow:
+  // COL HID is ambiguous without the Lavitan line and an oral presentation.
+  const oral=/\b(?:\d+\s*(?:g|mg|ml|cp|caps?|comprimidos?)|comprimidos?|capsulas?)\b/.test(text);
+  const lineMatches=[];
+  if(!topical&&oral){
+    if(/\blavitan\s+col\s+hid\b/.test(text))lineMatches.push([5,3]);
+    if(/\blavitan\s+(?:az|a z)\s+original\b/.test(text))lineMatches.push([5,1]);
+    if(/\blavitan\s+memo\s+neuro\b/.test(text))lineMatches.push([5,0]);
+  }
+  const matches=[...lineMatches,...rules.filter(([c, ,pattern])=>!(c===5&&topical)&&pattern.test(text))];
   const specific=matches.filter(([c,s])=>!(c===0&&s===2&&matches.some(([a,b])=>a===0&&b===1))
     && !(c===1&&s===0&&matches.some(([a,b])=>a===1&&b===1))
     && !(c===3&&s===0&&matches.some(([a])=>a===4))

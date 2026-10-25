@@ -62,3 +62,22 @@ O backup inclui o histórico e aceita também arquivos de antes dessa atualizaç
 
 Validação usa produtos fictícios no navegador e Postgres isolado com PGlite;
 não cria produtos, campanhas ou pedidos no banco real durante testes.
+
+## Sugestões no cadastro simples
+
+Sugestões automáticas de um produto novo acompanham mudanças no nome enquanto
+não houver uma escolha manual. Um nome sem correspondência remove a sugestão
+anterior e restaura a seleção inicial; não mantém uma classificação de outro
+produto. Escolher categoria/subcategoria, aceitar pelo botão de sugestão ou
+alterar a proteção impede novas trocas automáticas pelo nome. Produtos já salvos
+continuam exigindo o botão de sugestão para mudar sua classificação.
+
+Abreviações `SH`, `SHAMP`, `COND` e `CONDIC` são reconhecidas. Os aliases
+`LAVITAN COL HID` (com apresentação oral), `LAVITAN AZ ORIGINAL` e
+`LAVITAN MEMO NEURO` (com apresentação) sugerem, respectivamente, Colágenos,
+Polivitamínicos e Vitaminas e minerais, dentro de Suplementos. A marca sozinha
+não determina classificação. Referências das linhas verificadas:
+https://lavitan.com.br/products/lavitan-az-original-90-comprimidos e
+https://lavitan.com.br/products/lavitan-memoria.
+Kits, combinações ambíguas e nomes desconhecidos continuam para revisão.
+Não há IA generativa nem consulta ao fabricante a cada cadastro.
