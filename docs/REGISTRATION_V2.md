@@ -134,3 +134,14 @@ Validação de importação autenticada em produção exige uma sessão administ
 real; não criar produtos de teste nem substituir essa sessão pela service_role.
 
 Migration adicional: `20261025153435_registration_identity_hardening.sql`.
+
+## Cadastro manual restaurado — 25/10/2026
+
+A pedido do responsável, o formulário voltou ao layout simples anterior ao Cadastro
+Inteligente 2.0. Importar da Trier e Revisão Inteligente deixaram de ser montados
+na interface e saíram do menu. Não há consultas de importação ao abrir o painel.
+Upload, sugestões de categoria existentes, preços, tamanhos e publicação manual
+continuam no fluxo anterior. Metadados de apresentações, proteção de duplicados,
+histórico, dados já salvos e sincronização recorrente Trier foram preservados.
+As migrations e funções de importação ficam preservadas, sem remover tabelas ou
+registros. Não há ativação de IA generativa nesta restauração.
