@@ -65,8 +65,9 @@ export function createOfficialContract(codes, deliveryCode = '46295') {
       catch{discountStatus='unavailable';}
       for(const item of result){
         const offer=discounts.get(item.reducedCode);item.regularPrice=null;
-        // Never double-discount or replace an explicit, different ecommerce price.
-        if(offer){try{if(moneyToCents(item.price,'decimal')===offer.normal){item.price=offer.price;item.regularPrice=offer.regular;}}catch{}}
+        // Attach the documented regular price even when the current price already
+        // equals the promotion. Never apply another percentage or replace a different ecommerce price.
+        if(offer){try{const current=moneyToCents(item.price,'decimal');if(current===offer.normal||current===offer.sale){item.price=offer.price;item.regularPrice=offer.regular;}}catch{}}
       }
       Object.defineProperty(result,'discountStatus',{value:discountStatus});
       return result;

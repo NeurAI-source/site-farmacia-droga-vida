@@ -75,3 +75,12 @@ test('additive migration atomically audits both prices, rejects invalid pairs an
   for(const role of ['anon','authenticated']){await db.exec(`set role ${role}`);await assert.rejects(()=>db.query('select * from public.trier_inventory'),/permission denied/);await assert.rejects(()=>apply(payload),/permission denied/);await db.exec('reset role');}
  }finally{await db.close();}
 });
+
+test('an already-discounted current price keeps the exact universal official De/Por pair without applying another discount',async()=>{
+ for(const product of [source(1,56.99),{...source(1),valorVendaEcommerce:56.99}]){
+  const {rows}=await load([product],[offer(1)]);assert.equal(rows[0].price,56.99);assert.equal(rows[0].regularPrice,63.25);
+  const mapped=mapProduct(rows[0],officialPolicy,'2');assert.equal(mapped.priceCents,5699);assert.equal(mapped.regularPriceCents,6325);
+ }
+ const conditional=await load([source(1,56.99)],[offer(1,{codigoCondicaoPagamento:3,nomeCondicaoPagamento:'DINHEIRO'})]);assert.equal(conditional.rows[0].regularPrice,null);
+ const failed=await load([source(1,56.99)],[],{fail:true});assert.equal(failed.rows[0].regularPrice,null);assert.equal(failed.rows[0].price,56.99);
+});
