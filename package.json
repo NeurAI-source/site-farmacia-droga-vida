@@ -11,6 +11,11 @@
     "pretest": "npm run prepare:functions",
     "test:ui": "playwright test"
   },
+  "overrides": {
+    "miniflare": {
+      "undici": "7.30.1"
+    }
+  },
   "engines": {
     "node": ">=22"
   },
