@@ -19,7 +19,10 @@ async function setup(page,{role='admin',offline=false,lost=false}={}){
    else if(url.searchParams.get('action')==='upload-product-image'){data={url:'https://registration-test.supabase.co/storage/v1/object/public/product-images/fixture.png'};state.calls.push({upload:true,mime:req.headers()['content-type']});}
    else if(url.pathname.endsWith('/trier-api')){
      const b=req.postDataJSON();state.calls.push(b);if(state.offline)return route.fulfill({status:503,json:{error:'provider_unavailable'}});
-     if(b.action==='registration-search')data={rows:state.rows,nextOffset:2,hasMore:false};
+     if(b.action==='registration-search'){
+       if(!['browse','name','code','ean'].includes(b.mode)||(b.mode==='code'||b.mode==='ean')&&!b.query)return route.fulfill({status:400,json:{error:'invalid_query'}});
+       data={rows:state.rows.filter(r=>b.mode==='code'?r.shortCode===b.query:b.mode==='ean'?r.ean===b.query:true),nextOffset:2,hasMore:false};
+     }
      if(b.action==='registration-preview'){const rows=state.rows.filter(r=>b.codes.includes(r.shortCode)),previewId='preview:'+crypto.randomUUID();state.previews.set(previewId,rows);data={rows,previewId};}
    }else if(url.pathname.endsWith('/admin-api')){
      const b=req.postDataJSON();state.calls.push(b);
@@ -35,7 +38,11 @@ async function setup(page,{role='admin',offline=false,lost=false}={}){
  });
  await page.goto('/admin/');await expect(page.locator('#login-screen')).toBeHidden();return state;
 }
-async function selectRows(page){await page.locator('.sidebar [data-view="registration"]').click();await page.getByRole('button',{name:'Consultar Trier',exact:true}).click();await expect(page.locator('[data-results] tr')).toHaveCount(2);await page.getByRole('button',{name:'Selecionar página',exact:true}).click();await page.getByRole('button',{name:'Revisar selecionados',exact:true}).click();await expect(page.getByRole('dialog',{name:'Revisar importação da Trier'})).toBeVisible();}
+async function selectRows(page){await page.locator('.sidebar [data-view="registration"]').click();await page.locator('[data-search-form] [name=mode]').selectOption('browse');await page.getByRole('button',{name:'Consultar Trier',exact:true}).click();await expect(page.locator('[data-results] tr')).toHaveCount(2);await page.getByRole('button',{name:'Selecionar página',exact:true}).click();await page.getByRole('button',{name:'Revisar selecionados',exact:true}).click();await expect(page.getByRole('dialog',{name:'Revisar importação da Trier'})).toBeVisible();}
+test('code and EAN filters remain present while the request locks the form',async({page})=>{
+ const state=await setup(page);await page.locator('.sidebar [data-view="registration"]').click();const form=page.locator('[data-search-form]');await form.locator('[name=query]').fill('900001');await form.getByRole('button',{name:'Consultar Trier',exact:true}).click();await expect(page.locator('[data-results]')).toContainText('SHAMPOO DOVE');expect(state.calls.find(c=>c.action==='registration-search')).toMatchObject({mode:'code',query:'900001',activeOnly:true});
+ await form.locator('[name=mode]').selectOption('ean');await form.locator('[name=query]').fill('7900000000002');await form.locator('[name=activeOnly]').uncheck();await form.getByRole('button',{name:'Consultar Trier',exact:true}).click();await expect(page.locator('[data-results]')).toContainText('CONDICIONADOR DOVE');expect(state.calls.filter(c=>c.action==='registration-search').at(-1)).toMatchObject({mode:'ean',query:'7900000000002',activeOnly:false});
+});
 test('real import UI reviews a controlled batch and creates inactive drafts without touching existing products or publishing',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));const state=await setup(page);const before=structuredClone(state.catalog.products);await selectRows(page);
  const dialog=page.getByRole('dialog',{name:'Revisar importação da Trier'});await expect(dialog).toContainText('Filial 2');await expect(dialog.locator('[data-choice]')).toHaveCount(2);
