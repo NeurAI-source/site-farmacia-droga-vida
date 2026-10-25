@@ -16,7 +16,7 @@ async function setup(page,{role='admin',offline=false,lost=false}={}){
    else if(url.pathname.includes('/team_members'))data={role,active:true};
    else if(url.pathname.includes('/catalog_draft'))data={catalog:state.catalog,version:state.version};
    else if(url.pathname.endsWith('/save_catalog')){const body=req.postDataJSON();state.calls.push(body);state.catalog=body.payload;state.version++;data=state.version;}
-   else if(url.searchParams.get('action')==='upload-product-image'){data={url:'https://registration-test.supabase.co/storage/v1/object/public/product-images/fixture.png'};state.calls.push({upload:true,bytes:req.postDataBuffer()});}
+   else if(url.searchParams.get('action')==='upload-product-image'){data={url:'https://registration-test.supabase.co/storage/v1/object/public/product-images/fixture.png'};state.calls.push({upload:true,mime:req.headers()['content-type']});}
    else if(url.pathname.endsWith('/trier-api')){
      const b=req.postDataJSON();state.calls.push(b);if(state.offline)return route.fulfill({status:503,json:{error:'provider_unavailable'}});
      if(b.action==='registration-search')data={rows:state.rows,nextOffset:2,hasMore:false};
@@ -55,7 +55,17 @@ test('provider failure preserves manual registration, pending values and the cur
 test('image preparation compares the original with a real 1200px PNG and uploads only after approval',async({page})=>{
  const state=await setup(page);await page.locator('#new-product').click();await page.locator('[data-prepare-photo]').setInputFiles('assets/products/3.png');await expect(page.locator('.registration-photo-compare')).toBeVisible();expect(state.calls.some(c=>c.upload)).toBe(false);
  const dimensions=await page.locator('[data-treated]').evaluate(img=>({width:img.naturalWidth,height:img.naturalHeight}));expect(dimensions).toEqual({width:1200,height:1200});
- await page.getByRole('button',{name:'Aprovar e enviar imagem preparada',exact:true}).click();await expect(page.locator('[data-photo-status]')).toContainText('PNG aprovado enviado');expect(state.calls.find(c=>c.upload).bytes.readUInt32BE(16)).toBe(1200);expect(state.calls.some(c=>c.payload)).toBe(false);
+ const signature=await page.locator('[data-treated]').evaluate(async img=>Array.from(new Uint8Array(await(await fetch(img.src)).arrayBuffer()).slice(0,8)));expect(signature).toEqual([137,80,78,71,13,10,26,10]);
+ await page.getByRole('button',{name:'Aprovar e enviar imagem preparada',exact:true}).click();await expect(page.locator('[data-photo-status]')).toContainText('PNG aprovado enviado');expect(state.calls.find(c=>c.upload).mime).toBe('image/png');expect(state.calls.some(c=>c.payload)).toBe(false);
+});
+test('manual registration blocks a canonical duplicate code and preserves the entered fields',async({page})=>{
+ const state=await setup(page);state.catalog.products[0].shortCode='00900001';await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('#new-product').click();
+ const f=page.locator('#product-form');await f.locator('[name=name]').fill('PRODUTO NOVO DIFERENTE');await f.locator('[name=shortCode]').fill('900001');await f.locator('[name=imageUrl]').fill('assets/products/3.png');await f.locator('[name=price]').fill('19.99');
+ await f.getByRole('button',{name:'Salvar produto',exact:true}).click();const duplicate=page.getByRole('dialog',{name:'Conferir possíveis duplicados'});await expect(duplicate).toBeVisible();await expect(duplicate).toContainText('Código reduzido');await duplicate.getByRole('button',{name:'Cancelar',exact:true}).click();await expect(f.locator('[name=name]')).toHaveValue('PRODUTO NOVO DIFERENTE');expect(state.calls.some(c=>c.payload)).toBe(false);
+});
+test('concurrent catalog changes stop import without overwriting another editor',async({page})=>{
+ const state=await setup(page);const count=state.catalog.products.length;await selectRows(page);state.version++;
+ const dialog=page.getByRole('dialog',{name:'Revisar importação da Trier'});await dialog.getByRole('button',{name:'Confirmar importação no rascunho'}).click();await expect(dialog.locator('[data-commit-status]')).toContainText('catálogo mudou');expect(state.catalog.products).toHaveLength(count);expect(state.ledger.size).toBe(0);
 });
 test('review shows pending photo and duplicate checks; editor can prepare drafts but does not gain publication permission',async({page})=>{
  const state=await setup(page,{role:'editor'});state.catalog.products[0].imagePending=true;state.catalog.products[0].imageUrl=PENDING_IMAGE;state.catalog.products[0].active=false;

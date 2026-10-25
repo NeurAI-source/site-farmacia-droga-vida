@@ -77,10 +77,13 @@ export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNe
     if(busy)return;lock(true);const message=dialog.querySelector('[data-commit-status]');let completed=0;
     try{
       for(let bi=0;bi<prepared.length;bi++){
+        if(prepared[bi].completed)continue;
         const choices=prepared[bi].rows.map((r,ri)=>{const node=dialog.querySelector(`[data-choice="${bi}:${ri}"]`),v=n=>node.querySelector(`[name="${n}"]`);return {code:r.shortCode,mode:v('mode').value,productId:Number(v('productId').value),variantId:Number(v('variantId').value)||null,...Object.fromEntries(['name','brand','detail','category','subcategory','size','packageQuantity'].map(n=>[n,v(n).value])),confirmSeparate:v('confirmSeparate').checked,updateCommercial:v('updateCommercial').checked};});
         if(choices.every(c=>c.mode==='skip'))continue;
         message.textContent=`Salvando lote ${bi+1} de ${prepared.length}…`;
-        const result=await sendBatch({batchId:crypto.randomUUID(),version:getVersion(),previewId:prepared[bi].previewId,choices});completed+=result.report.filter(r=>r.status!=='ignored').length;
+        if(prepared[bi].pendingPayload&&JSON.stringify(prepared[bi].pendingPayload.choices)!==JSON.stringify(choices))throw Error('Recupere o lote pendente antes de alterar a seleção.');
+        const payload=prepared[bi].pendingPayload??={batchId:crypto.randomUUID(),version:getVersion(),previewId:prepared[bi].previewId,choices};
+        const result=await sendBatch(payload);prepared[bi].completed=true;completed+=result.report.filter(r=>r.status!=='ignored').length;
         for(const c of choices)selected.delete(c.code);await reload();
       }
       dialog.close();status(`${completed} itens salvos no rascunho. Complete fotos, confira e publique pelo fluxo normal.`);prepared=[];

@@ -71,7 +71,7 @@ até o usuário selecionar outra ordenação. Cards e variantes não são fundid
 
 ## Banco e implantação
 
-Migration `20261025135839_intelligent_registration.sql` cria:
+Migration `20261025141849_intelligent_registration.sql` cria:
 
 - `trier_registration_cache`: privado, somente servidor, páginas/prévias com TTL;
 - `registration_batches`: privado, somente servidor, chave idempotente;

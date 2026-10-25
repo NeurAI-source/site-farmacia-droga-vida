@@ -14,6 +14,8 @@ const small=()=>({...structuredClone(base),products:[]});
 test('registration suggestions preserve facts, identify brand and quantity without assuming laboratory equals brand',()=>{
  const s=suggestRegistration(row(),completeTaxonomy(base).categories);assert.equal(s.name,'Shampoo Dove Bond Intense Repair 250 mL');assert.equal(s.brand,'Dove');assert.equal(s.category,'Cabelos');assert.equal(s.detail,'250 mL');assert.equal(s.description,row().description);
  assert.equal(suggestRegistration({...row(),name:'PRODUTO NOVO',laboratory:'Dove'},base.categories).brand,'');
+ assert.equal(registrationDTO(wire(1,{tamanhoEcommerce:{codigo:5,nome:'XG'}}),'2',new Date().toISOString()).size,'XG');
+ assert.equal(suggestRegistration({...row(),name:'PRODUTO NOVO',group:'Shampoos e condicionadores'},completeTaxonomy(base).categories).category,'Cabelos');
 });
 test('duplicates use canonical code, EAN, Trier ID and each variant, but never merge similar names',()=>{
  const products=[{id:1,name:'Fralda teste',brand:'',shortCode:'',variants:[{id:8,shortCode:'00123',ean:'7891234567890',trier:{id:'official'}}]}];
@@ -80,7 +82,7 @@ test('additive database migration: atomic audit, concurrency, idempotency, RLS a
  for(const file of ['202609270000_team.sql','202609270001_admin.sql','20261014130000_security_hardening.sql','20261015090000_password_login.sql'])await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
  await db.exec(`insert into public.team_members values('${actor}','admin',true);set test.uid='${actor}';grant select,update on public.catalog_draft to service_role;grant select on public.team_members to service_role;`);
  await db.query('insert into public.catalog_draft(id,catalog) values(1,$1)',[JSON.stringify(base)]);
- await db.exec(await readFile(new URL('../supabase/migrations/20261025135839_intelligent_registration.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261025141849_intelligent_registration.sql',import.meta.url),'utf8'));
  const before=(await db.query('select catalog from public.catalog_draft')).rows[0].catalog;assert.deepEqual(before,base);
  const next=structuredClone(base);next.products[0].name+=' conferido';next.products[0].shortCode='12345';const id=crypto.randomUUID(),req={key:'request'};
  const commit=async(version,request=req)=>{await db.exec('set role service_role');try{return (await db.query('select public.registration_save($1,$2,$3,$4,$5,$6) result',[actor,id,version,JSON.stringify(next),JSON.stringify(request),'[]'])).rows[0].result;}finally{await db.exec('reset role');}};

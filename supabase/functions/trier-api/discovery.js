@@ -9,7 +9,7 @@ export function registrationDTO(p,storeId,fetchedAt) {
   if(!Number.isSafeInteger(stock)||Math.abs(stock)>100000000)throw Error('unexpected_product_stock');
   let priceCents=null;try{priceCents=moneyToCents(p.valorVendaEcommerce??p.valorVenda,'decimal');}catch{}
   return {shortCode:String(p.codigo),externalId:clean(p.idProduto,128)||String(p.codigo),ean:/^\d{8,14}$/.test(String(p.codigoBarras))?String(p.codigoBarras):'',name:clean(p.nomeEcommerce||p.nome,120),description:clean(p.descricaoEcommerce,2400),priceCents,regularPriceCents:null,stockQuantity:stock,active:p.ativo,storeId,fetchedAt,
-    laboratory:clean(p.nomeLaboratorio),group:clean(p.nomeGrupo),providerCategory:clean(p.nomeCategoria),unit:clean(p.unidade,30),size:clean(p.tamanhoEcommerce?.descricao,30),discountStatus:'not_checked'};
+    laboratory:clean(p.nomeLaboratorio),group:clean(p.nomeGrupo),providerCategory:clean(p.nomeCategoria),unit:clean(p.unidade,30),size:clean(p.tamanhoEcommerce?.nome,30),discountStatus:'not_checked'};
 }
 export async function lookupRegistration(settings,{mode='browse',query='',offset=0,activeOnly=true,codes},fetcher=fetch) {
   if(settings.storeId!=='2')throw Error('registration_wrong_store');

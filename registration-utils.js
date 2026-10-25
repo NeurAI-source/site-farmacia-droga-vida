@@ -14,8 +14,14 @@ export function suggestRegistration(row,categories,brands=[]) {
   const detail=units?`${units[1]} ${labels[unit]||unit.toLocaleLowerCase('pt-BR')}`:'';
   let name=original.toLocaleLowerCase('pt-BR').replace(/(^|\s)(\p{L})/gu,(_,s,c)=>s+c.toLocaleUpperCase('pt-BR'));
   if(units)name=name.replace(new RegExp(units[0].replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),detail);
-  const classification=suggestClassification({name:original},categories);
-  const size=original.match(/\b(P|M|G|XG|XXG|XXXG|RN|GRANDINHOS)\b/i)?.[1]?.toUpperCase()||'';
+  let classification=suggestClassification({name:original},categories);
+  if(classification.review){
+    const terms=[row.group,row.providerCategory].filter(Boolean).map(words),matches=[];
+    for(const c of categories)for(const s of c.subcategories||[])if(terms.includes(words(s.name)))matches.push({category:c.name,subcategory:s.name});
+    const unique=[...new Map(matches.map(m=>[m.category+'\n'+m.subcategory,m])).values()];
+    if(unique.length===1)classification={...unique[0],reason:'Grupo/categoria oficial coincide com uma subcategoria existente'};
+  }
+  const size=String(row.size||'').trim().slice(0,15)||original.match(/\b(P|M|G|XG|XXG|XXXG|RN|GRANDINHOS)\b/i)?.[1]?.toUpperCase()||'';
   return {name,brand,detail,size,category:classification.category||'',subcategory:classification.subcategory||'',
     description:row.description||'',confidence:classification.review?'review':'suggested',reason:classification.reason};
 }
