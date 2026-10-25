@@ -21,9 +21,9 @@ async function setup(page,{role='admin',offline=false,lost=false}={}){
      const b=req.postDataJSON();state.calls.push(b);if(state.offline)return route.fulfill({status:503,json:{error:'provider_unavailable'}});
      if(b.action==='registration-search'){
        if(!['browse','name','code','ean'].includes(b.mode)||(b.mode==='code'||b.mode==='ean')&&!b.query)return route.fulfill({status:400,json:{error:'invalid_query'}});
-       data={rows:state.rows.filter(r=>b.mode==='code'?r.shortCode===b.query:b.mode==='ean'?r.ean===b.query:true),nextOffset:2,hasMore:false};
+       data={rows:state.rows.filter(r=>b.mode==='code'?String(Number(r.shortCode))===String(Number(b.query)):b.mode==='ean'?r.ean===b.query:true),nextOffset:2,hasMore:false};
      }
-     if(b.action==='registration-preview'){if(state.lookupBarrier)await state.lookupBarrier;const rows=state.rows.filter(r=>b.codes.includes(r.shortCode)),previewId='preview:'+crypto.randomUUID();state.previews.set(previewId,rows);data={rows,previewId};}
+     if(b.action==='registration-preview'){if(state.lookupBarrier)await state.lookupBarrier;const rows=state.rows.filter(r=>b.codes.some(code=>String(Number(code))===String(Number(r.shortCode)))),previewId='preview:'+crypto.randomUUID();state.previews.set(previewId,rows);data={rows,previewId};}
    }else if(url.pathname.endsWith('/admin-api')){
      const b=req.postDataJSON();state.calls.push(b);
      if(b.action==='registration-inventory')data={inventory:[]};
