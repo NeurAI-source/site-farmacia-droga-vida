@@ -108,3 +108,16 @@ test('infant colognes have a dedicated reusable subcategory and never classify a
  const r=suggestClassification({name:'COLONIA BABY 200ML'},input.categories);assert.equal(r.subcategory,'Colônia infantil');
  const completed=completeTaxonomy(input);assert.equal(completed.categories.find(c=>c.id===17).subcategories.filter(s=>/col.nia/i.test(s.name)).length,1);assert.deepEqual(completeTaxonomy(completed),completed);assert.equal(input.categories[0].subcategories.length,1);
 });
+
+test('talc and infant moisturizer classifications require explicit audience and reuse equivalent options',()=>{
+ const categories=[{id:1,name:'Perfumaria e Cuidados Pessoais',subcategories:[{id:11,name:'Talco adulto'}]},{id:2,name:'Área Infantil',subcategories:[{id:12,name:'Talco infantil'},{id:13,name:'Hidratante infantil'}]}];
+ for(const [name,category,sub] of [
+  ['TALCO INFANTIL 100G','Área Infantil','Talco infantil'],['TALC JOHNSONS BABY 200G','Área Infantil','Talco infantil'],
+  ['TALCO ADULTO 100G','Perfumaria e Cuidados Pessoais','Talco adulto'],['TALCO PARA ADULTOS 200G','Perfumaria e Cuidados Pessoais','Talco adulto'],
+  ['HIDRATANTE INFANTIL 200ML','Área Infantil','Hidratante infantil'],['LOCAO HIDRATANTE BEBÊ 200ML','Área Infantil','Hidratante infantil'],['HIDR BABY 200M','Área Infantil','Hidratante infantil']
+ ]){const r=suggestClassification({name},categories);assert.equal(r.category,category,name);assert.equal(r.subcategory,sub,name);}
+ for(const name of ['TALCO 100G','HIDRATANTE ADULTO 200ML','JOHNSONS BABY','KIT TALCO INFANTIL E HIDRATANTE','TALCO ADULTO BABY 200G'])assert.equal(suggestClassification({name},categories).review,true,name);
+ const original={categories,products:[]};const result=completeTaxonomy(original);assert.deepEqual(completeTaxonomy(result),result);assert.equal(result.categories.find(c=>c.id===2).subcategories.filter(s=>/talco|hidratante/i.test(s.name)).length,2);assert.deepEqual(original.categories,categories);
+ assert.equal(suggestClassification({name:'TALCO ADULTO 100G'},[]).subcategory,'Talcos adultos');
+ assert.equal(suggestClassification({name:'HIDRATANTE INFANTIL COM COLAGENO 200ML'},[]).subcategory,'Hidratantes infantis');
+});
