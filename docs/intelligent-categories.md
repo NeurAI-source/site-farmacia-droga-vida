@@ -81,3 +81,12 @@ https://lavitan.com.br/products/lavitan-az-original-90-comprimidos e
 https://lavitan.com.br/products/lavitan-memoria.
 Kits, combinações ambíguas e nomes desconhecidos continuam para revisão.
 Não há IA generativa nem consulta ao fabricante a cada cadastro.
+
+Colônias com identificação infantil explícita (`infantil`, `baby`, `bebê`, `kids`)
+sugerem **Área Infantil → Colônias infantis**, incluindo abreviações como
+`COL JOHNSONS BABY`. A opção equivalente `Colônia infantil` é reutilizada.
+A opção ausente aparece também na seleção manual de Área Infantil e é criada
+ao salvar o produto revisado;
+também pode ser adicionada por **Categorias → Completar categorias da farmácia**.
+A marca isolada, colônias adultas e kits não recebem essa classificação automática.
+A apresentação `200M` continua exigindo revisão: esta mudança não presume `mL`.

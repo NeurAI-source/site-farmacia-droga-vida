@@ -98,3 +98,13 @@ test('verified abbreviated product lines classify without expanding ambiguous na
  for(const name of ['COL HID 300G','LAVITAN','LAVITAN AZ','MEMO NEURO 60CP','LAVITAN MEMO NEURO','LAVITAN AZ ORIGINAL KIT 60CP','LAVITAN COL HID E WHEY 300G'])assert.equal(suggestClassification({name},[]).review,true,name);
  for(const name of ['SH LAVITAN COL HID 300G','CREME LAVITAN AZ ORIGINAL 60CP','SERUM LAVITAN MEMO NEURO 60CP'])assert.notEqual(suggestClassification({name},[]).category,'Suplementos',name);
 });
+
+test('infant colognes have a dedicated reusable subcategory and never classify adult fragrances or a brand alone',()=>{
+ for(const name of ['COLONIA INFANTIL 200ML','DEO COLÔNIA JOHNSONS BABY 200ML','COLONIA PARA BEBÊ 100ML','COL JOHNSONS BABY 200M','COLONIAS INFANTIS 100ML','COLÔNIA KIDS 100ML']){
+  const r=suggestClassification({name},[]);assert.equal(r.category,'Área Infantil',name);assert.equal(r.subcategory,'Colônias infantis',name);
+ }
+ for(const name of ['JOHNSONS BABY','COLONIA ADULTO 100ML','COLONIA 200ML','KIT COLONIA INFANTIL E SHAMPOO','COLAGENO BABY 300G'])assert.notEqual(suggestClassification({name},[]).subcategory,'Colônias infantis',name);
+ const input={categories:[{id:17,name:'Área Infantil',subcategories:[{id:91,name:'Colônia infantil',categoryId:17}]}],products:[]};
+ const r=suggestClassification({name:'COLONIA BABY 200ML'},input.categories);assert.equal(r.subcategory,'Colônia infantil');
+ const completed=completeTaxonomy(input);assert.equal(completed.categories.find(c=>c.id===17).subcategories.filter(s=>/col.nia/i.test(s.name)).length,1);assert.deepEqual(completeTaxonomy(completed),completed);assert.equal(input.categories[0].subcategories.length,1);
+});
