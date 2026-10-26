@@ -90,3 +90,13 @@ ao salvar o produto revisado;
 também pode ser adicionada por **Categorias → Completar categorias da farmácia**.
 A marca isolada, colônias adultas e kits não recebem essa classificação automática.
 A apresentação `200M` continua exigindo revisão: esta mudança não presume `mL`.
+
+Talcos infantis e hidratantes infantis ficam em **Área Infantil**; talcos adultos
+ficam em **Higiene e cuidados pessoais**, reutilizando **Perfumaria e Cuidados
+Pessoais** quando já existente. As três opções aparecem na seleção manual e na
+ação de completar categorias; equivalentes no singular são reutilizados.
+Sugestões exigem o tipo e o público explícitos (ex.: `TALC JOHNSONS BABY`,
+`TALCO ADULTO`, `HIDRATANTE INFANTIL`, `HIDR BABY`). Talco genérico, marca
+isolada ou público contraditório requer revisão. As opções ausentes só são
+persistidas ao salvar o produto ou completar as categorias; produtos anteriores
+não são reclassificados por esta atualização.

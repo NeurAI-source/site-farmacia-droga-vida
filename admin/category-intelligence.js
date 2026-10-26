@@ -2,16 +2,19 @@ import { normalize } from '../catalog-utils.js';
 
 // Explicit product terms only: brands alone never decide a classification.
 export const taxonomy = [
-  ['Higiene e cuidados pessoais', ['Absorventes e protetores diários','Higiene íntima','Sabonetes','Desodorantes','Higiene bucal','Depilação']],
+  ['Higiene e cuidados pessoais', ['Absorventes e protetores diários','Higiene íntima','Sabonetes','Desodorantes','Higiene bucal','Depilação','Talcos adultos']],
   ['Beleza e cosméticos', ['Esmaltes','Removedores de esmalte','Cuidados com as unhas','Maquiagem','Cuidados com o rosto']],
   ['Cabelos', ['Shampoos e condicionadores','Máscaras e tratamentos','Cremes de pentear','Óleos capilares','Coloração']],
-  ['Área Infantil', ['Fraldas','Lenços umedecidos','Higiene infantil','Mamadeiras e acessórios','Chupetas','Fórmulas infantis','Colônias infantis']],
+  ['Área Infantil', ['Fraldas','Lenços umedecidos','Higiene infantil','Mamadeiras e acessórios','Chupetas','Fórmulas infantis','Colônias infantis','Talcos infantis','Hidratantes infantis']],
   ['Cuidados adultos', ['Fraldas geriátricas','Incontinência','Cuidados com a pele']],
   ['Suplementos', ['Vitaminas e minerais','Polivitamínicos','Nutrição esportiva','Colágenos','Ômega e ácidos graxos','Cabelo, pele e unhas','Melatonina']],
   ['Medicamentos', []],
   ['Saúde e Bem-estar', ['Curativos','Antissépticos','Aparelhos de saúde','Máscaras e acessórios']]
 ];
 const rules = [
+  [3,7,/\b(talco|talcos|talc)\b.*\b(infantil|infantis|baby|bebe|bebes|kids)\b|\b(infantil|infantis|baby|bebe|bebes|kids)\b.*\b(talco|talcos|talc)\b/],
+  [0,6,/\b(talco|talcos|talc)\b.*\badult[oa]s?\b|\badult[oa]s?\b.*\b(talco|talcos|talc)\b/],
+  [3,8,/\b(hidratante|hidratantes|hidrat|hidr)\b.*\b(infantil|infantis|baby|bebe|bebes|kids)\b|\b(infantil|infantis|baby|bebe|bebes|kids)\b.*\b(hidratante|hidratantes|hidrat|hidr)\b/],
   [3,6,/\b(colonia|colonias|col)\b.*\b(infantil|infantis|baby|bebe|bebes|kids)\b|\b(infantil|infantis|baby|bebe|bebes|kids)\b.*\b(colonia|colonias|col)\b/],
   [1,1,/\b(removedor de esmalte|acetona)\b/],
   [1,0,/\b(esmalte|esm)\b/],
@@ -46,7 +49,9 @@ const rules = [
 const categoryAliases = new Map([
   ['shampoo','shampoos'],['condicionador','condicionadores'],
   ['formula infantil','formulas infantis'],['formulas','formulas infantis'],
-  ['colonia infantil','colonias infantis'],['colonia baby','colonias infantis'],
+  ['talco infantil','talcos infantis'],['talco baby','talcos infantis'],
+  ['talco adulto','talcos adultos'],['hidratante infantil','hidratantes infantis'],
+  ['hidratante baby','hidratantes infantis'],['colonia infantil','colonias infantis'],['colonia baby','colonias infantis'],
   ['lenco umedecido','lencos umedecidos'],['fralda','fraldas'],
   ['oleo capilar','oleos capilares'],['colageno','colagenos'],
   ['melatoninas','melatonina'],['melatonin','melatonina'],
@@ -63,7 +68,7 @@ export function suggestClassification(product, categories) {
   // matches (e.g. a kit containing soap and shampoo) require human review.
   // Ingredients in cosmetics (e.g. collagen shampoo or vitamin C face serum)
   // do not identify an oral supplement. Never classify by Lavitan/Cimed alone.
-  const topical=/\b(creme|serum|shampoo|xampu|condicionador|mascara|locao|sabonete|esmalte|capilar|facial|pomada|colonia|colonias|protetor solar|hidratante|dental|bucal|uso externo)\b/.test(text);
+  const topical=/\b(creme|serum|shampoo|xampu|condicionador|mascara|locao|sabonete|esmalte|capilar|facial|pomada|talco|talcos|talc|hidrat|hidr|colonia|colonias|protetor solar|hidratante|dental|bucal|uso externo)\b/.test(text);
   // Verified product-line aliases, never the brand alone. Keep these narrow:
   // COL HID is ambiguous without the Lavitan line and an oral presentation.
   const oral=/\b(?:\d+\s*(?:g|mg|ml|cp|caps?|comprimidos?)|comprimidos?|capsulas?)\b/.test(text);
