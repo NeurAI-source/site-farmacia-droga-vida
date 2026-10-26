@@ -111,3 +111,18 @@ test('additive database migration: atomic audit, concurrency, idempotency, RLS a
  const pending=structuredClone(next);pending.products[0].imagePending=true;pending.products[0].active=true;await assert.rejects(()=>db.query('insert into public.publications(catalog,created_by) values($1,$2)',[JSON.stringify(pending),actor]),/fotos pendentes/);
  }finally{await db.close();}
 });
+
+test('registration preview queries the selected product discount instead of scanning all ERP promotions',async()=>{
+ const calls=[],saved=[];
+ const env=k=>({TRIER_INTEGRATION_ENABLED:'true',TRIER_BASE_URL:settings.baseUrl,TRIER_API_TOKEN:settings.token,TRIER_STORE_ID:'2'}[k]||'');
+ const db={from(table){assert.equal(table,'trier_registration_cache');return {insert:async value=>{saved.push(value);return {data:null};}};}};
+ const result=await discoveryAction({body:{action:'registration-preview',codes:['00900123']},db,env,user:{id:actor},fetcher:async(url,options)=>{
+  calls.push(url);assert.equal(options.method,'GET');assert.equal(options.headers.get('Authorization'),'Bearer '+settings.token);
+  if(url.pathname.includes('/desconto/')){
+   assert.equal(url.pathname,'/sgfpod1/rest/integracao/produto/desconto/melhor/obter-v1');assert.equal(url.searchParams.get('codigoProduto'),'900123');assert.equal(url.searchParams.get('considerarTodasCondicoesPagamento'),'false');assert.equal(url.searchParams.get('removerRestricaoEstoque'),'true');
+   return Response.json([{codigoProduto:900123,valorVenda:21.02,valorPromocao:19.99,codigoCondicaoPagamento:null,nomeCondicaoPagamento:null}]);
+  }
+  return Response.json([wire(900123,{integracaoEcommerce:true,valorVenda:21.02})]);
+ }});
+ assert.equal(calls.length,3);assert.equal(result.rows[0].priceCents,1999);assert.equal(result.rows[0].regularPriceCents,2102);assert.equal(result.rows[0].discountStatus,'checked');assert.equal(saved.length,1);assert.equal(saved[0].actor_id,actor);assert.match(saved[0].key,/^preview:/);
+});

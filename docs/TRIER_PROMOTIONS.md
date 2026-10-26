@@ -41,3 +41,23 @@ confirmado, o preço atual é mantido e o `valorVenda` da mesma oferta é anexad
 como De. A comparação usa centavos exatos, código único e as mesmas validações
 de condição de pagamento. Preço de e-commerce diferente tanto do normal quanto
 do promocional continua preservado sem De presumido.
+
+## Consulta no cadastro por código reduzido
+
+O cadastro utiliza `GET /rest/integracao/produto/desconto/melhor/obter-v1`,
+com `codigoProduto`, `considerarTodasCondicoesPagamento=false`,
+`removerRestricaoEstoque=true` e paginação. Não varre as promoções de todo o ERP
+para preencher um único produto. Cada resposta precisa pertencer ao código
+consultado; condições de pagamento, ambiguidades e pares inválidos continuam
+bloqueados. Uma falha em qualquer página invalida o resultado parcial.
+
+A sincronização periódica conserva o endpoint em massa e o lease/intervalo atual.
+O problema observado no cadastro era distinto: as consultas de prévia usavam
+45 segundos de orçamento total, dos quais até 40% para varrer todos os descontos.
+Nos registros reais, 33 prévias tinham `discountStatus=unavailable` e nenhum De,
+enquanto a sincronização periódica conseguia obter pares válidos.
+A mudança reduz o trabalho da consulta sem aumentar timeouts ou criar agendamentos.
+
+Validação automatizada cobre a ação real de prévia até o DTO e cache privado,
+com respostas Trier interceptadas. A confirmação em ambiente real deve usar uma
+consulta autenticada pelo painel; os testes não criam produtos na produção.
