@@ -50,7 +50,7 @@ export async function discoveryAction({body,db,env,user,fetcher=fetch}) {
   const codes=[...new Set(body.codes.map(c=>String(Number(c))))];
   const result=await lookupRegistration(settings,{codes,activeOnly:false},fetcher);
   if(result.rows.length!==codes.length)throw Error('registration_product_missing');
-  const mapped=await new TrierClient({...settings,syncDeadlineMs:45000},createOfficialContract(codes),fetcher).products();
+  const mapped=await new TrierClient({...settings,syncDeadlineMs:45000},createOfficialContract(codes,undefined,{targetedDiscounts:true}),fetcher).products();
   for(const row of result.rows){const p=mapped.find(p=>p.reducedCode===row.shortCode);if(!p)throw Error('registration_product_missing');
     row.priceCents=moneyToCents(p.price,'decimal');row.regularPriceCents=p.regularPrice==null?null:moneyToCents(p.regularPrice,'decimal');row.stockQuantity=p.stockQuantity;row.active=p.status==='sellable';row.discountStatus=mapped.discountStatus;row.fetchedAt=new Date().toISOString();}
   const key='preview:'+crypto.randomUUID();checked(await db.from('trier_registration_cache').insert({key,actor_id:user.id,payload:{rows:result.rows},expires_at:new Date(Date.now()+900000).toISOString()}));

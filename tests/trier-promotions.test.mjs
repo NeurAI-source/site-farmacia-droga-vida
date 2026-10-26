@@ -84,3 +84,30 @@ test('an already-discounted current price keeps the exact universal official De/
  const conditional=await load([source(1,56.99)],[offer(1,{codigoCondicaoPagamento:3,nomeCondicaoPagamento:'DINHEIRO'})]);assert.equal(conditional.rows[0].regularPrice,null);
  const failed=await load([source(1,56.99)],[],{fail:true});assert.equal(failed.rows[0].regularPrice,null);assert.equal(failed.rows[0].price,56.99);
 });
+
+test('targeted discounts keep code boundaries, paginate, and reject partial, conditional or ambiguous responses',async()=>{
+ for(const [discounts,expected] of [
+  [[offer(1)],6325],
+  [[offer(1,{codigoCondicaoPagamento:3,nomeCondicaoPagamento:'DINHEIRO'})],null],
+  [[offer(1),offer(1)],null],
+  [[offer(2)],null],
+  [[offer(1,{valorVenda:50})],null],
+  [[],null]
+ ]){
+  const rows=await new TrierClient(settings,createOfficialContract(['1'],undefined,{targetedDiscounts:true}),async url=>Response.json(url.pathname.includes('/desconto/')?discounts:[source(1)])).products();
+  assert.equal(rows[0].regularPrice,expected===null?null:63.25);
+  if(discounts.some(d=>d.codigoProduto===2))assert.equal(rows.discountStatus,'unavailable');
+ }
+ const calls=[];let pages=0;
+ const rows=await new TrierClient(settings,createOfficialContract(['1','2'],undefined,{targetedDiscounts:true}),async url=>{
+  if(!url.pathname.includes('/desconto/'))return Response.json([source(1),source(2)]);
+  calls.push([url.searchParams.get('codigoProduto'),url.searchParams.get('primeiroRegistro')]);pages++;
+  if(pages===1)return Response.json(Array.from({length:500},()=>offer(1)));
+  return Response.json(url.searchParams.get('codigoProduto')==='1'?[]:[offer(2)]);
+ }).products();
+ assert.deepEqual(calls,[['1','0'],['1','500'],['2','0']]);assert.equal(rows[0].regularPrice,null);assert.equal(rows[1].regularPrice,63.25);
+ const failed=await new TrierClient(settings,createOfficialContract(['1','2'],undefined,{targetedDiscounts:true}),async url=>{
+  if(!url.pathname.includes('/desconto/'))return Response.json([source(1),source(2)]);
+  return url.searchParams.get('codigoProduto')==='1'?Response.json([offer(1)]):new Response('',{status:503});
+ }).products();assert.equal(failed.discountStatus,'unavailable');assert.ok(failed.every(p=>p.regularPrice===null));
+});

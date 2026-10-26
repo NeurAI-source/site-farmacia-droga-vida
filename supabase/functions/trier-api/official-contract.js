@@ -1,15 +1,16 @@
 import { TrierClient, TrierError, moneyToCents } from './integration.js';
 // The documented bulk endpoint avoids one request per item. Complete the scan
 // before applying anything; partial/failed scans never advertise a discount.
-async function loadDiscounts(settings, fetcher, sleep, deadline, selected) {
+async function loadDiscounts(settings, fetcher, sleep, deadline, selected, targeted=false) {
   const discounts=new Map(), seen=new Set(), pageSize=500;
-  for(let offset=0;;offset+=pageSize){
-    const contract={request(){const url=new URL(settings.baseUrl.replace(/\/$/,'')+'/rest/integracao/produto/desconto/melhor/obter-todos-v1');url.searchParams.set('removerRestricaoEstoque','true');url.searchParams.set('primeiroRegistro',String(offset));url.searchParams.set('quantidadeRegistros',String(pageSize));return {url:url.href,headers:{Authorization:`Bearer ${settings.token}`,Accept:'application/json'}};},decode(payload){if(!Array.isArray(payload)||payload.length>pageSize)throw Error();return payload;}};
+  const scopes=targeted?[...selected]:[null];
+  for(const codeFilter of scopes)for(let offset=0;;offset+=pageSize){
+    const contract={request(){const url=new URL(settings.baseUrl.replace(/\/$/,'')+'/rest/integracao/produto/desconto/melhor/'+(targeted?'obter-v1':'obter-todos-v1'));if(targeted){url.searchParams.set('codigoProduto',codeFilter);url.searchParams.set('considerarTodasCondicoesPagamento','false');}url.searchParams.set('removerRestricaoEstoque','true');url.searchParams.set('primeiroRegistro',String(offset));url.searchParams.set('quantidadeRegistros',String(pageSize));return {url:url.href,headers:{Authorization:`Bearer ${settings.token}`,Accept:'application/json'}};},decode(payload){if(!Array.isArray(payload)||payload.length>pageSize)throw Error();return payload;}};
     const rows=await new TrierClient({...settings,maxProducts:pageSize},contract,fetcher,sleep).products({deadline});
     if(offset+rows.length>20000)throw new TrierError('too_many_discounts');
     for(const row of rows){
       if(!Number.isSafeInteger(row.codigoProduto))throw new TrierError('unexpected_schema');
-      const code=String(row.codigoProduto);if(!selected.has(code))continue;
+      const code=String(row.codigoProduto);if(targeted&&code!==codeFilter)throw new TrierError('unexpected_discount_identity');if(!selected.has(code))continue;
       if(seen.has(code)){discounts.set(code,null);continue;}seen.add(code);
       // A cash/card/partner-specific price must not become a universal offer.
       if(!Object.hasOwn(row,'codigoCondicaoPagamento')||!Object.hasOwn(row,'nomeCondicaoPagamento')||row.codigoCondicaoPagamento!=null||row.nomeCondicaoPagamento!=null){discounts.set(code,null);continue;}
@@ -17,12 +18,13 @@ async function loadDiscounts(settings, fetcher, sleep, deadline, selected) {
         discounts.set(code,normal>sale&&sale>0?{normal,sale,regular:row.valorVenda,price:row.valorPromocao}:null);
       }catch{discounts.set(code,null);}
     }
-    if(rows.length<pageSize)return discounts;
+    if(rows.length<pageSize)break;
   }
+  return discounts;
 }
 // Trier SGF LTS 1.5.22: /rest + documented OpenAPI paths. Array
 // filters use form/explode (repeated codigo), not comma-separated codes.
-export function createOfficialContract(codes, deliveryCode = '46295') {
+export function createOfficialContract(codes, deliveryCode = '46295', {targetedDiscounts=false} = {}) {
   const selected = [...new Set(codes.filter(c => /^\d{1,12}$/.test(String(c))).map(c => String(Number(c))))].filter(c => c !== deliveryCode);
   return {
     async load(settings, fetcher, sleep, deadline) {
@@ -61,7 +63,7 @@ export function createOfficialContract(codes, deliveryCode = '46295') {
         }
       }
       let discounts=new Map(),discountStatus='checked';
-      try{discounts=await loadDiscounts(settings,fetcher,sleep,Math.min(deadline,Date.now()+Math.min(30000,Math.floor((deadline-Date.now())*.4))),new Set(result.map(p=>p.reducedCode)));}
+      try{discounts=await loadDiscounts(settings,fetcher,sleep,Math.min(deadline,Date.now()+Math.min(30000,Math.floor((deadline-Date.now())*.4))),new Set(result.map(p=>p.reducedCode)),targetedDiscounts);}
       catch{discountStatus='unavailable';}
       for(const item of result){
         const offer=discounts.get(item.reducedCode);item.regularPrice=null;
