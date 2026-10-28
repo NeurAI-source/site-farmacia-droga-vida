@@ -21,7 +21,7 @@
     "@supabase/supabase-js": "2.117.2"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite": "0.5.11",
     "@playwright/test": "1.63.0",
     "esbuild": "0.28.2",
     "sharp": "0.35.5",
