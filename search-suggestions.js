@@ -63,6 +63,7 @@ export function mountSearchSuggestions({ input, form, list, status, getProducts,
   }
   input.addEventListener('input', update);
   input.addEventListener('focus', update);
+  input.addEventListener('click', update);
   input.addEventListener('compositionstart', () => { composing = true; close(); });
   input.addEventListener('compositionend', () => { composing = false; update(); });
   input.addEventListener('keydown', event => {
