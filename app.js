@@ -1,3 +1,4 @@
+import { mountSearchSuggestions } from './search-suggestions.js';
 import { loadInventory, startInventoryUpdates } from './trier-inventory.js';
 import { productThumbnail } from './product-images.js';
 import { sortCatalogProducts } from './product-order.js';
@@ -40,6 +41,8 @@ let expandedProductPage = false;
 let chatCart;
 let products = [], categories = [], cart = [], favorites = [], category = 'Todos', subcategory = '', query = '', favoriteOnly = false, all = false, limit = 12, toastTimer;
 
+const searchSuggestions=mountSearchSuggestions({input:$('#search'),form:$('#search-form'),list:$('#search-suggestions'),status:$('#search-suggestions-status'),getProducts:()=>products,onSelect:product=>showDetail(product.id)});
+
 const whatsapp = text => `https://wa.me/5517996630482?text=${encodeURIComponent(text)}`;
 function toast(message) { $('#toast').textContent = message; $('#toast').classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 3000); }
 function openDialog(dialog) { if (!dialog.open) dialog.showModal(); }
@@ -66,6 +69,7 @@ function renderSubfilters() {
   host.innerHTML = `<button data-category="${escape(category)}" aria-pressed="${!subcategory}">Todos</button>` + subs.map(s => `<button data-category="${escape(category)}" data-subcategory="${escape(s.name)}" aria-pressed="${subcategory === s.name}">${escape(s.name)}</button>`).join('');
 }
 function renderProducts() {
+  searchSuggestions.refresh();
   renderSubfilters();
   const filtered = filterProducts(products, { category, subcategory, query, favorites: favoriteOnly ? favorites : null });
   const displayed = all || category !== 'Todos' || query || favoriteOnly ? sortCatalogProducts(filtered,publicSort.value==='default'?'brand':publicSort.value) : filtered.filter(p => p.featured);
