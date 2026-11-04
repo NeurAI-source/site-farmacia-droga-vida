@@ -1,10 +1,15 @@
 # Sugestões na pesquisa pública
 
 A busca existente no cabeçalho mostra até cinco produtos ativos publicados,
-a partir de dois caracteres. Usa o mesmo filtro de nome, marca, apresentação,
-categoria e subcategoria do catálogo, independente da vitrine e da seleção de
+a partir de dois caracteres. Compara o início das palavras de nome, marca,
+apresentação, categoria e subcategoria, independente da vitrine e da seleção de
 categoria atual. A miniatura e o preço seguem os dados públicos já carregados;
 variantes mostram “A partir de” com o menor preço da apresentação.
+
+As sugestões priorizam correspondências no nome/marca sobre apresentação e
+classificação. Todos os termos digitados precisam corresponder, sem distinguir
+acentos ou maiúsculas. “NI” encontra Nivea e Ninho, mas não “unidades” nos
+absorventes. A busca completa do catálogo ao enviar o formulário é preservada.
 
 Clique/toque abre o mesmo detalhe ou página individual dos cards. Setas escolhem
 uma sugestão, Enter abre a escolhida; Enter sem seleção e o botão Pesquisar

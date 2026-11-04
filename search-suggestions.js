@@ -1,5 +1,5 @@
-import { filterProducts, priceInfo, money } from './catalog-utils.js';
-import { sortCatalogProducts } from './product-order.js';
+import { priceInfo, money } from './catalog-utils.js';
+import { suggestProducts } from './search-suggestions-utils.js';
 import { productThumbnail } from './product-images.js';
 
 // Read the already loaded public catalog/cache; typing never calls the ERP.
@@ -35,7 +35,7 @@ export function mountSearchSuggestions({ input, form, list, status, getProducts,
   }
   function update() {
     if (composing || document.activeElement !== input || input.value.trim().length < 2) { close(); return; }
-    matches = sortCatalogProducts(filterProducts(getProducts(), {query:input.value}), 'brand').slice(0, 5);
+    matches = suggestProducts(getProducts(), input.value);
     selected = -1;
     input.removeAttribute('aria-activedescendant');
     list.replaceChildren();
