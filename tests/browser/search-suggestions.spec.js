@@ -12,6 +12,7 @@ async function setup(page,{expanded=false,delayed=false}={}){
  let release;const barrier=delayed?new Promise(r=>release=r):Promise.resolve();
  await page.route('**/catalog.json*',async r=>{await barrier;await r.fulfill({json:{...base,expandedProductPage:expanded,products}});});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/',{waitUntil:delayed?'commit':'load'});
+ await expect(page.locator('#search')).toHaveAttribute('role','combobox');
  if(!delayed)await expect(page.locator('#products .product-card')).toHaveCount(1);
  return {products,errors,release};
 }
