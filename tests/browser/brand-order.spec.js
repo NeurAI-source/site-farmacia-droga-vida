@@ -9,7 +9,7 @@ test('catalog sorts brands before pagination and keeps individual cards, search 
  const cards=page.locator('#products .product-card');await expect(cards).toHaveCount(12);
  await expect(cards.locator('h3')).toHaveText([...Array.from({length:6},(_,i)=>`ABSORVENTE ALWAYS MODELO ${i+1}`),...Array.from({length:6},(_,i)=>`ABSORVENTE INTIMUS MODELO ${i+1}`)]);
  await page.locator('#load-more').click();await expect(cards).toHaveCount(18);await expect(cards.locator('h3').last()).toHaveText('ABSORVENTE SEMPRE LIVRE MODELO 6');
- await page.getByRole('searchbox',{name:'Buscar produtos',exact:true}).fill('Sempre Livre');await expect(cards).toHaveCount(6);await expect(cards.locator('h3')).toHaveText(Array.from({length:6},(_,i)=>`ABSORVENTE SEMPRE LIVRE MODELO ${i+1}`));
+ await page.getByRole('combobox',{name:'Buscar produtos',exact:true}).fill('Sempre Livre');await expect(cards).toHaveCount(6);await expect(cards.locator('h3')).toHaveText(Array.from({length:6},(_,i)=>`ABSORVENTE SEMPRE LIVRE MODELO ${i+1}`));
  await cards.last().getByRole('button',{name:'Adicionar',exact:true}).click();await expect(page.locator('#cart-dialog')).toContainText('ABSORVENTE SEMPRE LIVRE MODELO 6');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
