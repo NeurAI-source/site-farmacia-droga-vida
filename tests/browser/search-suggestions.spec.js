@@ -1,12 +1,18 @@
 import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 const base=JSON.parse(readFileSync(new URL('../../catalog.json',import.meta.url)));
-async function setup(page,{expanded=false,delayed=false}={}){
+async function setup(page,{expanded=false,delayed=false,relevance=false}={}){
  const prototype=base.products.find(p=>!p.variants.length);
  const products=Array.from({length:8},(_,i)=>({...prototype,id:9700+i,name:`Pampers Conforto ${i+1}`,brand:'Pampers',category:'Área Infantil',subcategory:'Fraldas',detail:'Pacote',imageUrl:'assets/products/3.png',variants:[],priceCents:1000+i,active:true,featured:i===0}));
  products.push({...products[0],id:9799,name:'Pampers oculto',active:false});
  products.push({...products[0],id:9800,name:'Loção suave <img src=x onerror="window.injected=true">',brand:'Marca especial',category:'Higiene e cuidados pessoais',subcategory:'Hidratantes',priceCents:990,featured:false});
  products[0].variants=[{id:9801,size:'M',packageQuantity:30,priceCents:1500,stockQuantity:0},{id:9802,size:'G',packageQuantity:25,priceCents:1250,stockQuantity:0}];
+ if(relevance)products.push(
+  {...products[1],id:9900,name:'Absorvente Always Noites Tranquilas',brand:'Always',detail:'16 unidades',category:'Higiene',subcategory:'Absorventes'},
+  {...products[1],id:9901,name:'Creme Nivea',brand:'Nivea',detail:'200 mL'},
+  {...products[1],id:9902,name:'Leite Ninho',brand:'Nestlé',detail:'400 g'},
+  {...products[1],id:9903,name:'Nivea oculto',brand:'Nivea',active:false},
+ );
  await page.addInitScript(()=>localStorage.setItem('dv-analytics-consent','denied'));
  await page.route('**/public-config.js',r=>r.fulfill({contentType:'text/javascript',body:'export const config={url:"",key:""};'}));
  let release;const barrier=delayed?new Promise(r=>release=r):Promise.resolve();
@@ -23,6 +29,13 @@ test('existing search suggests at most five active products across the full cata
  await expect(page.locator('#products .product-card')).toHaveCount(8);await expect(page.locator('#search-suggestions')).not.toContainText('oculto');
  const list=await page.locator('#search-suggestions').boundingBox();expect(list.x).toBeGreaterThanOrEqual(0);expect(list.x+list.width).toBeLessThanOrEqual(page.viewportSize().width+1);
  await options.nth(1).click();await expect(page.locator('#detail-dialog')).toBeVisible();await expect(page.locator('#detail-dialog h2')).toHaveText('Pampers Conforto 2');await expect(page.locator('#search-suggestions')).toBeHidden();expect(state.errors).toEqual([]);
+});
+test('NI suggests word beginnings such as Nivea and Ninho without matching unidades on absorventes',async({page})=>{
+ const state=await setup(page,{relevance:true});const input=page.locator('#search');await input.fill('NI');
+ const options=page.locator('#search-suggestions [role=option]');await expect(options).toHaveCount(2);
+ await expect(options.nth(0)).toContainText('Leite Ninho');await expect(options.nth(1)).toContainText('Creme Nivea');
+ await expect(page.locator('#search-suggestions')).not.toContainText('Absorvente');await expect(page.locator('#search-suggestions')).not.toContainText('oculto');
+ await input.fill('nive 200');await expect(options).toHaveCount(1);await options.first().click();await expect(page.locator('#detail-dialog h2')).toHaveText('Creme Nivea');expect(state.errors).toEqual([]);
 });
 test('keyboard selection opens the right individual page while Enter without a selection keeps all results',async({page})=>{
  await setup(page,{expanded:true});const input=page.locator('#search');await input.fill('pampers');await input.press('Enter');await expect(page.locator('#search-suggestions')).toBeHidden();await expect(page.locator('#products .product-card')).toHaveCount(8);await input.click();await expect(page.locator('#search-suggestions')).toBeVisible();await input.press('ArrowDown');await input.press('ArrowDown');await expect(input).toHaveAttribute('aria-activedescendant','search-suggestions-1');await input.press('Enter');await expect(page).toHaveURL(/produto\.html\?id=9701/);
