@@ -3,15 +3,31 @@ import { normalize } from '../catalog-utils.js';
 // Explicit product terms only: brands alone never decide a classification.
 export const taxonomy = [
   ['Higiene e cuidados pessoais', ['Absorventes e protetores diários','Higiene íntima','Sabonetes','Desodorantes','Higiene bucal','Depilação','Talcos adultos']],
-  ['Beleza e cosméticos', ['Esmaltes','Removedores de esmalte','Cuidados com as unhas','Maquiagem','Cuidados com o rosto']],
-  ['Cabelos', ['Shampoos e condicionadores','Máscaras e tratamentos','Cremes de pentear','Óleos capilares','Coloração']],
+  ['Beleza e cosméticos', ['Esmaltes','Removedores de esmalte','Cuidados com as unhas','Maquiagem','Cuidados com o rosto','Protetores solares corporais','Protetores solares faciais','Sabonetes faciais','Óleos corporais','Hidratantes corporais','Pós-sol']],
+  ['Cabelos', ['Shampoos e condicionadores','Máscaras e tratamentos','Cremes de pentear','Óleos capilares','Coloração','Tinturas de cabelo','Tonalizantes de cabelo','Gelatinas capilares','Matizadores capilares']],
   ['Área Infantil', ['Fraldas','Lenços umedecidos','Higiene infantil','Mamadeiras e acessórios','Chupetas','Fórmulas infantis','Colônias infantis','Talcos infantis','Hidratantes infantis']],
   ['Cuidados adultos', ['Fraldas geriátricas','Incontinência','Cuidados com a pele']],
   ['Suplementos', ['Vitaminas e minerais','Polivitamínicos','Nutrição esportiva','Colágenos','Ômega e ácidos graxos','Cabelo, pele e unhas','Melatonina']],
-  ['Medicamentos', []],
-  ['Saúde e Bem-estar', ['Curativos','Antissépticos','Aparelhos de saúde','Máscaras e acessórios']]
+  ['Medicamentos', ['Primeiros socorros']],
+  ['Saúde e Bem-estar', ['Curativos','Antissépticos','Aparelhos de saúde','Máscaras e acessórios','Inaladores','Umidificadores','Reidratantes']],
+  ['Conveniência', ['Doces e balas']]
 ];
 const rules = [
+  [1,5,/\bprotetor(?:es)? solar(?:es)?\b.*\b(corporal|corporais|corpo)\b|\b(corporal|corporais|corpo)\b.*\bprotetor(?:es)? solar(?:es)?\b/],
+  [1,6,/\bprotetor(?:es)? solar(?:es)?\b.*\b(facial|faciais|rosto)\b|\b(facial|faciais|rosto)\b.*\bprotetor(?:es)? solar(?:es)?\b/],
+  [1,7,/\bsabonetes?\b.*\b(facial|faciais|rosto)\b|\b(facial|faciais|rosto)\b.*\bsabonetes?\b/],
+  [1,8,/\boleos?\b.*\b(corporal|corporais|corpo)\b|\b(corporal|corporais|corpo)\b.*\boleos?\b/],
+  [1,9,/\bhidratantes?\b.*\b(corporal|corporais|corpo)\b|\b(corporal|corporais|corpo)\b.*\bhidratantes?\b/],
+  [1,10,/\bpos sol\b/],
+  [2,5,/\btinturas?\b|\btintas?\b.*\b(cabelo|capilar)\b|\b(cabelo|capilar)\b.*\btintas?\b/],
+  [2,6,/\btonalizantes?\b/],
+  [2,7,/\bgelatinas?\b.*\b(capilar|capilares|cabelo|cabelos)\b|\b(capilar|capilares|cabelo|cabelos)\b.*\bgelatinas?\b/],
+  [2,8,/\b(matizador|matizadores|matizadora|matizadoras)\b/],
+  [7,4,/\b(inalador|inaladores|nebulizador|nebulizadores)\b/],
+  [7,5,/\b(umidificador|umidificadores)\b/],
+  [7,6,/\b(reidratante|reidratantes)\b|\b(sais|soro) de reidratacao\b/],
+  [8,0,/\b(bala|balas|doce|doces|pirulito|pirulitos|chiclete|chicletes|chocolate|chocolates)\b/],
+  [6,0,/\bprimeiros socorros\b/],
   [3,7,/\b(talco|talcos|talc)\b.*\b(infantil|infantis|baby|bebe|bebes|kids)\b|\b(infantil|infantis|baby|bebe|bebes|kids)\b.*\b(talco|talcos|talc)\b/],
   [0,6,/\b(talco|talcos|talc)\b.*\badult[oa]s?\b|\badult[oa]s?\b.*\b(talco|talcos|talc)\b/],
   [3,8,/\b(hidratante|hidratantes|hidrat|hidr)\b.*\b(infantil|infantis|baby|bebe|bebes|kids)\b|\b(infantil|infantis|baby|bebe|bebes|kids)\b.*\b(hidratante|hidratantes|hidrat|hidr)\b/],
@@ -30,10 +46,10 @@ const rules = [
   [0,4,/\b(creme dental|pasta dental|escova dental|fio dental|enxaguante bucal)\b/],
   [0,5,/\b(depilatorio|depilatoria|lamina de barbear|aparelho de barbear)\b/],
   [2,0,/\b(shampoo|xampu|condicionador)\b/],
-  [2,1,/\b(mascara capilar|tratamento capilar)\b/],
+  [2,1,/\b(mascara|mascaras|tratamento)\b.*\b(capilar|capilares|cabelo|cabelos)\b/],
   [2,2,/\b(creme de pentear|creme para pentear|leave in)\b/],
   [2,3,/\b(oleo capilar|serum capilar)\b/],
-  [2,4,/\b(tintura|tonalizante|coloracao capilar)\b/],
+  [2,4,/\bcoloracao capilar\b/],
   [1,3,/\b(batom|rimel|mascara de cilios|base facial|po compacto)\b/],
   [7,0,/\b(curativo|curativos|gaze|esparadrapo|atadura)\b/],
   [7,1,/\b(antisseptico|antissepticos)\b/],
@@ -54,6 +70,11 @@ const categoryAliases = new Map([
   ['hidratante baby','hidratantes infantis'],['colonia infantil','colonias infantis'],['colonia baby','colonias infantis'],
   ['lenco umedecido','lencos umedecidos'],['fralda','fraldas'],
   ['oleo capilar','oleos capilares'],['colageno','colagenos'],
+  ['desodorante','desodorantes'],['mascara de cabelo','mascaras e tratamentos'],['mascaras capilares','mascaras e tratamentos'],
+  ['tinta de cabelo','tinturas de cabelo'],['tintura','tinturas de cabelo'],['tinturas','tinturas de cabelo'],['tonalizante de cabelo','tonalizantes de cabelo'],
+  ['protetor solar corporal','protetores solares corporais'],['protetor solar facial','protetores solares faciais'],
+  ['sabonete facial','sabonetes faciais'],['oleo corporal','oleos corporais'],['hidratante corporal','hidratantes corporais'],
+  ['gelatina capilar','gelatinas capilares'],['matizador capilar','matizadores capilares'],['inalador','inaladores'],['umidificador','umidificadores'],['reidratante','reidratantes'],
   ['melatoninas','melatonina'],['melatonin','melatonina'],
   ['vitaminas','vitaminas e minerais'],['polivitaminico','polivitaminicos']
 ]);
@@ -78,8 +99,12 @@ export function suggestClassification(product, categories) {
     if(/\blavitan\s+(?:az|a z)\s+original\b/.test(text))lineMatches.push([5,1]);
     if(/\blavitan\s+memo\s+neuro\b/.test(text))lineMatches.push([5,0]);
   }
-  const matches=[...lineMatches,...rules.filter(([c, ,pattern])=>!(c===5&&topical)&&pattern.test(text))];
+  const matches=[...lineMatches,...rules.filter(([c,s,pattern])=>!(c===5&&topical)&&!(c===7&&s===6&&topical)&&!(c===2&&s===5&&/\b(iodo|propolis)\b/.test(text))&&!(c===8&&(topical||/\b(sabor|aroma|fragrancia|suplemento|whey|vitamina|melatonina|colageno|nutren|sustagen|ensure|proteina|shake|bebida)\b/.test(text)))&&pattern.test(text))];
   const specific=matches.filter(([c,s])=>!(c===0&&s===2&&matches.some(([a,b])=>a===0&&b===1))
+    && !(c===0&&s===2&&matches.some(([a,b])=>a===1&&b===7))
+    && !(c===1&&s===9&&matches.some(([a,b])=>a===3&&b===8||a===1&&b===10))
+    && !(c===2&&(s===0||s===1)&&matches.some(([a,b])=>a===2&&b===8))
+    && !(c===2&&s===4&&matches.some(([a,b])=>a===2&&(b===5||b===6)))
     && !(c===1&&s===0&&matches.some(([a,b])=>a===1&&b===1))
     && !(c===3&&s===0&&matches.some(([a])=>a===4))
     && !(c===0&&s===0&&matches.some(([a])=>a===4))
@@ -93,7 +118,7 @@ export function suggestClassification(product, categories) {
   const category=existing?.name||canonical;
   const specificSub=ci===2&&si===0 ? (/\b(shampoo|xampu)\b/.test(text)&&!/\bcondicionador\b/.test(text)?'shampoos':/\bcondicionador\b/.test(text)&&!/\b(shampoo|xampu)\b/.test(text)?'condicionadores':'') : '';
   const subcategory=existing?.subcategories.find(s=>same(s.name,subs[si]))?.name||existing?.subcategories.find(s=>specificSub&&same(s.name,specificSub))?.name||subs[si];
-  return {category,subcategory,reason:'Termo explícito no nome do produto',ruleVersion:2};
+  return {category,subcategory,reason:'Termo explícito no nome do produto',ruleVersion:3};
 }
 export function ensureClassification(catalog, category, subcategory) {
   let c=catalog.categories.find(c=>same(c.name,category));

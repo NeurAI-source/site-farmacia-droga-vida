@@ -1,4 +1,11 @@
 import {test,expect} from '@playwright/test';
+test('requested categories are available in the editor and explicit names suggest distinct options',async({page})=>{
+ const state=await setup(page);const before=structuredClone(state.catalog);await page.locator('#new-product').click();const f=page.locator('#product-form');
+ for(const [name,category,sub] of [['Protetor solar facial FPS50','Beleza e cosméticos','Protetores solares faciais'],['Protetor solar corporal FPS50','Beleza e cosméticos','Protetores solares corporais'],['Tinta de cabelo 6.0','Cabelos','Tinturas de cabelo'],['Tonalizante de cabelo','Cabelos','Tonalizantes de cabelo'],['Umidificador de ar','Saúde e Bem-estar','Umidificadores'],['Balas de menta','Conveniência','Doces e balas']]){
+  await f.locator('[name=name]').fill(name);await f.locator('[name=ean]').focus();await expect(f.locator('[name=category]')).toHaveValue(category);await expect(f.locator('[name=subcategory]')).toHaveValue(sub);
+ }
+ expect(state.catalog).toEqual(before);expect(state.calls.some(c=>c.payload||c.action==='publish')).toBe(false);
+});
 
 test('bulk status changes only filtered selected products and never publishes',async({page})=>{
  const state=await setup(page);const [a,b,c]=state.catalog.products;
