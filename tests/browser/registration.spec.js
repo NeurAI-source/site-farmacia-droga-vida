@@ -1,4 +1,30 @@
 import {test,expect} from '@playwright/test';
+
+test('bulk status changes only filtered selected products and never publishes',async({page})=>{
+ const state=await setup(page);const [a,b,c]=state.catalog.products;
+ a.name='Chupeta teste A';b.name='Chupeta teste B';c.name='Outro item teste';a.active=b.active=c.active=false;
+ await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('[data-view="products"]').click();await page.locator('#search').fill('Chupeta teste');
+ await expect(page.locator('#rows tr')).toHaveCount(2);await page.locator('[data-bulk-all]').check();await expect(page.locator('[data-bulk-count]')).toHaveText('2 selecionado(s)');
+ const before=structuredClone(state.catalog);page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Ativar selecionados',exact:true}).click();await expect(page.locator('[data-bulk-feedback]')).toContainText('2 produto(s) ativado(s)');
+ const expected=structuredClone(before);for(const p of expected.products)if(p.id===a.id||p.id===b.id){p.active=true;p.updatedAt=state.catalog.products.find(x=>x.id===p.id).updatedAt;}
+ expect(state.catalog).toEqual(expected);expect(state.calls.filter(c=>c.payload)).toHaveLength(1);expect(state.calls.some(c=>c.action==='publish')).toBe(false);
+ await page.locator('[data-bulk-all]').check();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Inativar selecionados',exact:true}).click();await expect(page.locator('[data-bulk-feedback]')).toContainText('2 produto(s) inativado(s)');
+ expect(state.catalog.products.find(p=>p.id===c.id).active).toBe(false);
+});
+test('bulk selection drops hidden products, supports individual selection and cancellation',async({page})=>{
+ const state=await setup(page);state.catalog.products[0].name='Chupeta única teste';await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('[data-view="products"]').click();
+ await page.locator('[data-bulk-all]').check();await page.locator('#search').fill('Chupeta única teste');await expect(page.locator('[data-bulk-count]')).toHaveText('1 selecionado(s)');
+ await page.locator('[data-bulk-product]').uncheck();await expect(page.getByRole('button',{name:'Inativar selecionados',exact:true})).toBeDisabled();await page.locator('[data-bulk-product]').check();
+ const before=structuredClone(state.catalog);const active=state.catalog.products[0].active;page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:active?'Inativar selecionados':'Ativar selecionados',exact:true}).click();expect(state.catalog).toEqual(before);expect(state.calls.filter(c=>c.payload)).toHaveLength(0);
+ await page.locator('#search').fill('nenhum-resultadoteste');await expect(page.locator('[data-bulk-count]')).toHaveText('0 selecionado(s)');await expect(page.locator('[data-bulk-all]')).toBeDisabled();
+});
+test('bulk status preserves selection and data on a concurrent edit or connection failure',async({page})=>{
+ const state=await setup(page);state.catalog.products[0].name='Chupeta falha teste';state.catalog.products[0].active=false;await page.reload();await expect(page.locator('#login-screen')).toBeHidden();await page.locator('[data-view="products"]').click();await page.locator('#search').fill('Chupeta falha teste');await page.locator('[data-bulk-all]').check();
+ const before=structuredClone(state.catalog);let writes=0;
+ await page.route('**/rest/v1/rpc/save_catalog',async r=>{writes++;await r.fulfill({status:409,json:{message:'catalog conflict'}});});
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Ativar selecionados',exact:true}).click();await expect(page.locator('[data-bulk-feedback]')).toContainText('seleção foi preservada');expect(writes).toBe(1);expect(state.catalog).toEqual(before);await expect(page.locator('[data-bulk-product]')).toBeChecked();
+ await page.route('**/rest/v1/rpc/save_catalog',r=>r.abort());page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Ativar selecionados',exact:true}).click();await expect(page.locator('[data-bulk-feedback]')).toContainText('seleção foi preservada');expect(state.catalog).toEqual(before);expect(state.calls.some(c=>c.action==='publish')).toBe(false);
+});
 import {readFileSync} from 'node:fs';
 import {buildRegistration,PENDING_IMAGE} from '../../registration-utils.js';
 import {completeTaxonomy} from '../../admin/category-intelligence.js';
