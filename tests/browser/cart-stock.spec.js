@@ -108,8 +108,8 @@ test('delivery requires a neighborhood and preserves customer inputs while revie
  await page.getByRole('button',{name:'Continuar para o WhatsApp →',exact:true}).click();
  await page.locator('#order-name').fill('Cliente entrega');await page.getByRole('button',{name:'Revisar meu pré-pedido →'}).click();
  await expect(page.locator('#order-form')).toBeVisible();await expect(page.locator('#order-neighborhood')).toHaveAttribute('required','');
- await page.locator('#order-neighborhood').fill('Bairro de teste');await page.getByRole('button',{name:'Revisar meu pré-pedido →'}).click();
- await expect(page.locator('#order-preview')).toContainText('Bairro de teste');await expect(page.locator('#order-preview')).toContainText('Taxa de entrega');
+ await page.locator('#order-street').fill('Rua de teste');await page.locator('#order-number').fill('123');await page.locator('#order-neighborhood').fill('Bairro de teste');await page.locator('[name=building]').check();await page.locator('[name=apartment]').fill('42');await page.locator('[name=buildingNumber]').fill('Torre B');await page.getByRole('button',{name:'Revisar meu pré-pedido →'}).click();
+ await expect(page.locator('#order-preview')).toContainText('Bairro de teste');await expect(page.locator('#order-preview')).toContainText('Rua: Rua de teste');await expect(page.locator('#order-preview')).toContainText('Número: 123');await expect(page.locator('#order-preview')).toContainText('Apartamento: 42');await expect(page.locator('#order-preview')).toContainText('Torre B');await expect(page.locator('#order-preview')).toContainText('Taxa de entrega');expect(await page.evaluate(()=>JSON.stringify({...localStorage}))).not.toContain('Rua de teste');
  await page.getByRole('button',{name:'← Voltar',exact:true}).click();await expect(page.locator('#order-name')).toHaveValue('Cliente entrega');await expect(page.locator('#order-neighborhood')).toHaveValue('Bairro de teste');
 });
 test('expired cache becomes consult instead of exposing old or legacy balances',async({page})=>{
