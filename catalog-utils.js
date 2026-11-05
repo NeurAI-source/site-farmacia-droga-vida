@@ -59,7 +59,7 @@ export function orderMessage(cart, products, customer = {}) {
   return [
     '🛒 PRÉ-PEDIDO | DROGA VIDA POPULAR',
     'Olá! Vim pelo site da Droga Vida Popular e gostaria de consultar meu pré-pedido.',
-    `👤 DADOS DO CLIENTE\nNome: ${name}${delivery ? '\n📍 Bairro de entrega: ' + neighborhood : ''}`,
+    `👤 DADOS DO CLIENTE\nNome: ${name}${delivery ? '\n📍 Bairro de entrega: ' + neighborhood + (customer.street?'\nRua: '+String(customer.street).trim():'') + (customer.number?'\nNúmero: '+String(customer.number).trim():'') + (customer.postalCode?'\nCEP: '+String(customer.postalCode).trim():'') + (customer.building?'\nApartamento: '+String(customer.apartment||'').trim()+(customer.buildingNumber?'\nBloco / torre / prédio: '+String(customer.buildingNumber).trim():''):'') : ''}`,
     `📦 PRODUTOS SOLICITADOS\n\n${items}`,
     `💰 RESUMO DO PRÉ-PEDIDO\nSubtotal: ${money(cartTotal(cart, products))}\n${delivery ? '🚚 Recebimento: Entrega\nTaxa de entrega: A consultar' : '🏪 Recebimento: Retirada na loja 2 — Nature 1'}`,
     delivery ? '✅ Poderiam confirmar o valor total com a entrega?' : '✅ Poderiam confirmar o valor total para retirada?',
