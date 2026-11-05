@@ -4,6 +4,28 @@ import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {suggestClassification,classificationReview,applyClassifications,fillMissingClassifications,completeTaxonomy,restoreClassifications,classificationOf} from '../admin/category-intelligence.js';
 const catalog={categories:[{id:1,name:'Perfumaria e Cuidados Pessoais',subcategories:[]}],products:[{id:1,name:'ESM RISQUE MET CAFE COM CANELA',category:'Perfumaria e Cuidados Pessoais',subcategory:'',priceCents:675,stockQuantity:3,shortCode:'0001',variants:[],imageUrl:'assets/product.png'}]};
+test('requested pharmacy categories classify explicit names and separate facial, body and hair care',()=>{
+ const cats=completeTaxonomy(catalog).categories;
+ for(const [name,sub] of [
+ ['PROTETOR SOLAR CORPORAL FPS50','Protetores solares corporais'],['PROTETOR SOLAR FACIAL FPS70','Protetores solares faciais'],
+ ['TONALIZANTE DE CABELO 100ML','Tonalizantes de cabelo'],['TINTA DE CABELO 6.0','Tinturas de cabelo'],['TINTURA KOLESTON 6.0','Tinturas de cabelo'],
+ ['DESODORANTE ROLL ON','Desodorantes'],['MASCARA DE CABELO 300G','Máscaras e tratamentos'],['OLEO CORPORAL 100ML','Óleos corporais'],
+ ['HIDRATANTE CORPORAL 400ML','Hidratantes corporais'],['OLEO CAPILAR 30ML','Óleos capilares'],['GELATINA CAPILAR 300G','Gelatinas capilares'],
+ ['SHAMPOO MATIZADOR 250ML','Matizadores capilares'],['MASCARA CAPILAR MATIZADORA','Matizadores capilares'],
+ ['INALADOR COMPRESSOR','Inaladores'],['NEBULIZADOR PORTATIL','Inaladores'],['UMIDIFICADOR FISHER PRICE','Umidificadores'],
+ ['REIDRATANTE ORAL 500ML','Reidratantes'],['SAIS DE REIDRATACAO ORAL','Reidratantes'],['HIDRATANTE POS SOL','Pós-sol'],
+ ['SABONETE FACIAL 150ML','Sabonetes faciais'],['BALAS MENTA','Doces e balas'],['PRIMEIROS SOCORROS','Primeiros socorros']
+ ])assert.equal(suggestClassification({name},cats).subcategory,sub,name);
+ for(const name of ['PROTETOR SOLAR FPS50','TINTURA DE IODO','TINTURA DE PROPOLIS','GELATINA SABOR UVA','KIT SHAMPOO E BALAS'])assert.equal(suggestClassification({name},cats).review,true,name);
+ assert.notEqual(suggestClassification({name:'REIDRATANTE CAPILAR'},cats).subcategory,'Reidratantes');
+ assert.equal(suggestClassification({name:'WHEY CHOCOLATE'},cats).subcategory,'Nutrição esportiva');
+});
+test('new category options reuse singular equivalents and preserve all product records',()=>{
+ const input=structuredClone(catalog);input.categories.push({id:22,name:'Cabelos',subcategories:[{id:99,categoryId:22,name:'Tinta de cabelo',active:true}]});
+ const next=completeTaxonomy(input);assert.deepEqual(next.products,input.products);assert.deepEqual(completeTaxonomy(next),next);
+ assert.equal(suggestClassification({name:'TINTURA KOLESTON'},next.categories).subcategory,'Tinta de cabelo');
+ assert.equal(next.categories.find(c=>c.id===22).subcategories.filter(s=>/tint|tinta/i.test(s.name)).length,1);
+});
 test('explicit terms classify abbreviations and reject brands, kits and unknown names',()=>{
  for(const [name,sub] of [['ESM RISQUE 8ML','Esmaltes'],['ABS ALWAYS NOTURNO','Absorventes e protetores diários'],['Fralda geriátrica adulta','Fraldas geriátricas'],['Fralda Babysec Mega','Fraldas'],['Removedor de esmalte','Removedores de esmalte'],['Sabonete íntimo','Higiene íntima']])assert.equal(suggestClassification({name},catalog.categories).subcategory,sub);
  for(const name of ['Risqué','Always','Produto novo','Kit sabonete e shampoo'])assert.equal(suggestClassification({name},catalog.categories).review,true);
@@ -21,7 +43,7 @@ test('supplements recognize collagen and abbreviated names without classifying c
   ['VIT D3 2000UI','Vitaminas e minerais'],
   ['MAGNESIO 60 CAPS','Vitaminas e minerais'],
   ['BIOTINA VITAMINA B7 60 CAPS','Cabelo, pele e unhas']
- ]){const result=suggestClassification({name},categories);assert.equal(result.category,'Suplementos',name);assert.equal(result.subcategory,sub,name);assert.equal(result.ruleVersion,2);}
+ ]){const result=suggestClassification({name},categories);assert.equal(result.category,'Suplementos',name);assert.equal(result.subcategory,sub,name);assert.equal(result.ruleVersion,3);}
  for(const name of ['LAVITAN','CIMED','LAVITAN 300G','NUTREN ACTIVE COM 14 VITAMINAS','OXIDO DE ZINCO 60G','KIT COLAGENO E VITAMINA C','COLAGENO E WHEY'])assert.equal(suggestClassification({name},categories).review,true,name);
  for(const name of ['SHAMPOO COM COLAGENO','SERUM FACIAL VITAMINA C','CREME COLAGENO','MASCARA CAPILAR BIOTINA','POMADA VITAMINA A','PROTETOR SOLAR COM ZINCO'])assert.notEqual(suggestClassification({name},categories).category,'Suplementos',name);
 });
@@ -31,7 +53,7 @@ test('new collagen suggestions add missing options only on confirmation and pres
   {...input.products[0],id:2,name:'COLAGENO 60 CAPS',category:'Suplementos',classification:{locked:true,source:'manual'}},
   {...input.products[0],id:3,name:'COLAGENO 300G',category:'Suplementos',subcategory:'Cabelo, pele e unhas'},
   {...input.products[0],id:4,name:'COLAGENO 300G',category:'Perfumaria e Cuidados Pessoais'}];
- const next=fillMissingClassifications(input);assert.equal(next.products[0].subcategory,'Colágenos');assert.equal(next.products[0].classification.ruleVersion,2);
+ const next=fillMissingClassifications(input);assert.equal(next.products[0].subcategory,'Colágenos');assert.equal(next.products[0].classification.ruleVersion,3);
  assert.deepEqual(next.products.slice(1),input.products.slice(1));
  assert.equal(input.categories.some(c=>c.name==='Suplementos'),false,'suggestions never mutate the source catalogue');
  for(const key of ['priceCents','stockQuantity','shortCode','variants','imageUrl'])assert.deepEqual(next.products[0][key],input.products[0][key]);
