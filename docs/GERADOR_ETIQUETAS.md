@@ -37,10 +37,18 @@ Esta branch é **uma proposta em desenvolvimento, ainda não publicada**. O site
 - A4: 210 × 297 mm.
 - Margem lógica CSS @page: 8 mm nos quatro lados.
 - Área útil: 194 × 281 mm.
-- Duas colunas de 95 mm, quatro linhas de 67,25 mm.
-- Espaçamento entre células: 4 mm (3 espaços verticais, 1 horizontal).
+- Duas colunas de **90 mm**, quatro linhas de **61 mm**.
+- Espaçamento entre células: **6 mm** (3 espaços verticais, 1 horizontal); grade centralizada em A4, com margens externas finais de 12 mm na horizontal e 17,5 mm na vertical.
 - Cortes feitos pelo espaço entre as etiquetas; sem marcas de corte.
 - Testar em papel A4 real: escala **100%**, sem cabeçalhos/rodapés automáticos do navegador. Algumas impressoras têm margens não imprimíveis; ajuste após medição física. print-color-adjust: exact solicita fundo escuro no cabeçalho, mas a impressão de fundos também depende da opção do navegador/impressora.
+
+## Template oficial visual — revisão de 10/11/2026
+- Inspiração direta no modelo físico enviado pelo responsável: moldura preta grossa (1,7 mm), faixa preta superior (9,8 mm) e **logo centralizada**.
+- Campo branco sem elementos desnecessários: nome maiúsculo, apresentação/tamanhos, preço atual bem grande e preço anterior riscado e discreto no canto inferior esquerdo.
+- Preços não apresentam código, filial, status nem linhas de controle no papel; esses dados permanecem no lote do painel.
+- Nome com ajuste de tipografia conforme extensão para evitar extrapolar a etiqueta.
+- O painel de impressão usa a logo original do site (assets/logo.png). A amostra PDF é uma demonstração visual construída a partir do recorte da foto enviada e **não é um arquivo de preço válido**.
+- Aprovação final depende de impressão em papel na impressora real da farmácia, além de conferência de margens, nitidez da logo e recorte.
 
 ## Regras comerciais e segurança
 - Nunca tratar "preço anterior" na auditoria como um preço promocional de/por: **histórico de remarcação** e **preço de comparação comercial** são conceitos diferentes.
