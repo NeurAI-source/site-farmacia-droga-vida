@@ -9,7 +9,7 @@
 - Cadastro e edição manuais; reorganizar/remover itens; importar CSV UTF-8 exportado do Excel (até 500 itens válidos).
 - Consulta da Loja 2 pelas ações registration-search e registration-preview da função Trier existente, SOMENTE após login autorizado e origem CORS liberada.
 - Consulta do monitor via ação labels-history da função Trier proposta no PR #73, após migração e deploy coordenados.
-- Demonstração local sem credenciais reais; **preços fictícios recebem marca d'água na impressão**.
+- Modo manual funciona online sem integração com a Trier: etiquetas digitadas e importadas via CSV podem ser impressas depois da revisão de preços. Somente exemplos explicitamente fictícios recebem marca d'água na impressão.
 - Não cria pedidos, não faz baixa de estoque, não altera preços no ERP e não publica produtos.
 
 ## Executar localmente
@@ -41,7 +41,7 @@ Em Chrome/Edge/Safari selecione A4, escala 100%, impressão de fundos e sem cabe
 ## Limitações
 - Login e lote são mantidos apenas na memória da aba; sair limpa a sessão.
 - O token Trier fica exclusivamente no servidor Supabase.
-- Não existe integração real no modo demonstração.
+- Não existe integração real no modo manual. A conexão Trier será ativada somente após validação do backend, domínio e autorização.
 - Não há histórico de lotes impressos no banco nesta primeira versão.
 - CSV inválido não modifica catálogo; erros por linha.
 - Importação direta de XLSX é futura: exportar CSV UTF-8.
