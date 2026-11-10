@@ -10,7 +10,7 @@ const origin = () => config.supabaseUrl.replace(/\/+$/,'');
 function toggleWorkspace(){
   $('#gate').hidden = true;
   $('#workspace').hidden = false;
-  $('#session-state').textContent = demo ? 'Demonstração' : 'Equipe autorizada';
+  $('#session-state').textContent = demo ? 'Modo manual' : 'Equipe autorizada';
   $('#demo-alert').hidden = !demo;
   renderBatch();
 }
@@ -26,7 +26,7 @@ $('#demo-entry').onclick=()=>{demo=true;toggleWorkspace();};
 $('#signout').onclick=()=>{session=null;demo=false;batch=[];results=[];$('#workspace').hidden=true;$('#gate').hidden=false;setStatus('#signin-status',ready()?'Entre novamente para usar a Trier.':'Integração ainda não configurada. Use o modo demonstração.');};
 if(!ready()){
   $('#signin-form').querySelector('button').disabled=true;
-  setStatus('#signin-status','Esta versão não tem credenciais configuradas. Você pode experimentar localmente com dados fictícios.');
+  setStatus('#signin-status','Acesso manual liberado. A consulta automática Trier ainda não está habilitada.');
 }
 async function service(url,options){
   const response=await fetch(url,{...options,cache:'no-store'});
@@ -127,7 +127,7 @@ $('#manual-form').onsubmit=event=>{
     const item=validateLabel({
       name:form.elements.name.value,size:form.elements.size.value,code:form.elements.code.value,
       priceCents:priceToCents(form.elements.price.value),regularPriceCents:priceToCents(form.elements.old.value),
-      store:$('#store').value,origin:demo?'demo':'manual'
+      store:$('#store').value,origin:'manual'
     });
     const editIndex=form.dataset.editIndex;
     if(editIndex!==undefined && editIndex!=='')batch[Number(editIndex)]=item;
@@ -140,7 +140,7 @@ $('#manual-form').onsubmit=event=>{
 };
 $('#trier-search').onsubmit=async event=>{
   event.preventDefault();
-  if(demo){setStatus('#search-status','A Trier está desativada na demonstração. Use o exemplo ou a importação CSV.');return;}
+  if(demo){setStatus('#search-status','A consulta Trier ainda não está conectada. Use cadastro manual ou importação CSV.');return;}
   if($('#store').value!=='2'){setStatus('#search-status','A integração da Loja 1 ainda não foi validada.');return;}
   const form=event.currentTarget,button=form.querySelector('button[type=submit]');
   button.disabled=true;results=[];$('#search-results').innerHTML='';
@@ -178,7 +178,7 @@ $('#csv-file').onchange=async event=>{
   try{
     if(file.size>1024*1024)throw Error('O limite do arquivo é 1 MB.');
     const data=parseLabelCsv(await file.text(),$('#store').value);
-    batch.push(...data.rows.map(row=>({...row,origin:demo?'demo':'csv'})));
+    batch.push(...data.rows.map(row=>({...row,origin:'csv'})));
     renderBatch();
     setStatus('#file-status',data.rows.length+' etiqueta(s) importada(s). '+(data.errors.length?data.errors.slice(0,6).join(' | '):'Confira os valores antes de imprimir.'));
   }catch(error){setStatus('#file-status',error.message);}
