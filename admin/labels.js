@@ -127,6 +127,7 @@ export function mountLabels({client}) {
     try{
       const logoUrl=new URL('../assets/logo.png',location.href).href;
       popup.document.open();popup.document.write(printDocument(labels,{logoUrl}));popup.document.close();
+      popup.document.getElementById('print-labels')?.addEventListener('click',()=>popup.print());
     }catch(error){popup.close();status('[data-batch-status]',error.message);}
   };
   $('[data-history]').onclick=async event=>{
