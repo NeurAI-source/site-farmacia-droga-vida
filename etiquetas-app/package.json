@@ -1,0 +1,14 @@
+{
+  "name": "neurai-etiquetas-standalone",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Neur.AI Etiquetas - standalone private web app; not deployed with pharmacy website.",
+  "scripts": {
+    "dev": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
