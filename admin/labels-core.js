@@ -2,7 +2,7 @@
 export const LABELS_PER_SHEET = 8;
 export const A4_LAYOUT = Object.freeze({
   pageWidthMm: 210, pageHeightMm: 297, marginMm: 8,
-  columns: 2, rows: 4, gapMm: 4, labelWidthMm: 95, labelHeightMm: 67.25
+  columns: 2, rows: 4, gapMm: 6, labelWidthMm: 90, labelHeightMm: 61
 });
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
@@ -89,6 +89,8 @@ export function parseLabelCsv(text, defaultStore='1') {
   }
   return {rows,errors};
 }
+// Official DVP label model, inspired by the team's reference photo.
+// CSS dimensions are millimetres for reliable A4 print at 100% scale.
 export function printDocument(labels,{logoUrl=''}={}) {
   if(!labels.length)throw Error('Adicione uma etiqueta antes de imprimir.');
   const items=labels.map(validateLabel);
@@ -96,15 +98,17 @@ export function printDocument(labels,{logoUrl=''}={}) {
   for(let start=0;start<items.length;start+=LABELS_PER_SHEET){
     const page=items.slice(start,start+LABELS_PER_SHEET);
     const cells=page.map(item=>{
-      const origin=item.origin==='trier'?'Consultado na Trier':'Conferir preço na loja';
-      const old=item.regularPriceCents?'<span class="old">DE: <s>'+escapeHtml(brl(item.regularPriceCents))+'</s></span>':'<span class="old">&nbsp;</span>';
-      return '<article class="label"><header>'+ (logoUrl?'<img alt="" src="'+escapeHtml(logoUrl)+'">':'')+
-        '<b>Droga Vida Popular</b><small>Porque Saúde é Vida.</small></header>'+
-        '<div class="details"><strong class="name">'+escapeHtml(item.name)+'</strong>'+
+      const old=item.regularPriceCents
+        ? '<span class="old">DE: <s>'+escapeHtml(brl(item.regularPriceCents))+'</s></span>'
+        : '<span class="old">&nbsp;</span>';
+      const nameClass=item.name.length>43?' tiny':item.name.length>28?' small':'';
+      const brand=logoUrl
+        ? '<img src="'+escapeHtml(logoUrl)+'" alt="Droga Vida Popular">'
+        : '<b>Droga Vida <em>Popular</em></b><small>Porque Saúde é Vida.</small>';
+      return '<article class="label"><header>'+brand+'</header>'+
+        '<div class="details"><strong class="name'+nameClass+'">'+escapeHtml(item.name)+'</strong>'+
         '<span class="size">'+escapeHtml(item.size)+'</span>'+
-        '<div class="prices">'+old+'<strong>'+escapeHtml(brl(item.priceCents))+'</strong></div>'+
-        '<footer><span>Loja '+escapeHtml(item.store)+'</span><span>'+escapeHtml(item.code)+'</span></footer>'+
-        '</div></article>';
+        '<div class="prices">'+old+'<strong>'+escapeHtml(brl(item.priceCents))+'</strong></div></div></article>';
     }).join('');
     sheets.push('<section class="sheet">'+cells+'</section>');
   }
@@ -114,23 +118,23 @@ export function printDocument(labels,{logoUrl=''}={}) {
     '@page{size:A4;margin:8mm}*{box-sizing:border-box}body{margin:0;color:#101010;font-family:Arial,sans-serif}'+
     '.tools{padding:14px;background:#eee;font:14px Arial;display:flex;gap:14px;align-items:center;flex-wrap:wrap}'+
     '.tools button{border:0;background:#222;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer}'+
-    '.sheet{width:194mm;height:281mm;display:grid;grid-template-columns:repeat(2,95mm);grid-template-rows:repeat(4,67.25mm);gap:4mm;break-after:page;page-break-after:always}'+
+    '.sheet{width:194mm;height:281mm;display:grid;grid-template-columns:repeat(2,90mm);grid-template-rows:repeat(4,61mm);column-gap:6mm;row-gap:6mm;align-content:center;justify-content:center;break-after:page;page-break-after:always}'+
     '.sheet:last-child{break-after:auto;page-break-after:auto}'+
-    '.label{border:1.4mm solid #202020;min-width:0;min-height:0;overflow:hidden;background:white;display:flex;flex-direction:column}'+
-    '.label header{height:11mm;background:#202020;color:#fff;text-align:center;display:flex;gap:0;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;position:relative}'+
-    '.label header img{max-height:9mm;max-width:22mm;object-fit:contain;position:absolute;left:2mm;top:1mm}'+
-    '.label header b{font-size:12pt}.label header small{font-size:6pt}'+
-    '.details{padding:1.5mm 2mm;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between}'+
-    '.name{font-size:14pt;font-weight:900;line-height:1.03;min-height:12mm;text-align:center;text-transform:uppercase;overflow-wrap:anywhere}'+
-    '.size{font-size:9.5pt;font-weight:bold;text-align:center;min-height:5mm}'+
-    '.prices{width:100%;display:flex;align-items:end;justify-content:space-between;gap:1mm}'+
-    '.prices strong{font-weight:900;font-size:25pt;white-space:nowrap;letter-spacing:-1pt}'+
-    '.prices .old{font-size:8pt;font-weight:bold;white-space:nowrap}'+
-    '.details footer{width:100%;display:flex;justify-content:space-between;font-size:6pt;color:#444}'+
-    '@media screen{body{background:#ddd}.sheet{background:#fff;margin:12px auto;box-shadow:0 2px 12px #0002}}'+
+    '.label{border:1.7mm solid #1e1e1e;min-width:0;min-height:0;overflow:hidden;background:white;display:flex;flex-direction:column}'+
+    '.label header{flex:0 0 9.8mm;min-height:9.8mm;background:#1e1e1e;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;line-height:1}'+
+    '.label header img{max-height:9.4mm;max-width:32mm;object-fit:contain;display:block}'+
+    '.label header b{font-size:10pt;font-style:italic;font-weight:900}.label header em{color:#f6c822}.label header small{font-size:5pt;font-weight:bold}'+
+    '.details{flex:1;min-height:0;padding:1.2mm 1.7mm 1mm;display:flex;align-items:center;flex-direction:column;position:relative}'+
+    '.name{display:block;max-width:59mm;margin:1mm auto 0;text-align:center;font-family:"Arial Black",Arial,sans-serif;font-size:17pt;font-weight:900;line-height:1.03;text-transform:uppercase;overflow-wrap:anywhere}'+
+    '.name.small{font-size:14pt;max-width:74mm}.name.tiny{font-size:11.5pt;max-width:80mm}'+
+    '.size{display:block;font-family:"Arial Black",Arial,sans-serif;font-size:9pt;font-weight:900;text-align:center;max-width:82mm;margin-top:1.5mm;min-height:4.5mm}'+
+    '.prices{width:100%;display:flex;align-items:end;justify-content:space-between;gap:.8mm;margin-top:auto;min-height:15mm}'+
+    '.prices strong{font-family:"Arial Black",Arial,sans-serif;font-size:30pt;font-weight:900;white-space:nowrap;letter-spacing:-1.3pt;line-height:1}'+
+    '.prices .old{font-family:Arial,sans-serif;font-size:7.5pt;font-weight:900;white-space:nowrap;padding-bottom:.7mm}'+
+    '@media screen{body{background:#ddd}.sheet{background:white;margin:12px auto;box-shadow:0 2px 12px #0002}}'+
     '@media print{.tools{display:none!important}body{background:white}.sheet{margin:0;box-shadow:none}'+
     'html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
     '</style></head><body><div class="tools"><button id="print-labels" type="button">Imprimir / Salvar PDF</button>'+
-    '<span>Use papel A4, escala 100% e desative cabeçalhos/rodapés do navegador. '+items.length+' etiquetas · '+sheets.length+' folha(s).</span></div>'+
+    '<span>Modelo oficial compacto (90 × 61 mm). Papel A4, escala 100%, fundos habilitados e cabeçalhos/rodapés desligados. '+items.length+' etiquetas · '+sheets.length+' folha(s).</span></div>'+
     sheets.join('')+'</body></html>';
 }
