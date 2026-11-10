@@ -52,9 +52,9 @@ test('9 labels produce two A4 sheets, escape text and never leak scripts',()=>{
 
 test('official print style is photo-inspired, compact, without extra footer',()=>{
  const html=printDocument([{name:'Pampers Baby Shark',size:'M68 G60 XG56 XXG50',store:'2',priceCents:7699,regularPriceCents:7904}],{logoUrl:'https://example.test/logo.png'});
- assert.match(html,/repeat\\(2,90mm\\)/);
- assert.match(html,/repeat\\(4,61mm\\)/);
- assert.match(html,/DE: <s>R\\$/);
+ assert.match(html,/repeat\(2,90mm\)/);
+ assert.match(html,/repeat\(4,61mm\)/);
+ assert.match(html,/DE: <s>R\$/);
  assert.match(html,/PAMPERS BABY SHARK/i);
  assert.doesNotMatch(html,/<footer>/);
  assert.match(html,/header img/);
