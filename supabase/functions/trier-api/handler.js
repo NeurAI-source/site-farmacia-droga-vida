@@ -53,6 +53,16 @@ export function createHandler(db, env, {background} = {}) { return async req => 
       if(!registrationUser||internal)return reply({error:'forbidden'},403);
       return reply(await discoveryAction({body,db,env,user:registrationUser}));
     }
+    // Authenticated staff only: audit of true price changes, never raw ERP records.
+    if(body.action==='labels-history'){
+      if(!registrationUser || internal)return reply({error:'forbidden'},403);
+      const {data,error}=await db.rpc('label_price_changes',{p_store_id:env('TRIER_STORE_ID'),p_limit:100});
+      if(error)throw error;
+      return reply({entries:(data||[]).map(row=>({
+        changedAt:row.changedAt,productId:row.productId,variantId:row.variantId,
+        shortCode:row.shortCode,name:row.name,beforeCents:row.beforeCents,afterCents:row.afterCents
+      }))});
+    }
     if(!internal&&!['admin','owner'].includes(memberRole))return reply({error:'forbidden'},403);
     if(scheduled&&body.action!=='sync')return reply({error:'forbidden'},403);
     if (body.action==='status') {
