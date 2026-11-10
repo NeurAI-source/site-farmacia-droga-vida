@@ -130,7 +130,7 @@ export function printDocument(labels,{logoUrl=''}={}) {
     '@media screen{body{background:#ddd}.sheet{background:#fff;margin:12px auto;box-shadow:0 2px 12px #0002}}'+
     '@media print{.tools{display:none!important}body{background:white}.sheet{margin:0;box-shadow:none}'+
     'html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
-    '</style></head><body><div class="tools"><button onclick="window.print()">Imprimir / Salvar PDF</button>'+
+    '</style></head><body><div class="tools"><button id="print-labels" type="button">Imprimir / Salvar PDF</button>'+
     '<span>Use papel A4, escala 100% e desative cabeçalhos/rodapés do navegador. '+items.length+' etiquetas · '+sheets.length+' folha(s).</span></div>'+
     sheets.join('')+'</body></html>';
 }
