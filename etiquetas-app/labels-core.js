@@ -110,7 +110,7 @@ export function printDocument(labels,{logoUrl=''}={}) {
         '<span class="size">'+escapeHtml(item.size)+'</span>'+
         '<div class="prices">'+old+'<strong>'+escapeHtml(brl(item.priceCents))+'</strong></div></div></article>';
     }).join('');
-    sheets.push('<section class="sheet">'+cells+'</section>');
+    sheets.push('<section class="sheet'+(page.some(item=>item.origin==='demo')?' demo':'')+'">'+cells+'</section>');
   }
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'+
     '<meta name="viewport" content="width=device-width, initial-scale=1">'+
@@ -119,6 +119,7 @@ export function printDocument(labels,{logoUrl=''}={}) {
     '.tools{padding:14px;background:#eee;font:14px Arial;display:flex;gap:14px;align-items:center;flex-wrap:wrap}'+
     '.tools button{border:0;background:#222;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer}'+
     '.sheet{width:210mm;height:297mm;display:grid;grid-template-columns:repeat(2,90mm);grid-template-rows:repeat(4,61mm);column-gap:6mm;row-gap:6mm;align-content:center;justify-content:center;break-after:page;page-break-after:always}'+
+    '.sheet.demo{position:relative}.sheet.demo::after{content:"DEMONSTRAÇÃO - PREÇOS FICTÍCIOS";position:absolute;left:5%;top:44%;width:90%;text-align:center;transform:rotate(-21deg);color:#942c2c;font-size:19pt;font-weight:900;opacity:.21;pointer-events:none;z-index:5}'+
     '.sheet:last-child{break-after:auto;page-break-after:auto}'+
     '.label{border:1.7mm solid #1e1e1e;min-width:0;min-height:0;overflow:hidden;background:white;display:flex;flex-direction:column}'+
     '.label header{flex:0 0 9.8mm;min-height:9.8mm;background:#1e1e1e;color:white;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;line-height:1}'+
