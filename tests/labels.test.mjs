@@ -6,8 +6,8 @@ test('A4 uses exactly two columns by four rows',()=>{
   assert.equal(LABELS_PER_SHEET,8);
   assert.equal(A4_LAYOUT.columns,2);
   assert.equal(A4_LAYOUT.rows,4);
-  assert.equal(A4_LAYOUT.labelWidthMm,95);
-  assert.equal(A4_LAYOUT.labelHeightMm,67.25);
+  assert.equal(A4_LAYOUT.labelWidthMm,90);
+  assert.equal(A4_LAYOUT.labelHeightMm,61);
 });
 test('Brazilian price parsing remains in integer cents',()=>{
   assert.equal(priceToCents('R$ 1.234,56'),123456);
@@ -48,4 +48,14 @@ test('9 labels produce two A4 sheets, escape text and never leak scripts',()=>{
   assert.match(html,/&lt;img/);
   assert.doesNotMatch(html,/<img src=x onerror/);
   assert.match(html,/@page\{size:A4;margin:8mm\}/);
+});
+
+test('official print style is photo-inspired, compact, without extra footer',()=>{
+ const html=printDocument([{name:'Pampers Baby Shark',size:'M68 G60 XG56 XXG50',store:'2',priceCents:7699,regularPriceCents:7904}],{logoUrl:'https://example.test/logo.png'});
+ assert.match(html,/repeat\\(2,90mm\\)/);
+ assert.match(html,/repeat\\(4,61mm\\)/);
+ assert.match(html,/DE: <s>R\\$/);
+ assert.match(html,/PAMPERS BABY SHARK/i);
+ assert.doesNotMatch(html,/<footer>/);
+ assert.match(html,/header img/);
 });
