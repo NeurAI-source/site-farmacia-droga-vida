@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#110b19">
+  <title>Neur.AI Etiquetas · Droga Vida Popular</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <main id="gate" class="gate">
+    <div class="auth-card">
+      <div class="signature">N<span>●</span>UR.AI</div>
+      <p class="eyebrow">FERRAMENTA INDEPENDENTE</p>
+      <h1>Etiquetas de preço,<br><em>sem abrir o Canva.</em></h1>
+      <p>Gerador particular para a Droga Vida Popular. Este aplicativo não faz parte do site da farmácia.</p>
+      <form id="signin-form" autocomplete="on">
+        <label>E-mail<input name="email" type="email" autocomplete="username" required placeholder="e-mail da equipe"></label>
+        <label>Senha<input name="password" type="password" autocomplete="current-password" required placeholder="Sua senha"></label>
+        <button type="submit" class="primary">Entrar com acesso autorizado</button>
+      </form>
+      <button id="demo-entry" class="ghost" type="button">Experimentar com dados fictícios</button>
+      <p id="signin-status" role="status">A integração exige configuração privada da URL e da chave pública Supabase.</p>
+    </div>
+  </main>
+  <div id="workspace" hidden>
+    <header class="top">
+      <div class="brand"><span class="brand-symbol">✦</span><div><b>Neur.AI <span>Etiquetas</span></b><small>Droga Vida Popular · aplicativo independente</small></div></div>
+      <div class="top-right"><span id="session-state" class="status-pill">Demonstração</span><button id="signout" class="outline" type="button">Sair</button></div>
+    </header>
+    <div class="shell">
+      <nav class="tabs" aria-label="Áreas do gerador">
+        <button type="button" data-tab="create" class="active">✳ Criar etiquetas</button>
+        <button type="button" data-tab="monitor">◷ Remarcações</button>
+      </nav>
+      <section id="create-panel">
+        <div class="page-heading"><div><p class="eyebrow">MODELO OFICIAL V2</p><h1>Gerador de etiquetas</h1><p>Identidade original da farmácia, 8 etiquetas em folha A4. Sem alterar preços ou estoque no ERP.</p></div><div class="count"><b id="count-labels">0</b><span>etiquetas <i>·</i> <span id="count-pages">0</span> folha(s)</span></div></div>
+        <div id="demo-alert" class="alert" hidden><b>Modo demonstração</b> — Todos os valores de exemplo são fictícios e as impressões são identificadas como demonstração.</div>
+        <div class="two-col">
+          <section class="panel">
+            <div class="panel-heading"><span class="number">01</span><div><h2>Consulta automática</h2><p>Buscar por código, EAN ou nome na Trier SGF</p></div></div>
+            <label class="field">Unidade<select id="store"><option value="2">Loja 2 · Nature 1 — integração Trier</option><option value="1">Loja 1 · Solo Sagrado — manual/CSV</option></select></label>
+            <form id="trier-search" class="search-row">
+              <label class="field">Buscar por<select name="mode"><option value="code">Código reduzido</option><option value="ean">EAN</option><option value="name">Nome</option></select></label>
+              <label class="field fill">Código ou produto<input name="query" placeholder="Ex.: 12345" maxlength="120" required></label>
+              <button type="submit" class="primary search-button">Consultar</button>
+            </form>
+            <div class="hint">Busca da Unidade 2. A confirmação de preço e promoção ocorre antes de adicionar.</div>
+            <p id="search-status" class="feedback" role="status"></p><div id="search-results" class="search-results"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-heading"><span class="number">02</span><div><h2>Adicionar ou editar</h2><p>Para etiquetas avulsas e ajustes revisados</p></div></div>
+            <form id="manual-form" class="form-grid">
+              <label class="field full">Nome do produto<input name="name" maxlength="120" required placeholder="PAMPERS BABY SHARK"></label>
+              <label class="field full">Apresentação / tamanhos<input name="size" maxlength="80" placeholder="M68 G60 XG56 XXG50"></label>
+              <label class="field full">Código reduzido (opcional)<input name="code" maxlength="40" placeholder="Ex.: 001234"></label>
+              <label class="field">De: R$<input name="old" inputmode="decimal" placeholder="79,04"></label>
+              <label class="field">Por: R$<input name="price" inputmode="decimal" placeholder="76,99" required></label>
+              <button type="submit" id="manual-submit" class="primary full">Adicionar etiqueta</button>
+            </form><p class="feedback" id="manual-status" role="status"></p>
+          </section>
+          <section class="panel compact">
+            <div class="panel-heading"><span class="number">03</span><div><h2>Importar planilha</h2><p>CSV exportado do Excel</p></div></div>
+            <input id="csv-file" type="file" accept=".csv,text/csv,text/plain">
+            <p class="hint">Colunas: <code>codigo;produto;tamanhos;de;por;loja</code>. Até 500 linhas válidas por arquivo.</p>
+            <button id="load-examples" class="outline" type="button">Carregar exemplo com 8 etiquetas</button>
+            <p id="file-status" class="feedback" role="status"></p>
+          </section>
+          <section class="panel compact">
+            <div class="panel-heading"><span class="number">04</span><div><h2>Imprimir</h2><p>Papel A4 · 2 colunas × 4 linhas</p></div></div>
+            <div class="settings"><span><strong>90 × 61 mm</strong><small>Tamanho da etiqueta</small></span><span><strong>8 por folha</strong><small>Modelo V2 compacto</small></span></div>
+            <button id="print" class="primary" type="button" disabled>Visualizar / salvar PDF</button>
+            <div class="hint">Na janela de impressão: A4, escala 100%, fundos ligados e cabeçalho/rodapé desativado.</div>
+          </section>
+        </div>
+        <section class="panel batch-panel"><div class="batch-heading"><div><h2>Etiquetas selecionadas <span id="batch-counter">0</span></h2><p>Organize, edite e revise os preços antes de imprimir.</p></div><button id="clear-batch" type="button" class="outline">Limpar lote</button></div><div id="batch" class="batch"><p class="empty">Nenhuma etiqueta adicionada.</p></div><p id="batch-status" class="feedback" role="status"></p></section>
+      </section>
+      <section id="monitor-panel" hidden>
+        <div class="page-heading"><div><p class="eyebrow">TRIER SGF · LOJA 2</p><h1>Monitor de remarcações</h1><p>Consulta somente leitura às alterações efetivas de preço. Alterações de estoque não são contabilizadas.</p></div></div>
+        <section class="panel"><button id="load-history" class="primary" type="button">Consultar últimas remarcações</button><p id="history-status" class="feedback" role="status"></p><div id="history-list"></div><p class="hint">O monitor real requer a implantação da rota segura no Supabase. Não existe integração da Loja 1 nesta etapa.</p></section>
+      </section>
+      <footer class="page-footer">Neur.AI Etiquetas V2 · Aplicativo separado · Sem publicação de produtos ou alterações no ERP</footer>
+    </div>
+  </div>
+</body>
+</html>
