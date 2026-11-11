@@ -1,3 +1,4 @@
+import {isShade,variantLabel} from './product-variants.js';
 export const money = cents => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
 export function priceInfo(product,size=''){
  const variants=product.variants||[];
@@ -12,7 +13,7 @@ export function priceHtml(product,size=''){
 }
 export const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export function filterProducts(products, { category = 'Todos', subcategory = '', query = '', favorites = null } = {}) {
-  return products.filter(p => p.active && (category === 'Todos' || p.category === category) && (!subcategory || p.subcategory === subcategory) && (!favorites || favorites.includes(p.id)) && normalize([p.name,p.brand,p.detail,p.category,p.subcategory].join(' ')).includes(normalize(query.trim())));
+  return products.filter(p => p.active && (category === 'Todos' || p.category === category) && (!subcategory || p.subcategory === subcategory) && (!favorites || favorites.includes(p.id)) && normalize([p.name,p.brand,p.detail,p.category,p.subcategory,...(p.variants||[]).map(v=>variantLabel(p,v))].join(' ')).includes(normalize(query.trim())));
 }
 export function sanitizeCart(value, products) {
   if (!Array.isArray(value)) return [];
@@ -46,11 +47,11 @@ export function orderMessage(cart, products, customer = {}) {
     const p = products.find(p => p.id === item.id);
     const v = p.variants.find(v => v.size === item.variant);
     const code = String((v ? v.shortCode : p.shortCode) ?? '').trim();
-    const packages = !!v || /fralda|lenço|lenco|\blenc\b/i.test([p.name,p.subcategory].join(' ')) || /^FR\s/i.test(p.name);
+    const packages = !isShade(p)&&(!!v || /fralda|lenço|lenco|\blenc\b/i.test([p.name,p.subcategory].join(' ')) || /^FR\s/i.test(p.name));
     const unit = packages ? (item.qty === 1 ? 'pacote' : 'pacotes') : (item.qty === 1 ? 'unidade' : 'unidades');
     return [
       `${String(index + 1).padStart(2, '0')} | ${p.name}`,
-      ...(v ? [`Tamanho: ${v.size} | Pacote: ${v.packageQuantity} ${p.subcategory === 'Fraldas' ? 'fraldas' : 'unidades'}`] : []),
+      ...(v ? [isShade(p)?`Tonalidade: ${variantLabel(p,v)}`:`Tamanho: ${v.size} | Pacote: ${v.packageQuantity} ${p.subcategory === 'Fraldas' ? 'fraldas' : 'unidades'}`] : []),
       `Quantidade: ${item.qty} ${unit}`,
       ...(code ? [`Código: ${code}`] : []),
       `Valor: ${money(unitPrice(p, item.variant) * item.qty)}`,
