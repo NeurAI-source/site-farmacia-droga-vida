@@ -44,10 +44,14 @@ export function validateCatalog(data, {previousCatalog,strictIdentities=false}={
     registerCode(p.shortCode || '');
     for (const k of ['brand','detail','badge','subcategory']) if (!text(p[k], 200)) fail();
     const sizes = new Set();
+    if(p.variantType!=null&&!['size','shade'].includes(p.variantType))fail();
     for (const v of p.variants) {
       if (!Number.isSafeInteger(v.id) || v.id < 0 || !text(v.size, 15) || !v.size.trim() || sizes.has(v.size.toUpperCase()) || !count(v.packageQuantity) || v.packageQuantity < 1 || !count(v.stockQuantity)) fail();
       if(v.ean!=null&&(!text(v.ean,20)||(v.ean&&!/^[0-9]{8,14}$/.test(v.ean))))fail();
       if(v.oldPriceCents!=null&&!count(v.oldPriceCents))fail();
+      if(v.shadeName!=null&&!text(v.shadeName,80))fail();
+      if(v.imageUrl!=null&&v.imageUrl!==''&&!image(v.imageUrl))fail();
+      if(p.variantType==='shade'&&(!text(v.shadeName,80)||!v.shadeName.trim()||!v.shortCode||!count(v.priceCents)||v.priceCents<1))throw Error('Informe nome, código e preço próprios de cada tonalidade.');
       registerCode(v.shortCode || '');
       if (v.priceCents != null && (!count(v.priceCents) || v.priceCents < 1)) fail();
       sizes.add(v.size.toUpperCase());

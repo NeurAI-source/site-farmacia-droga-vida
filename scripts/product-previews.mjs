@@ -17,7 +17,7 @@ export function publicProductSource(value, projectUrl) {
 
 export async function buildProductPreviews({ catalog, projectUrl, cacheDir, outDir, fetcher = fetch }) {
   const previews = {}, stats = { images: 0, sourceBytes: 0, previewBytes: 0 };
-  const sources = [...new Set(catalog.products.map(p => p.imageUrl).filter(url => publicProductSource(url, projectUrl)))];
+  const sources = [...new Set(catalog.products.flatMap(p => [p.imageUrl,...(p.variants||[]).map(v=>v.imageUrl)]).filter(url => publicProductSource(url, projectUrl)))];
   await mkdir(join(cacheDir, 'originals'), { recursive: true });
   await mkdir(join(outDir, 'assets', 'product-previews'), { recursive: true });
   for (const source of sources) {

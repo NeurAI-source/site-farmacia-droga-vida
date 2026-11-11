@@ -17,3 +17,4 @@
 .dv-product-stock .dv-stock-chip strong{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center}
 .dv-product-stock .dv-stock-chip strong.dv-stock-label-long{font-size:10px;line-height:1.25;letter-spacing:-.2px}
 #delivery-address,#building-fields{display:grid;gap:18px}
+.dv-shade-stock .dv-stock-chip small{white-space:normal;overflow-wrap:anywhere;line-height:1.3}.dv-shade-stock .dv-stock-chip{min-width:0;height:auto}

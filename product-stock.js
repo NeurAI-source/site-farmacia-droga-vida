@@ -1,5 +1,6 @@
 // Only recent, validated Trier cache is authoritative. Legacy stockQuantity is
 // never presented as live stock, and a missing mapping is not a zero balance.
+import {isShade,variantLabel} from './product-variants.js';
 export const STOCK_MAX_AGE = 60 * 60 * 1000;
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function stockState(product, size = '', now = Date.now()) {
@@ -26,9 +27,9 @@ export function stockMarkup(product, { now = Date.now(), selectable = false } = 
     const state = stockState(product,'',now);
     return `<div class="dv-product-stock ${state.known?(state.available?'is-available':state.restricted?'is-restricted':'is-unavailable'):'is-unknown'}" data-stock-id="${Number(product.id)}" data-stock-selectable="${selectable}" title="${title}"><span class="dv-stock-heading">Estoque · Loja 2</span><span class="dv-stock-single">${esc(state.quantityLabel||state.label)}${state.notice?`<small class="dv-stock-notice">${esc(state.notice)}</small>`:''}</span></div>`;
   }
-  return `<div class="dv-product-stock" data-stock-id="${Number(product.id)}" data-stock-selectable="${selectable}" title="${title}"><span class="dv-stock-heading">Estoque por tamanho · Loja 2</span><div class="dv-stock-grid">${variants.map(v => {
+  return `<div class="dv-product-stock${isShade(product)?' dv-shade-stock':''}" data-stock-id="${Number(product.id)}" data-stock-selectable="${selectable}" title="${title}"><span class="dv-stock-heading">Estoque por ${isShade(product)?'tonalidade':'tamanho'} · Loja 2</span><div class="dv-stock-grid">${variants.map(v => {
     const state=stockState(product,v.size,now), tag=selectable?'button':'span';
-    return `<${tag} class="dv-stock-chip ${state.known?(state.available?'is-available':state.restricted?'is-restricted':'is-unavailable'):'is-unknown'}" ${selectable?`type="button" data-stock-product="${Number(product.id)}" data-stock-size="${esc(v.size)}" ${state.known&&!state.available?'disabled':''}`:''} aria-label="${esc(v.size+': '+state.label)}"><strong${String(v.size).length>5?' class="dv-stock-label-long"':''}>${esc(v.size)}</strong><span>${esc(state.short)}</span>${state.notice?`<small class="dv-stock-notice">${esc(state.notice)}</small>`:''}</${tag}>`;
+    return `<${tag} class="dv-stock-chip ${state.known?(state.available?'is-available':state.restricted?'is-restricted':'is-unavailable'):'is-unknown'}" ${selectable?`type="button" data-stock-product="${Number(product.id)}" data-stock-size="${esc(v.size)}" ${state.known&&!state.available?'disabled':''}`:''} aria-label="${esc(variantLabel(product,v)+': '+state.label)}"><strong${String(v.size).length>5?' class="dv-stock-label-long"':''}>${esc(v.size)}</strong>${isShade(product)?`<small>${esc(v.shadeName||'')}</small>`:''}<span>${esc(state.short)}</span>${state.notice?`<small class="dv-stock-notice">${esc(state.notice)}</small>`:''}</${tag}>`;
   }).join('')}</div></div>`;
 }
 export function refreshStockMarkup(products, root = document) {

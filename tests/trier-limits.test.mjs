@@ -60,11 +60,14 @@ test('expired total deadline prevents request and retry backoff', async () => {
   await assert.rejects(()=>client.products({deadline:Date.now()+100}), /sync_deadline_exceeded/);assert.equal(calls,1);
 });
 
-test('sync stops starting writes after the total deadline', async () => {
+test('sync stops starting writes after the total deadline', async t => {
+  // Advance only the clock, after the four initial workers have started.
+  // A real 10 ms budget can expire before any worker runs on a busy CI host.
+  t.mock.timers.enable({apis:['Date'],now:1000});
   let writes=0, finished;
   const item={reducedCode:'001',name:'Mock',stockQuantity:1,status:'mock'};
   let active=0;
-  const service=new InventoryService({settings:{...settings,syncDeadlineMs:10},policy:{priceUnit:'cents',isSellable:()=>true},client:{products:async()=>Array(9).fill(item)},repository:{claim:async()=> 'lease',apply:async()=>{writes++;active++;await new Promise(resolve=>setTimeout(resolve,20));active--;return true;},finish:async result=>{assert.equal(active,0);finished={...result};}}});
+  const service=new InventoryService({settings:{...settings,syncDeadlineMs:10},policy:{priceUnit:'cents',isSellable:()=>true},client:{products:async()=>Array(9).fill(item)},repository:{claim:async()=> 'lease',apply:async()=>{writes++;active++;if(writes===4)t.mock.timers.setTime(1011);await Promise.resolve();active--;return true;},finish:async result=>{assert.equal(active,0);finished={...result};}}});
   const result=await service.refresh();assert.equal(writes,4);assert.equal(result.status,'failed');assert.equal(result.lastError,'sync_deadline_exceeded');assert.equal(finished.updated,4);
 });
 test('inventory writes stay bounded, audit lease is shared and all in-flight writes settle before finish',async()=>{
