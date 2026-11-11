@@ -68,3 +68,10 @@ async function inspect(directory) {
 }
 await inspect(dist);
 await writeFile(new URL('_headers',dist),securityHeaders(htmlFiles,url,panelPath));
+
+// Version the shared stock/price stylesheet so existing visitors receive updates.
+const stockStyleVersion=createHash('sha256').update(await readFile(new URL('cart-stock.css',root))).digest('hex').slice(0,12);
+for(const filename of ['index.html','produto.html']){
+  const target=new URL(filename,dist);
+  await writeFile(target,(await readFile(target,'utf8')).replace(/cart-stock\.css\?[^"\s]+/g,`cart-stock.css?v=${stockStyleVersion}`));
+}
