@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {validateCatalog} from '../catalog-validation.js';
 import {orderMessage,filterProducts,priceInfo} from '../catalog-utils.js';
-import {variantLabel,variantImage} from '../product-variants.js';
+import {variantLabel,variantImage,shadeSuggestion} from '../product-variants.js';
 import {applyInventory} from '../trier-inventory.js';
 import {stockMarkup} from '../product-stock.js';
 const original=JSON.parse(readFileSync(new URL('../catalog.json',import.meta.url)));
+test('Trier name suggestions use explicit number and color only, leaving ambiguous names for review',()=>{assert.deepEqual(shadeSuggestion('TINTA BIOCOLOR 10.0 LOIRO ULTRACLARO 60G'),{number:'10.0',name:'LOIRO ULTRACLARO'});assert.deepEqual(shadeSuggestion('TINTURA 6.7'),{number:'6.7',name:''});assert.deepEqual(shadeSuggestion('TINTA 6.7 OU 7.0 CHOCOLATE'),{number:'',name:'CHOCOLATE'});assert.deepEqual(shadeSuggestion('PRODUTO SEM COR 60ML'),{number:'',name:''});});
 const catalog=()=>({...original,products:[{...original.products[0],shortCode:'',variantType:'shade',variants:[{id:9001,size:'6.7',shadeName:'Chocolate',packageQuantity:1,priceCents:1999,stockQuantity:0,shortCode:'990001',ean:'7900000000001',imageUrl:'assets/products/3.png'},{id:9002,size:'10.0',shadeName:'Loiro ultraclaro',packageQuantity:1,priceCents:2499,stockQuantity:0,shortCode:'990002',imageUrl:''}]}]});
 test('shade metadata validates without changing variant identifiers and rejects unsafe photos or missing identifiers',()=>{
  const c=catalog();assert.equal(validateCatalog(c),c);assert.equal(variantLabel(c.products[0],c.products[0].variants[0]),'6.7 — Chocolate');assert.equal(variantImage(c.products[0],'6.7'),'assets/products/3.png');assert.equal(variantImage(c.products[0],'10.0'),c.products[0].imageUrl);
