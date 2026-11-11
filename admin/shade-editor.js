@@ -29,8 +29,8 @@ export function mountShadeEditor({form,upload,onModeChange}){
    try{
     if(chosen.size>5*1024*1024||!['image/png','image/jpeg','image/webp'].includes(chosen.type))throw Error('Use JPG, PNG ou WebP de até 5 MB.');
     bitmap=await createImageBitmap(chosen);if(bitmap.width*bitmap.height>40000000)throw Error('Imagem muito grande.');
-    const canvas=document.createElement('canvas');canvas.width=canvas.height=1200;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,1200,1200);const scale=Math.min(1080/bitmap.width,1080/bitmap.height);ctx.drawImage(bitmap,(1200-bitmap.width*scale)/2,(1200-bitmap.height*scale)/2,bitmap.width*scale,bitmap.height*scale);
-    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob||blob.size>5*1024*1024)throw Error('A foto preparada ultrapassou 5 MB.');
+    const canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(1200,1200):document.createElement('canvas');canvas.width=canvas.height=1200;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,1200,1200);const scale=Math.min(1080/bitmap.width,1080/bitmap.height);ctx.drawImage(bitmap,(1200-bitmap.width*scale)/2,(1200-bitmap.height*scale)/2,bitmap.width*scale,bitmap.height*scale);
+    const blob=canvas.convertToBlob?await canvas.convertToBlob({type:'image/png'}):await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob||blob.size>5*1024*1024)throw Error('A foto preparada ultrapassou 5 MB.');
     if(!row.isConnected||!row.closest('dialog')?.open)return;
     const result=await upload(new File([blob],'tonalidade.png',{type:'image/png'}));
     if(!row.isConnected||!row.closest('dialog')?.open)return;
