@@ -7,6 +7,7 @@ export function mountShadeEditor({form,upload,onModeChange}){
  function sync(){
   const shade=isShade();form.querySelector('.variant-heading h3').textContent=shade?'Tonalidades de cabelo':'Tamanhos / apresentações';form.querySelector('#add-variant').textContent=shade?'＋ Adicionar tonalidade':'＋ Adicionar tamanho';
   for(const row of form.querySelectorAll('#variants .variant')){
+   row.classList.toggle('shade-variant',shade);
    const label=row.querySelector('[data-field=size]').parentElement;label.firstChild.textContent=shade?'Número da tonalidade':'Tamanho';
    const extra=row.querySelector('.shade-extra');if(extra)extra.hidden=!shade;
    row.querySelector('[data-field=shadeName]').required=shade;
@@ -20,7 +21,7 @@ export function mountShadeEditor({form,upload,onModeChange}){
  function decorate(row,v){
   const extra=document.createElement('div');extra.className='shade-extra';extra.innerHTML=`<label>Nome da cor<input data-field="shadeName" maxlength="80" placeholder="Ex.: Loiro ultraclaro" value="${esc(v.shadeName||'')}"></label><label>EAN da tonalidade — opcional<input data-field="shadeEan" maxlength="14" inputmode="numeric" value="${esc(v.ean||'')}"></label><label>Foto dessa tonalidade — opcional<input data-field="shadeImage" value="${esc(v.imageUrl||'')}" placeholder="URL HTTPS ou assets/…"><input data-shade-upload type="file" accept="image/png,image/jpeg,image/webp"></label><div><img data-shade-preview alt="Prévia da foto da tonalidade" style="width:80px;height:90px;object-fit:contain" hidden><small data-shade-status role="status">Sem foto própria, será usada a imagem geral da linha.</small></div>`;row.append(extra);
   const image=extra.querySelector('[data-field=shadeImage]'),preview=extra.querySelector('img'),status=extra.querySelector('[data-shade-status]'),file=extra.querySelector('[data-shade-upload]');
-  function show(){const valid=/^https:\/\/[^\s<>"']+$/.test(image.value)||/^assets\/[\w./-]+\.(png|jpe?g|webp|svg)$/i.test(image.value)&&!image.value.includes('..');preview.hidden=!valid;if(valid)preview.src=/^https:/.test(image.value)?image.value:'../'+image.value;}
+  function show(){const valid=/^https:\/\/[^\s<>"']+$/.test(image.value)||/^assets\/[\w./-]+\.(png|jpe?g|webp|svg)$/i.test(image.value)&&!image.value.includes('..');preview.hidden=!valid;if(valid)preview.src=/^https:/.test(image.value)?image.value:'../'+image.value;status.textContent=valid?'Foto própria informada. Confira a prévia antes de salvar.':'Sem foto própria, será usada a imagem geral da linha.';}
   image.oninput=show;show();
   let busy=false;
   file.onchange=async()=>{

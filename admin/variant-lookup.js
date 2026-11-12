@@ -2,9 +2,10 @@ import {canonicalCode} from '../product-identities.js';
 import {shadeSuggestion} from '../product-variants.js';
 export function mountVariantLookup(row,{request,getCatalog,getProductId}){
  const code=row.querySelector('[data-field=shortCode]'),button=document.createElement('button'),status=document.createElement('small');
- button.type='button';button.className='text-button';button.dataset.variantLookup='';button.textContent=formShade()?'Consultar tonalidade na Trier':'Consultar tamanho na Trier';status.setAttribute('role','status');status.style.gridColumn='1 / -1';row.append(button,status);
+ const actions=document.createElement('div');actions.className='variant-lookup';actions.setAttribute('role','group');actions.setAttribute('aria-label','Consulta da variação na Trier');
+ button.type='button';button.className='text-button';button.dataset.variantLookup='';button.textContent=formShade()?'Consultar tonalidade na Trier':'Consultar tamanho na Trier';status.setAttribute('role','status');actions.append(button,status);row.append(actions);
  function formShade(){return row.closest('form')?.elements.variantType?.value==='shade';}
- const suggestion=document.createElement('button');suggestion.type='button';suggestion.className='text-button';suggestion.textContent='Usar sugestão de tonalidade';suggestion.hidden=true;row.append(suggestion);let found=null;
+ const suggestion=document.createElement('button');suggestion.type='button';suggestion.className='text-button';suggestion.textContent='Usar sugestão de tonalidade';suggestion.hidden=true;actions.append(suggestion);let found=null;
  suggestion.onclick=()=>{if(!found||!formShade()||canonicalCode(code.value)!==found.code)return;for(const[key,value]of [['size',found.number],['shadeName',found.name]]){const input=row.querySelector(`[data-field=${key}]`);if(input&&!input.value.trim()&&value)input.value=value;}suggestion.hidden=true;status.textContent+=' Sugestão aplicada apenas nos campos vazios. Confira antes de salvar.';};
  let generation=0;
  code.addEventListener('input',()=>{generation++;found=null;suggestion.hidden=true;status.textContent='Código alterado. Consulte e salve para confirmar o vínculo.';button.disabled=false;});
