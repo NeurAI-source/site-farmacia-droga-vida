@@ -43,7 +43,7 @@ A central pode verificar carregamento e resolução de até 100 destinos por ope
 - Durante as consultas/preparação mantenha a aba aberta; o processamento não é um serviço autônomo em segundo plano. Parar preserva a fila atual. Limpar/recarregar a página descarta os arquivos e a revisão que ainda estão somente no navegador.
 - Na confirmação recarrega o catálogo, compara foto/EAN/código com a revisão e verifica a versão novamente depois do upload. `save_catalog` bloqueia concorrência remota.
 - Falha preserva a fila aberta e URLs de uploads já confirmados. Tente novamente sem repetir o cadastro/importação. Se a resposta do salvamento se perder, o identificador da operação na foto permite reconhecer o salvamento no catálogo e não aplicá-lo duas vezes. Lotes Trier usam o mecanismo existente de recuperação/idempotência.
-- A auditoria existente registra ator, horário, versão e produto antes/depois, incluindo origem, licença, aprovação, processamento e imagem anterior. Consulte **Revisão Inteligente → Histórico de cadastros**.
+- A auditoria existente registra ator, horário, versão e produto antes/depois, incluindo origem, licença, aprovação, processamento e imagem anterior. O ator e os valores anteriores permanecem no histórico privado; não são acrescentados aos metadados de foto do catálogo público. Consulte **Revisão Inteligente → Histórico de cadastros**.
 - Arquivos enviados antes de uma falha definitiva podem ficar sem vínculo no Storage. Não há limpeza destrutiva automática.
 - A interface e as ações de fotos/importação exigem admin/owner. O cadastro manual e sua consulta individual continuam com as permissões existentes. Nenhum acesso adicional foi concedido.
 
