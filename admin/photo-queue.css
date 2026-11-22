@@ -1,0 +1,11 @@
+
+.photo-queue{display:grid;gap:16px}.photo-queue-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.photo-picker{position:relative;overflow:hidden;cursor:pointer}.photo-picker input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.photo-queue-list{display:grid;gap:14px}.photo-queue-row{display:grid;grid-template-columns:minmax(210px,1fr) minmax(240px,1.2fr);gap:14px;border:1px solid #ddd;border-radius:12px;padding:12px}
+.photo-queue-images{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.photo-queue-images figure{margin:0;min-width:100px;max-width:160px}
+.photo-queue-images img{width:100%;aspect-ratio:1;object-fit:contain;border:1px solid #ddd;background:#fff;border-radius:8px}
+.photo-queue-images figcaption{font-size:.8rem;color:#555;text-align:center}.photo-queue-fields{display:grid;gap:8px}
+.photo-queue-fields label{display:grid;gap:4px}.photo-queue-fields select{width:100%;max-width:100%}
+.photo-queue-fields label:has([type="checkbox"]){display:flex;align-items:center;gap:8px}
+.photo-pending-list [data-pending-list]{display:flex;flex-wrap:wrap;gap:8px}
+@media(max-width:680px){.photo-queue-row{grid-template-columns:1fr}}
