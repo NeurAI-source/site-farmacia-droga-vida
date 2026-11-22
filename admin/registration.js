@@ -3,8 +3,9 @@ import { invokeAdminRequest } from './backend-actions.js';
 import { suggestRegistration,findDuplicates,reviewRegistration,sortRegistrationProducts,PENDING_IMAGE } from '../registration-utils.js';
 import { ensureClassification,applyClassifications,classificationReview } from './category-intelligence.js';
 import { money,normalize } from '../catalog-utils.js';
+import {collectAgentProducts} from '../registration-agent-utils.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNew,setView,notify}) {
+export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNew,setView,notify,onImported=()=>{}}) {
   const root=document.createElement('section');root.id='registration-view';root.className='view';root.hidden=true;
   root.innerHTML=`<section class="panel registration-intro"><p class="eyebrow">CADASTRO INTELIGENTE 2.0</p><h2>Importar da Trier</h2><p>Consulte a filial 2, selecione e revise. Nada é cadastrado ou publicado automaticamente.</p>
     <form data-search-form class="registration-search"><label>Buscar por<select name="mode"><option value="code">Código reduzido</option><option value="ean">EAN / leitor</option><option value="name">Nome</option><option value="browse">Listar produtos</option></select></label><label>Consulta<input name="query" maxlength="120" autocomplete="off" placeholder="Código, EAN ou nome"></label><label class="feature-check"><input name="activeOnly" type="checkbox" checked> Somente ativos na Trier</label><button class="button red" type="submit">Consultar Trier</button><button type="button" class="button white" data-scan>Usar câmera para EAN</button></form>
@@ -51,13 +52,13 @@ export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNe
   };
   root.addEventListener('change',e=>{const code=e.target.dataset.select;if(!code)return;if(e.target.checked)selected.set(code,rows.find(r=>r.shortCode===code));else selected.delete(code);draw();});
   root.addEventListener('click',e=>{const b=e.target.closest('[data-existing]');if(b){setView('products');onEdit(Number(b.dataset.existing));}});
-  async function prepare(){
+  async function prepare({onProgress=()=>{}}={}){
     if(busy||!selected.size)return;lock(true);prepared=[];
-    try{await reload();const codes=[...selected.keys()];for(let i=0;i<codes.length;i+=30){status(`Validando preços, estoque e promoções: ${i} de ${codes.length}…`);const result=await request('registration-preview',{codes:codes.slice(i,i+30)});prepared.push(result);}
+    try{await reload();const codes=[...selected.keys()];for(let i=0;i<codes.length;i+=30){status(`Validando preços, estoque e promoções: ${i} de ${codes.length}…`);onProgress({found:codes.length,validated:i});const result=await request('registration-preview',{codes:codes.slice(i,i+30)});prepared.push(result);}
       renderPreview();dialog.showModal();status('Confira os itens. Novos produtos serão rascunhos inativos e pendentes de foto.');
-    }catch(e){status(showError(e));}finally{lock(false);draw();}
+    }catch(e){status(showError(e));throw e;}finally{lock(false);draw();}
   }
-  $('[data-prepare]').onclick=prepare;
+  $('[data-prepare]').onclick=()=>prepare().catch(()=>{});
   function renderPreview(){
     dialog.innerHTML=`<div class="editor-body"><div class="panel-heading"><h2>Revisar importação da Trier</h2><button class="text-button" data-close>Cancelar</button></div><p>As sugestões de conteúdo são baseadas em regras e nos atributos retornados pela Trier. Confira cada campo. O fabricante/laboratório não é presumido como marca.</p><p>Sem foto confiável, o produto fica inativo com indicação de foto pendente. Publicação e ativação continuam separadas.</p>
     ${prepared.flatMap((batch,bi)=>batch.rows.map((r,ri)=>{
@@ -86,12 +87,12 @@ export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNe
         const result=await sendBatch(payload);prepared[bi].completed=true;completed+=result.report.filter(r=>r.status!=='ignored').length;
         for(const c of choices)selected.delete(c.code);await reload();
       }
-      dialog.close();status(`${completed} itens salvos no rascunho. Complete fotos, confira e publique pelo fluxo normal.`);prepared=[];
+      dialog.close();status(`${completed} itens salvos no rascunho. Complete fotos, confira e publique pelo fluxo normal.`);prepared=[];onImported();
     }catch(e){message.textContent=`${completed} itens confirmados nesta operação. ${e.message} Os lotes já concluídos foram preservados. Use “Recuperar importação” antes de tentar outra importação.`;}
     finally{lock(false);draw();}
   }
   const recover=document.createElement('button');recover.type='button';recover.className='button white';recover.textContent='Recuperar importação';root.querySelector('.registration-actions').append(recover);
-  recover.onclick=async()=>{if(busy)return;let payload;try{payload=JSON.parse(localStorage.getItem(recoveryKey()));}catch{}if(!payload){status('Nenhuma importação pendente neste navegador.');return;}lock(true);try{const check=await adminAction('registration-result',{batchId:payload.batchId});const result=check.completed?check:await sendBatch(payload);localStorage.removeItem(recoveryKey());await reload();status(`Importação recuperada: ${result.report.length} itens. Revise o rascunho.`);dialog.close();}catch(e){status(e.message);}finally{lock(false);draw();}};
+  recover.onclick=async()=>{if(busy)return;let payload;try{payload=JSON.parse(localStorage.getItem(recoveryKey()));}catch{}if(!payload){status('Nenhuma importação pendente neste navegador.');return;}lock(true);try{const check=await adminAction('registration-result',{batchId:payload.batchId});const result=check.completed?check:await sendBatch(payload);localStorage.removeItem(recoveryKey());await reload();status(`Importação recuperada: ${result.report.length} itens. Revise o rascunho.`);dialog.close();onImported();}catch(e){status(e.message);}finally{lock(false);draw();}};
   async function scan(){
     if(!('BarcodeDetector' in window)){status('Leitura automática pela câmera indisponível neste navegador. Use leitor externo ou digite o EAN.');return;}
     let stream;const camera=document.createElement('dialog');camera.className='registration-dialog';camera.innerHTML='<h2>Escanear EAN</h2><video autoplay playsinline muted style="width:100%"></video><p role="status">Aponte para o código de barras.</p><button class="button white">Fechar câmera</button>';document.body.append(camera);
@@ -121,5 +122,15 @@ export function mountRegistration({getCatalog,getVersion,reload,save,onEdit,onNe
     try{const next=structuredClone(getCatalog());for(const p of next.products.filter(p=>ids.includes(p.id))){const issue=reviewRows.find(r=>r.id===p.id);p.reviewIgnores=issue.issues.map(i=>({key:i.key,fingerprint:JSON.stringify([p.name,p.brand,p.category,p.subcategory,p.imageUrl,p.shortCode,p.ean,p.variants])}));}await save(next);await analyze();}catch(e){rs('[data-review-status]').textContent=e.message;}};
   rs('[data-history]').onclick=async()=>{const {data,error}=await client.from('registration_history').select('id,product_id,actor_id,catalog_version,before_product,after_product,created_at').order('id',{ascending:false}).limit(50);rs('[data-history-list]').innerHTML=error?'<p>Histórico indisponível.</p>':(data||[]).map(h=>`<details><summary>${esc(h.after_product?.name||h.before_product?.name)} · versão ${h.catalog_version} · ${esc(new Date(h.created_at).toLocaleString('pt-BR'))}</summary><p>Responsável: ${esc(h.actor_id||'Sistema')}</p><pre>${esc(JSON.stringify({antes:h.before_product,depois:h.after_product},null,2))}</pre></details>`).join('')||'<p>Nenhuma alteração registrada após a instalação.</p>';};
   dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
-  return {enable(m){member=m;},show(){draw();},showReview:analyze,openSearch(){setView('registration');searchForm.elements.query.focus();}};
+  async function prepareAgent(count,onProgress,cancelled){
+    if(!['admin','owner'].includes(member?.role))throw Error('Esta operação é exclusiva da administração.');
+    if(busy||dialog.open)throw Error('Conclua ou cancele a revisão atual antes de iniciar outra operação.');
+    lock(true);let result;
+    try{await reload();result=await collectAgentProducts({count,catalog:structuredClone(getCatalog()),lookup:p=>request('registration-search',p),onProgress,cancelled});
+      if(!result.cancelled){selected.clear();for(const r of result.rows)selected.set(r.shortCode,r);}
+    }finally{lock(false);draw();}
+    if(result.cancelled||!result.rows.length)return result;
+    await prepare({onProgress});return result;
+  }
+  return {enable(m){member=m;},show(){draw();},showReview:analyze,prepareAgent,openSearch(){setView('registration');searchForm.elements.query.focus();}};
 }

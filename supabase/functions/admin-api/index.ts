@@ -6,8 +6,10 @@ import { uploadProductImage } from './product-image.js';
 import { checked, dispatchNext, neuraiAction, requestPublication } from './publication.js';
 import { accessAction, accessActions } from './access.js';
 import { registrationAction, registrationActions } from './registration.js';
+import { photoSourceAction, photoActions } from './photo-sources.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
-const env = (key: string) => Deno.env.get(key) || '';
+// Photo lookup was approved for this deployment; a server variable can disable it.
+const env = (key: string) => Deno.env.get(key) ?? (key === 'PHOTO_OPENBEAUTY_ENABLED' ? 'true' : '');
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
 const baseHeaders = { 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Content-Type': 'application/json', 'Vary': 'Origin' };
 const db = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false, autoRefreshToken: false } });
@@ -36,7 +38,9 @@ Deno.serve(async req => {
       return reply(await uploadProductImage(req, db, user));
     }
     const body = await readJson(req, 50000);
+    if(photoActions.includes(body.action))return reply(await photoSourceAction({body,db,user,role:member.role,env}));
     if(registrationActions.includes(body.action)){
+      if(!['admin','owner'].includes(member.role))return reply({error:'Somente administradores podem importar produtos.'},403);
       try{return reply(await registrationAction({body,db,user}));}
       catch(error){return reply({error:error instanceof Error?error.message:'Não foi possível importar.'},409);}
     }

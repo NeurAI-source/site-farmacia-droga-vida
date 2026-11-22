@@ -11,7 +11,7 @@ const root = new URL('../', import.meta.url), dist = new URL('dist/', root);
 const panelPath = adminPath();
 await rm(dist, { recursive: true, force: true }); await mkdir(dist, { recursive: true });
 // Copy only public assets. Never copy the checkout or environment files.
-for (const file of ['index.html','produto.html','produto.js','produto.css','product-detail.js','product-variants.js','product-images.js','product-media.js','robots.txt','sitemap.xml','styles.css','premium.css','search-suggestions.css','app.js','analytics.js','campaign-utils.js','campaign-images.js','campaign-viewer.js','campaign-slider.js','campaigns.js','campaigns.css','catalog-utils.js','product-order.js','trier-inventory.js','product-stock.js','cart-chat.js','cart-stock.css','catalog-validation.js','product-identities.js','content-evidence.js','assets']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
+for (const file of ['index.html','produto.html','produto.js','produto.css','product-detail.js','product-variants.js','product-images.js','photo-credits.js','product-media.js','robots.txt','sitemap.xml','styles.css','premium.css','search-suggestions.css','app.js','analytics.js','campaign-utils.js','campaign-images.js','campaign-viewer.js','campaign-slider.js','campaigns.js','campaigns.css','catalog-utils.js','product-order.js','trier-inventory.js','product-stock.js','cart-chat.js','cart-stock.css','catalog-validation.js','product-identities.js','content-evidence.js','assets']) await cp(new URL(file,root),new URL(file,dist),{recursive:true});
 const url = process.env.SUPABASE_URL || '', key = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 if (!!url !== !!key) throw Error('Configure both public Supabase values.');
 if (url && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)) throw Error('Invalid Supabase URL.');
@@ -47,7 +47,7 @@ const html = (await readFile(new URL('index.html',dist),'utf8')).replace('campai
 await writeFile(new URL('index.html',dist),html);
 const panelDirectory = new URL(`${panelPath}/`,dist);
 await mkdir(panelDirectory,{recursive:true});
-for (const file of ['admin.css','campaigns.css','registration.css']) await cp(new URL(`admin/${file}`,root),new URL(file,panelDirectory));
+for (const file of ['admin.css','campaigns.css','registration.css','photo-queue.css']) await cp(new URL(`admin/${file}`,root),new URL(file,panelDirectory));
 const adminBundle=await build({entryPoints:[fileURLToPath(new URL('admin/admin.js',root))],bundle:true,format:'esm',platform:'browser',minify:true,external:['../vendor/supabase.js','../public-config.js'],entryNames:'admin-[hash]',outdir:fileURLToPath(panelDirectory),metafile:true});
 const adminFile=Object.keys(adminBundle.metafile.outputs).find(file=>file.endsWith('.js')).split(/[\\/]/).pop();
 const adminHtml=(await readFile(new URL('admin/index.html',root),'utf8')).replace(/src="admin\.js\?[^\"]*"/,`src="${adminFile}"`);

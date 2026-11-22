@@ -109,6 +109,9 @@ test('additive database migration: atomic audit, concurrency, idempotency, RLS a
  const invalidVariant=structuredClone(next);invalidVariant.products[0].variants=[{id:999,size:'P',packageQuantity:1,stockQuantity:1,ean:'not-an-ean'}];
  await assert.rejects(()=>db.query('update public.catalog_draft set catalog=$1',[JSON.stringify(invalidVariant)]),/EAN/);
  const pending=structuredClone(next);pending.products[0].imagePending=true;pending.products[0].active=true;await assert.rejects(()=>db.query('insert into public.publications(catalog,created_by) values($1,$2)',[JSON.stringify(pending),actor]),/fotos pendentes/);
+ const photo=structuredClone(next);photo.products[0].imageUrl='https://example.test/reviewed.png';photo.products[0].photoReview={operationId:'photo-operation',approvedBy:actor,source:{provider:'open-beauty-facts',ean:'7891234567890',license:'CC BY-SA 3.0'},previousImageUrl:next.products[0].imageUrl};
+ await db.query('select public.save_catalog($1,2)',[JSON.stringify(photo)]);
+ const history=(await db.query('select * from public.registration_history order by id desc limit 1')).rows[0];assert.equal(history.actor_id,actor);assert.equal(history.before_product.imageUrl,next.products[0].imageUrl);assert.equal(history.after_product.photoReview.operationId,'photo-operation');assert.equal(history.after_product.priceCents,next.products[0].priceCents);assert.equal(history.catalog_version,3);
  }finally{await db.close();}
 });
 
