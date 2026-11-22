@@ -1,6 +1,6 @@
 # Neur.AI — Agente de Cadastro e Central de Fotos
 
-Implementação na branch `feat/neurai-cadastro-fotos-mvp-20261122`, PR #83. Não implantar ou publicar em produção sem aprovação do responsável.
+Implementação no PR #83. Publicação e ativação da fonte autorizadas pelo responsável em 22/11/2026.
 
 ## Usar o agente
 
@@ -20,13 +20,13 @@ A API pública **Open Beauty Facts** foi consultada com sucesso em 22/11/2026. �
 - Imagens: CC BY-SA 3.0, com atribuição, indicação das alterações e mesma licença para a foto preparada. Créditos são exibidos junto às novas imagens no catálogo, detalhes e carrinho; a origem e o autor ficam no histórico. Não equivale a uma autorização de uso de marcas de terceiros.
 - Não há scraping, busca geral de imagens, conta nova, contratação ou serviço pago.
 
-A fonte é **desativada por padrão**. Após aprovação da implantação, publicar o código atualizado da Edge Function `admin-api` pelo processo existente e configurar somente no servidor:
+Após a autorização do responsável em 22/11/2026, a fonte fica **habilitada na configuração versionada do backend**. Não exige uma nova chave privada nem um novo secret. A variável de ambiente do servidor tem prioridade e pode desativar a fonte com `PHOTO_OPENBEAUTY_ENABLED=false`. Para habilitar explicitamente pelo ambiente, use:
 
 ```text
 PHOTO_OPENBEAUTY_ENABLED=true
 ```
 
-Não exige novo token, migration, tabela, política RLS ou bucket. Reutiliza o cache privado `trier_registration_cache` (candidatas e resultados negativos: 24 horas), upload `product-images`, `save_catalog` com versão esperada, e o histórico `registration_history`. Não alterar os secrets já existentes. Não colocar credenciais da Trier, service role ou tokens GitHub no frontend. Antes de habilitar em produção, confirmar a implantação e a aprovação do uso da fonte/licença pelo responsável.
+Não exige novo token, migration, tabela, política RLS ou bucket. Reutiliza o cache privado `trier_registration_cache` (candidatas e resultados negativos: 24 horas), upload `product-images`, `save_catalog` com versão esperada, e o histórico `registration_history`. Não alterar os secrets já existentes. Não colocar credenciais da Trier, service role ou tokens GitHub no frontend. A ativação foi autorizada pelo responsável; a aprovação visual e de uso de cada foto continua obrigatória.
 
 Limites: metadados por EAN com User-Agent da aplicação, timeout de 10 segundos, no máximo uma leitura a cada janela global de seis segundos, compartilhada entre administradores; resultado de erro não vira foto aprovada. Só permite imagens HTTPS do host e caminho do EAN autorizados; não aceita URL arbitrária do navegador nem redirecionamentos. A imagem é baixada pelo backend, limitada a 3 MB e inspecionada. Upload local/final limitado a 5 MB. Se o cache da candidata expirar, é preciso consultar novamente.
 

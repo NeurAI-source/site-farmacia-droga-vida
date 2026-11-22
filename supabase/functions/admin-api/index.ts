@@ -8,7 +8,8 @@ import { accessAction, accessActions } from './access.js';
 import { registrationAction, registrationActions } from './registration.js';
 import { photoSourceAction, photoActions } from './photo-sources.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
-const env = (key: string) => Deno.env.get(key) || '';
+// Photo lookup was approved for this deployment; a server variable can disable it.
+const env = (key: string) => Deno.env.get(key) ?? (key === 'PHOTO_OPENBEAUTY_ENABLED' ? 'true' : '');
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
 const baseHeaders = { 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Content-Type': 'application/json', 'Vary': 'Origin' };
 const db = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false, autoRefreshToken: false } });
