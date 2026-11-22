@@ -27,9 +27,9 @@ test('photo audit distinguishes broken sources from small, valid originals',()=>
  assert.equal(photoAuditResult(1200,500).lowResolution,true);assert.equal(photoAuditResult(0,0,true).broken,true);assert.equal(photoAuditResult(0,0,true).lowResolution,false);
 });
 test('credits are conditional, escaped, licensed and follow the actually displayed variation',()=>{
- assert.equal(photoCredit(products[0]),'');const review={source:{provider:'open-beauty-facts',ean:identity.ean,attribution:'<img onerror=1>'},processing:{}};
+ assert.equal(photoCredit(products[0]),'');const review={imageUrl:'root.png',source:{provider:'open-beauty-facts',ean:identity.ean,attribution:'<img onerror=1>'},processing:{}};
  const p={imageUrl:'root.png',photoReview:review,variants:[{size:'G',imageUrl:'assets/G.png'}]};
- const html=photoCredit(p);assert.match(html,/CC BY-SA 3.0/);assert.match(html,/&lt;img/);assert.match(html,/Recorte/);assert.equal(photoCredit(p,'G'),'');
+ const html=photoCredit(p);assert.match(html,/CC BY-SA 3.0/);assert.match(html,/&lt;img/);assert.match(html,/Recorte/);assert.equal(photoCredit(p,'G'),'');assert.equal(photoCredit({...p,imageUrl:'manually-replaced.png'}),'');
 });
 
 test('a weight variation uses its own presentation rather than the parent presentation',()=>{
