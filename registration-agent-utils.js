@@ -24,5 +24,5 @@ export async function collectAgentProducts({count,catalog,lookup,onProgress=()=>
   onProgress({scanned,found:rows.length,duplicates,excluded});
   if(!page.hasMore)break;if(page.nextOffset<=offset)throw Error('A paginação não avançou.');offset=page.nextOffset;
  }
- return {rows,scanned,duplicates,excluded,cancelled:false};
+ return {rows,scanned,duplicates,excluded,cancelled:cancelled()};
 }

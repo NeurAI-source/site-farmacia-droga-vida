@@ -21,6 +21,7 @@ test('wrong shade or size is blocked even for an exact EAN',()=>{
  assert.equal(photoIdentity({...identity,shade:'6.7'},{...identity,name:'Tintura 6.0',quantity:'250 ml'}).blocked,true);
  assert.equal(photoIdentity({...identity,size:'G'},{...identity,name:'Fralda XG',quantity:'250 ml'}).blocked,true);
  assert.equal(photoIdentity({...identity,size:'G'},{...identity,name:'Fralda G',quantity:'250 ml'}).confidence,95);
+ assert.equal(photoIdentity({...identity,packageQuantity:60},{...identity,name:'Fralda G 50 unidades',quantity:'250 ml'}).blocked,true);
 });
 test('photo audit distinguishes broken sources from small, valid originals',()=>{
  assert.equal(photoAuditResult(1200,500).lowResolution,true);assert.equal(photoAuditResult(0,0,true).broken,true);assert.equal(photoAuditResult(0,0,true).lowResolution,false);

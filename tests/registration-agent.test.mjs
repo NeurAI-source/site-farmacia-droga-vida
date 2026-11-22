@@ -24,3 +24,6 @@ test('cancellation and repetitive provider pages are bounded without writes',asy
  let calls=0;const cancelled=await collectAgentProducts({count:10,catalog,cancelled:()=>true,lookup:async()=>{calls++;}});assert.equal(cancelled.cancelled,true);assert.equal(calls,0);
  const result=await collectAgentProducts({count:10,catalog,lookup:async p=>{calls++;return {rows:[{...row(1),name:'desconhecido'}],nextOffset:p.offset+1,hasMore:true};}});assert.equal(calls,40);assert.equal(result.rows.length,0);
 });
+test('a stop requested during the current lookup is honored before review',async()=>{
+ let stop=false;const result=await collectAgentProducts({count:10,catalog,cancelled:()=>stop,lookup:async()=>{stop=true;return {rows:[row(1)],nextOffset:1,hasMore:false};}});assert.equal(result.cancelled,true);
+});

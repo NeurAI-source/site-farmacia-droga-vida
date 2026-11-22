@@ -54,3 +54,5 @@
 .variant-lookup [role=status]{display:block;order:1;flex:1 0 100%;min-width:0;margin:0;color:var(--muted);font-size:11px;line-height:1.65;overflow-wrap:anywhere}
 .variant-lookup [role=status]:empty{display:none}
 @media(max-width:760px){.variant.shade-variant{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.variant-lookup .text-button{flex-basis:100%;width:100%;font-size:12px}}
+/* Keep every administrative destination reachable as new tools are added. */
+@media(min-width:761px){.sidebar{overflow-y:auto;overscroll-behavior:contain}.sidebar>.logo,.sidebar>.workspace,.sidebar>nav,.sidebar>.side-bottom{flex-shrink:0}}
