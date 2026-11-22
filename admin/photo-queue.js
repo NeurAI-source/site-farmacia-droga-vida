@@ -1,138 +1,66 @@
-import { isPhotoPending, matchPhotoFilename } from '../photo-queue-utils.js';
-
-  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const maxFiles=30,maxBytes=5242880;
-  async function png1200(file){
-    let source,temporary;
-    try{
-      if(typeof createImageBitmap==='function')source=await createImageBitmap(file);
-      else{
-        temporary=URL.createObjectURL(file);
-        source=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=temporary;});
-      }
-      const width=source.width,height=source.height;
-      if(!width||!height||width*height>40000000)throw Error('Foto muito grande ou inválida.');
-      const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1200;
-      const ctx=canvas.getContext('2d',{alpha:false});
-      if(!ctx)throw Error('Este navegador não conseguiu preparar a foto.');
-      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,1200,1200);
-      const scale=Math.min(1080/width,1080/height);
-      const w=Math.round(width*scale),h=Math.round(height*scale);
-      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-      ctx.drawImage(source,(1200-w)/2,(1200-h)/2,w,h);
-      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
-      if(!blob||blob.size>maxBytes)throw Error('Imagem final acima de 5 MB. Use uma foto menor.');
-      const name=String(file.name||'produto').replace(/\.[^.]+$/,'').slice(0,60);
-      return new File([blob],`${name}.png`,{type:'image/png'});
-    }finally{source?.close?.();if(temporary)URL.revokeObjectURL(temporary);}
-  }
-  function mountPhotoQueue({getCatalog,reload,save,upload,notify,onEdit,setView}){
-    const root=document.createElement('section');root.id='photo-queue-view';root.className='view';root.hidden=true;
-    root.innerHTML=`<section class="panel photo-queue">
-       <p class="eyebrow">NEUR.AI · CADASTRO</p><h2>Central de fotos dos produtos</h2>
-       <p>Envie até 30 fotos por vez. O sistema tenta identificar o produto pelo código reduzido ou EAN escrito no nome do arquivo. Você confere tudo antes de vincular.</p>
-       <div class="photo-queue-toolbar"><strong data-pending-count>—</strong><label class="button white photo-picker">Selecionar fotos <input type="file" accept="image/png,image/jpeg,image/webp" multiple data-files></label>
-       <button type="button" class="button white" data-prepare>Preparar fotos 1200 × 1200</button>
-       <button type="button" class="button red" data-attach>Vincular fotos aprovadas</button></div>
-       <p class="muted" role="status" data-photo-status>Escolha imagens com a embalagem correta.</p>
-       <p class="muted">O tratamento adiciona margens brancas, centraliza e converte para PNG. Não remove fundos complexos, não apaga etiquetas e não altera textos, marcas ou rótulos. Imagens já existentes não são substituídas por este processo.</p>
-       <div data-photo-list class="photo-queue-list"></div>
-       <div class="photo-pending-list"><h3>Produtos aguardando foto</h3><div data-pending-list></div></div>
-     </section>`;
-    document.querySelector('main footer').before(root);
-    const $=selector=>root.querySelector(selector);
-    let entries=[],busy=false;
-    const products=()=>getCatalog()?.products||[];
-    const pending=()=>products().filter(isPhotoPending);
-    const status=text=>$('[data-photo-status]').textContent=text;
-    const lock=value=>{busy=value;root.querySelectorAll('button,input,select').forEach(c=>c.disabled=value);};
-    function release(){for(const entry of entries){if(entry.originalUrl)URL.revokeObjectURL(entry.originalUrl);if(entry.finalUrl)URL.revokeObjectURL(entry.finalUrl);}entries=[];}
-    function draw(){
-      const todo=pending();
-      $('[data-pending-count]').textContent=`${todo.length} produtos com foto pendente`;
-      $('[data-pending-list]').innerHTML=todo.length?todo.slice(0,40).map(p=>`<button class="text-button" data-open-product="${p.id}" type="button">${esc(p.name)} · ${esc(p.shortCode||(p.variants||[])[0]?.shortCode||'sem código')}</button>`).join('')+(todo.length>40?`<p>Mais ${todo.length-40} produtos nesta fila.</p>`:''):'<p>Nenhum produto com foto pendente.</p>';
-      const options=todo.map(p=>`<option value="${p.id}">${esc(p.name)} · ${esc(p.shortCode||p.ean||'sem código')}</option>`).join('');
-      $('[data-photo-list]').innerHTML=entries.map((e,i)=>`<article class="photo-queue-row" data-entry="${i}">
-          <div class="photo-queue-images"><figure><img src="${esc(e.originalUrl)}" alt="Foto enviada"><figcaption>Original</figcaption></figure>
-          ${e.finalUrl?`<figure><img src="${esc(e.finalUrl)}" alt="Foto preparada, 1200 por 1200"><figcaption>PNG preparado · 1200 × 1200</figcaption></figure>`:'<p class="muted">Aguardando preparação</p>'}</div>
-          <div class="photo-queue-fields"><strong>${esc(e.file.name)}</strong><label>Vincular ao produto
-            <select data-product-index="${i}"><option value="">Escolher produto</option>${options}</select></label>
-          <label><input type="checkbox" data-approve-index="${i}" ${e.approved?'checked':''} ${e.finalUrl?'':'disabled'}> Conferi a foto e a embalagem</label>
-          <small>${esc(e.error||(!e.productId?'Não foi possível identificar pelo nome do arquivo; selecione manualmente.':'Confira se o produto corresponde à imagem.'))}</small></div></article>`).join('')||'<p>Nenhuma foto selecionada.</p>';
-      for(const [i,e] of entries.entries()){const sel=root.querySelector(`[data-product-index="${i}"]`);if(sel)sel.value=todo.some(p=>p.id===e.productId)?String(e.productId):'';}
-      $('[data-prepare]').disabled=busy||!entries.length;
-      $('[data-attach]').disabled=busy||!entries.some(e=>e.finalUrl&&e.approved&&e.productId);
-    }
-    $('[data-files]').onchange=event=>{
-      const files=Array.from(event.target.files||[]);
-      release();
-      if(files.length>maxFiles||files.some(f=>!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>maxBytes)){
-        status('Selecione até 30 arquivos JPG, PNG ou WebP, cada um com no máximo 5 MB.');event.target.value='';draw();return;
-      }
-      const todo=pending();
-      entries=files.map(file=>({file,originalUrl:URL.createObjectURL(file),finalUrl:null,prepared:null,approved:false,productId:matchPhotoFilename(file.name,todo)?.id||null,error:''}));
-      status(`${entries.length} fotos adicionadas. Prepare e confira uma por uma.`);
-      draw();
-    };
-    root.addEventListener('change',event=>{
-      const el=event.target;
-      if(el.dataset.productIndex!=null){
-        const entry=entries[Number(el.dataset.productIndex)];if(entry){entry.productId=Number(el.value)||null;entry.approved=false;draw();}
-      }
-      if(el.dataset.approveIndex!=null){const entry=entries[Number(el.dataset.approveIndex)];if(entry){entry.approved=el.checked;draw();}}
-    });
-    root.addEventListener('click',event=>{
-      const btn=event.target.closest('[data-open-product]');
-      if(btn){setView('products');onEdit(Number(btn.dataset.openProduct));}
-    });
-    $('[data-prepare]').onclick=async()=>{
-      if(busy||!entries.length)return;
-      lock(true);
-      try{
-        for(let i=0;i<entries.length;i++){
-          const entry=entries[i];if(entry.prepared)continue;
-          status(`Preparando foto ${i+1} de ${entries.length}…`);
-          try{entry.prepared=await png1200(entry.file);entry.finalUrl=URL.createObjectURL(entry.prepared);entry.error='';}
-          catch(error){entry.error=error.message||'Erro ao preparar imagem.';}
-        }
-        status('Prévia pronta. Confira as embalagens e marque somente as imagens corretas.');
-      }finally{lock(false);draw();}
-    };
-    $('[data-attach]').onclick=async()=>{
-      if(busy)return;
-      const accepted=entries.filter(e=>e.prepared&&e.approved&&e.productId);
-      if(!accepted.length)return status('Marque e associe pelo menos uma foto preparada.');
-      if(new Set(accepted.map(e=>e.productId)).size!==accepted.length)return status('Cada produto pode receber apenas uma foto por operação.');
-      if(!confirm(`Vincular ${accepted.length} fotos revisadas aos respectivos produtos? Os cadastros continuarão em rascunho até você publicar.`))return;
-      lock(true);
-      try{
-        await reload();
-        const before=products(),toEdit=new Map();
-        for(const entry of accepted){
-          const p=before.find(p=>p.id===entry.productId);
-          if(!isPhotoPending(p))throw Error('Um produto deixou de ter foto pendente. Recarregue e confira antes de continuar.');
-        }
-        for(let i=0;i<accepted.length;i++){
-          const entry=accepted[i];status(`Enviando foto ${i+1} de ${accepted.length}…`);
-          const result=await upload(entry.prepared);
-          if(!result?.url||!/^https:\/\/[^\s]+$/.test(result.url))throw Error('O envio da imagem não foi confirmado.');
-          toEdit.set(entry.productId,result.url);
-        }
-        const next=structuredClone(getCatalog());
-        for(const p of next.products){
-          if(!toEdit.has(p.id))continue;
-          if(!isPhotoPending(p))throw Error('Foto alterada por outro usuário; nada foi salvo.');
-          p.imageUrl=toEdit.get(p.id);p.imagePending=false;p.updatedAt=new Date().toISOString();
-        }
-        await save(next);
-        await reload();
-        release();$('[data-files]').value='';draw();
-        status(`${toEdit.size} fotos vinculadas ao rascunho. Confira os produtos e publique pelo fluxo normal.`);
-        notify(`${toEdit.size} fotos vinculadas ao rascunho.`);
-      }catch(error){status(`Nenhuma associação foi confirmada nesta operação: ${error.message}. Se houve upload, os arquivos permanecerão no armazenamento para auditoria.`);}
-      finally{lock(false);draw();}
-    };
-    return {show:draw};
-  }
-
-export { mountPhotoQueue };
+import {photoTargets,photoTarget,matchPhotoTarget,photoAuditResult,canManageRegistration} from '../photo-queue-utils.js';
+import {prepareProductPhoto,PHOTO_MAX_BYTES} from './photo-processor.js';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const imagePath=url=>/^https:\/\//.test(url)?url:'../'+url;
+export function mountPhotoQueue({getCatalog,getVersion,reload,save,upload,action,notify,onEdit,setView}){
+ const root=document.createElement('section');root.id='photo-queue-view';root.className='view';root.hidden=true;
+ root.innerHTML=`<section class="panel photo-queue"><p class="eyebrow">NEUR.AI · CADASTRO AUTOMÁTICO</p><h2>Central de Fotos Inteligente</h2><p>Identifique as pendências, encontre candidatos pelo EAN e confira a embalagem antes de salvar. Fotos e variações são tratadas individualmente.</p>
+ <div class="photo-metrics" data-metrics></div><div class="photo-queue-toolbar"><label>Mostrar<select data-photo-filter><option value="pending">Sem foto própria</option><option value="broken">Erro de carregamento</option><option value="low">Baixa resolução</option><option value="suspect">Possível divergência</option><option value="all">Todas as imagens</option></select></label><button class="button white" data-audit>Verificar fotos existentes</button><button class="button white" data-select-targets>Selecionar resultados</button><button class="button white" data-find>Encontrar fotos automaticamente</button><label class="button white photo-picker">Selecionar fotos<input type="file" accept="image/png,image/jpeg,image/webp" multiple data-files></label></div>
+ <p class="muted">Busca gratuita por EAN exato no Open Beauty Facts, quando habilitada. É uma base colaborativa, com cobertura limitada: nenhum resultado é aprovado automaticamente. Outros fornecedores só podem ser adicionados após confirmar a autorização.</p><p data-photo-status role="status">Até 30 fotos por etapa. Para lotes maiores, conclua esta etapa e continue com as pendências.</p><progress data-photo-progress max="1" value="0" aria-label="Progresso das fotos"></progress>
+ <div class="photo-queue-toolbar"><button class="button white" data-prepare>Preparar imagens</button><button class="button red" data-attach>Salvar aprovados</button><button class="button white" data-stop>Parar após o item atual</button><button class="button white" data-clear-photos>Limpar fila</button><button class="button white" data-photo-history>Histórico das alterações</button></div><p class="muted">Saída PNG 1200 × 1200, margens brancas e proporção preservada. Não recria embalagem, remove fundo complexo ou apaga etiquetas sobre o produto. Use os recortes apenas para bordas externas e confira o resultado. Mantenha esta aba aberta durante o processamento.</p>
+ <div data-photo-list class="photo-queue-list"></div><div class="photo-pending-list"><h3>Produtos e variações</h3><div data-pending-list></div></div></section>`;
+ document.querySelector('main footer').before(root);
+ const $=s=>root.querySelector(s),targets=()=>photoTargets(getCatalog()),selected=new Set(),audit=new Map();let entries=[],busy=false,stop=false,member=null;
+ const status=t=>$('[data-photo-status]').textContent=t,progress=(i,n)=>{$('[data-photo-progress]').max=n||1;$('[data-photo-progress]').value=i;};
+ const allowed=()=>canManageRegistration(member?.role);
+ function release(e){if(e.originalUrl?.startsWith('blob:'))URL.revokeObjectURL(e.originalUrl);if(e.finalUrl)URL.revokeObjectURL(e.finalUrl);}
+ function clear(){entries.forEach(release);entries=[];}
+ function list(){return targets().filter(t=>{const a=audit.get(t.key);return ({pending:t.pending,broken:a?.broken,low:a?.lowResolution,suspect:a?.suspect,all:true})[$('[data-photo-filter]').value];});}
+ function draw(){
+  const all=targets(),todo=list();$('[data-metrics]').innerHTML=[['Pendentes',all.filter(t=>t.pending).length],['Erros', [...audit.values()].filter(a=>a.broken).length+entries.filter(e=>e.error).length],['Baixa resolução',[...audit.values()].filter(a=>a.lowResolution).length],['Encontradas',entries.filter(e=>e.source?.provider).length],['Aprovadas',entries.filter(e=>e.approved&&!e.rejected).length],['Preparadas',entries.filter(e=>e.prepared).length]].map(([label,n])=>`<span><strong>${n}</strong>${label}</span>`).join('');
+  $('[data-pending-list]').innerHTML=todo.slice(0,100).map(t=>`<article class="photo-target"><label><input type="checkbox" data-target="${esc(t.key)}" ${selected.has(t.key)?'checked':''}>${esc(t.name)}</label><small>EAN ${esc(t.ean||'pendente')} · Código ${esc(t.shortCode||'pendente')}${t.variantId?' · Foto desta variação':''}${audit.get(t.key)?.broken?' · Não carregou':''}${audit.get(t.key)?.lowResolution?' · Resolução baixa':''}</small><button class="text-button" data-open-product="${t.productId}">Editar produto</button></article>`).join('')||'<p>Nenhum item neste filtro. Use “Verificar fotos existentes” para medir erros e resolução.</p>';
+  const options=all.map(t=>`<option value="${esc(t.key)}">${esc(t.name)} · ${esc(t.ean||t.shortCode||'sem código')}</option>`).join('');
+  $('[data-photo-list]').innerHTML=entries.map((e,i)=>`<article class="photo-queue-row ${e.rejected?'is-rejected':''}" data-entry="${i}"><div class="photo-queue-images"><figure>${e.originalUrl?`<img src="${esc(e.originalUrl)}" alt="Foto original candidata">`:'<p>Aguardando imagem</p>'}<figcaption>Original</figcaption></figure>${e.finalUrl?`<figure><img src="${esc(e.finalUrl)}" alt="Foto preparada, 1200 por 1200"><figcaption>PNG · 1200 × 1200</figcaption></figure>`:'<p class="muted">Aguardando preparação</p>'}</div><div class="photo-queue-fields"><strong>${esc(e.file?.name||e.source?.name||'Imagem candidata')}</strong><label>Produto ou variação exatos<select data-product-index="${i}"><option value="">Escolha o destino</option>${options}</select></label><small>${esc(e.error||e.note||'Confira embalagem, volume, tamanho e tonalidade.')}</small>${e.source?.provider?`<small>Fonte: Open Beauty Facts · EAN ${esc(e.source.ean)} · Confiança: ${e.source.confidence}% (sem validação visual)<br>${esc((e.source.reasons||[]).join(' · '))}<br>Licença CC BY-SA 3.0, com atribuição e mesma licença na imagem preparada.</small>`:'<small>Arquivo fornecido pelo administrador. Associação por nome de arquivo é apenas uma sugestão.</small>'}<details><summary>Recortar bordas externas — opcional</summary><div class="photo-crops">${['left','top','right','bottom'].map((k,j)=>`<label>${['Esquerda','Topo','Direita','Base'][j]} %<input type="number" data-crop="${k}" data-crop-index="${i}" min="0" max="45" value="${e.crop?.[k]||0}"></label>`).join('')}</div></details><label><input type="checkbox" data-replace-index="${i}" ${e.replace?'checked':''}> Autorizo substituir a foto atual deste destino</label><label><input type="checkbox" data-approve-index="${i}" ${e.approved?'checked':''} ${!e.prepared||e.rejected?'disabled':''}> Conferi a embalagem, a identidade e a autorização de uso${e.source?.provider?' / licença CC BY-SA 3.0':''}</label><button class="text-button" data-reject="${i}">${e.rejected?'Retomar revisão':'Rejeitar imagem'}</button></div></article>`).join('')||'<p class="muted">Nenhuma imagem na fila. Selecione pendências e encontre fotos ou envie os arquivos.</p>';
+  entries.forEach((e,i)=>{const control=$(`[data-product-index="${i}"]`);if(control)control.value=e.targetKey||'';});
+  root.querySelectorAll('button,input,select').forEach(c=>c.disabled=busy);$('[data-stop]').disabled=!busy;
+  entries.forEach((e,i)=>{$(`[data-approve-index="${i}"]`).disabled=busy||!e.prepared||e.rejected;});
+  $('[data-prepare]').disabled=busy||!entries.some(e=>!e.rejected&&!e.prepared);$('[data-attach]').disabled=busy||!entries.some(e=>e.prepared&&e.approved&&!e.rejected&&e.targetKey);
+ }
+ const snapshot=t=>({imageUrl:t?.imageUrl||'',ean:t?.ean||'',shortCode:t?.shortCode||''});
+ function entry(file,target,source=null){return {id:crypto.randomUUID(),file,targetKey:target?.key||'',expected:snapshot(target),source,originalUrl:file?URL.createObjectURL(file):source?.imageUrl,prepared:null,approved:false,replace:false,rejected:false,crop:{},note:'',error:''};}
+ root.onchange=e=>{
+  const el=e.target;if(el.dataset.target){el.checked?selected.add(el.dataset.target):selected.delete(el.dataset.target);return;}
+  if(el.matches('[data-photo-filter]'))return draw();
+  const i=el.dataset.productIndex??el.dataset.approveIndex??el.dataset.replaceIndex??el.dataset.cropIndex;if(i==null)return;const item=entries[Number(i)];if(!item)return;
+  if(el.dataset.productIndex!=null){if(item.source?.provider&&item.targetKey!==el.value){status('Uma imagem automática mantém o destino do EAN consultado. Rejeite e pesquise o destino correto.');draw();return;}item.targetKey=el.value;item.expected=snapshot(photoTarget(getCatalog(),el.value));item.approved=false;item.replace=false;}
+  if(el.dataset.approveIndex!=null)item.approved=el.checked;
+  if(el.dataset.replaceIndex!=null)item.replace=el.checked;
+  if(el.dataset.crop){item.crop[el.dataset.crop]=Number(el.value);item.prepared=null;item.approved=false;item.uploadedUrl=null;item.id=crypto.randomUUID();if(item.finalUrl)URL.revokeObjectURL(item.finalUrl);item.finalUrl=null;}
+  draw();
+ };
+ root.onclick=e=>{const edit=e.target.closest('[data-open-product]');if(edit){setView('products');onEdit(Number(edit.dataset.openProduct));}const reject=e.target.closest('[data-reject]');if(reject){const item=entries[Number(reject.dataset.reject)];item.rejected=!item.rejected;item.approved=false;draw();}};
+ $('[data-files]').onchange=e=>{if(busy||!allowed())return;const files=[...e.target.files||[]];if(files.length+entries.length>30||files.some(f=>!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>PHOTO_MAX_BYTES)){status('Limite de 30 fotos na fila, até 5 MB cada. Salve ou limpe antes do próximo lote.');e.target.value='';return;}for(const file of files)entries.push(entry(file,matchPhotoTarget(file.name,targets().filter(t=>t.pending))));status(`${files.length} arquivos adicionados. Confira os destinos antes de aprovar.`);draw();};
+ $('[data-select-targets]').onclick=()=>{for(const t of list().slice(0,100))selected.add(t.key);draw();};
+ $('[data-clear-photos]').onclick=()=>{if(busy)return;clear();selected.clear();$('[data-files]').value='';draw();status('Fila limpa; os produtos foram preservados.');};
+ $('[data-stop]').onclick=()=>{stop=true;status('Parando após o item atual; o que já foi preparado continua na fila.');};
+ async function auditPhotos(){if(busy||!allowed())return;busy=true;stop=false;draw();const todo=targets().filter(t=>selected.size?selected.has(t.key):!t.pending).slice(0,100);try{for(let i=0;i<todo.length&&!stop;i++){const t=todo[i];status(`Verificando ${i+1} de ${todo.length}: ${t.name}`);const result=await new Promise(resolve=>{const im=new Image(),timer=setTimeout(()=>{im.src='';resolve(photoAuditResult(0,0,true));},6000);im.onload=()=>{clearTimeout(timer);resolve(photoAuditResult(im.naturalWidth,im.naturalHeight));};im.onerror=()=>{clearTimeout(timer);resolve(photoAuditResult(0,0,true));};im.src=imagePath(t.imageUrl||'');});const p=getCatalog().products.find(p=>p.id===t.productId),v=t.variantId?p?.variants.find(v=>v.id===t.variantId):p;result.suspect=!!(v?.photoReview?.source?.ean&&v.photoReview.source.ean!==t.ean);audit.set(t.key,result);progress(i+1,todo.length);}status(`Verificação encerrada. Use os filtros para consultar erros e baixa resolução. Verificar resolução não comprova que a embalagem está correta.`);}finally{busy=false;draw();}}
+ async function find(count=30){if(busy||!allowed())return;busy=true;stop=false;draw();try{const provider=await action('photo-source-status');if(!provider.enabled){status(provider.note);return;}await reload();const todo=targets().filter(t=>selected.size?selected.has(t.key):t.pending).filter(t=>!entries.some(e=>e.targetKey===t.key)).slice(0,Math.min(Number(count)||30,30-entries.length));let found=0,processed=0;
+   for(let i=0;i<todo.length&&!stop;i++){const t=todo[i];status(`Procurando foto ${i+1} de ${todo.length}: ${t.name}`);try{let result;try{result=await action('photo-find',{key:t.key});}catch(e){if(!/seis segundos|Fonte ocupada/.test(e.message))throw e;await wait(6500);result=await action('photo-find',{key:t.key});}if(result.candidate&&!result.candidate.blocked){entries.push(entry(null,t,result.candidate));found++;}else{audit.set(t.key,{...audit.get(t.key),suspect:!!result.candidate?.blocked});}}catch(e){status(e.message);if(e.requiresLogin)throw e;}processed++;progress(i+1,todo.length);if(i<todo.length-1&&!stop)await wait(6500);}
+   status(`${found} candidatos encontrados; ${processed-found} sem candidato nesta busca · ${processed} consultados. As imagens aguardam preparação e aprovação. A fila comporta 30 por etapa.`);
+  }catch(e){status(e.message);}finally{busy=false;draw();}}
+ async function prepare(){if(busy||!allowed())return;busy=true;stop=false;draw();try{for(let i=0;i<entries.length&&!stop;i++){const e=entries[i];if(e.rejected||e.prepared)continue;status(`Preparando imagem ${i+1} de ${entries.length}…`);try{if(!e.file){const result=await action('photo-source-file',{key:e.targetKey});if(!result.base64||!['image/png','image/jpeg','image/webp'].includes(result.mime))throw Error('Arquivo não confirmado pela fonte.');const bytes=Uint8Array.from(atob(result.base64),c=>c.charCodeAt(0));e.file=new File([bytes],`${e.source.ean}.jpg`,{type:result.mime});e.source=result.source;e.originalUrl=URL.createObjectURL(e.file);}const result=await prepareProductPhoto(e.file,e.crop);e.prepared=result.file;e.finalUrl=URL.createObjectURL(e.prepared);e.processing={width:1200,height:1200,sourceWidth:result.width,sourceHeight:result.height,processor:result.processor,crop:result.crop};e.note=result.lowResolution?'Fonte com baixa resolução: ampliar para 1200 não recupera detalhes. Confira antes de aprovar.':'PNG preparado. Confira o original e o resultado lado a lado.';e.error='';e.approved=false;}catch(error){e.error=error.message;}progress(i+1,entries.length);}status(`${entries.filter(e=>e.prepared).length} imagens preparadas; ${entries.filter(e=>e.error).length} erros. Confira fundo, rótulo e possíveis etiquetas. Nenhuma foto foi salva ainda.`);}finally{busy=false;draw();}}
+ async function attach(){if(busy||!allowed())return;const accepted=entries.filter(e=>e.prepared&&e.approved&&!e.rejected&&e.targetKey);if(!accepted.length)return;if(new Set(accepted.map(e=>e.targetKey)).size!==accepted.length)return status('Mais de uma imagem foi associada ao mesmo destino. Confira.');if(!confirm(`Salvar ${accepted.length} fotos aprovadas no rascunho? Nenhum produto será publicado ou ativado automaticamente.`))return;
+  busy=true;draw();try{await reload();const expectedVersion=getVersion(),next=structuredClone(getCatalog());let applied=0;
+   for(let i=0;i<accepted.length;i++){const e=accepted[i],t=photoTarget(next,e.targetKey),p=next.products.find(p=>p.id===t?.productId),target=t?.variantId?p?.variants.find(v=>v.id===t.variantId):p;if(!t||!target)throw Error('Um destino foi removido. Recarregue e confira.');
+    if(e.uploadedUrl&&target.imageUrl===e.uploadedUrl&&target.photoReview?.operationId===e.id){e.saved=true;continue;}
+    if(JSON.stringify(snapshot(t))!==JSON.stringify(e.expected))throw Error('Foto, EAN ou código alterado por outro usuário. A fila foi preservada.');if(!t.pending&&!e.replace)throw Error('Marque a autorização de substituição da foto existente.');
+    status(`Enviando imagem aprovada ${i+1} de ${accepted.length}…`);if(!e.uploadedUrl){const result=await upload(e.prepared);if(!/^https:\/\/[^\s<>"']+$/.test(result?.url||''))throw Error('Upload não confirmado.');e.uploadedUrl=result.url;}
+    target.imageUrl=e.uploadedUrl;target.imagePending=false;target.photoReview={operationId:e.id,approvedBy:member.userId,approvedAt:new Date().toISOString(),source:e.source||{provider:'admin-upload',fileName:e.file.name,license:'Autorização confirmada pelo administrador'},processing:e.processing,previousImageUrl:e.expected.imageUrl};if(!t.variantId&&p.registration)p.registration={...p.registration,pending:false};p.updatedAt=new Date().toISOString();applied++;
+   }
+   if(applied&&await save(next,expectedVersion)===false)throw Error('O salvamento não foi confirmado.');await reload();for(const e of accepted){e.saved=true;release(e);selected.delete(e.targetKey);}entries=entries.filter(e=>!e.saved);status(`${accepted.length} fotos confirmadas no rascunho. Revise e ative os produtos antes da publicação pelo fluxo existente.`);notify('Fotos aprovadas salvas no rascunho.');
+  }catch(e){status(`Operação não confirmada: ${e.message} A fila e os uploads confirmados foram preservados para uma tentativa segura.`);}finally{busy=false;draw();}}
+ $('[data-find]').onclick=()=>find();$('[data-prepare]').onclick=prepare;$('[data-attach]').onclick=attach;$('[data-audit]').onclick=auditPhotos;$('[data-photo-filter]').onchange=draw;
+ $('[data-photo-history]').onclick=()=>setView('registration-review');
+ return {show:draw,enable:m=>{member=m;},find,prepare,attach,audit:auditPhotos,isBusy:()=>busy,open(){setView('photos');draw();}};
+}

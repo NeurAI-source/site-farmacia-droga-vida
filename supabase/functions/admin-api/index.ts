@@ -6,6 +6,7 @@ import { uploadProductImage } from './product-image.js';
 import { checked, dispatchNext, neuraiAction, requestPublication } from './publication.js';
 import { accessAction, accessActions } from './access.js';
 import { registrationAction, registrationActions } from './registration.js';
+import { photoSourceAction, photoActions } from './photo-sources.js';
 import { readJson, verifiedSession, panelQuota, RequestLimitError } from '../security.js';
 const env = (key: string) => Deno.env.get(key) || '';
 const origins = env('SITE_ORIGINS') || env('SITE_ORIGIN');
@@ -36,7 +37,9 @@ Deno.serve(async req => {
       return reply(await uploadProductImage(req, db, user));
     }
     const body = await readJson(req, 50000);
+    if(photoActions.includes(body.action))return reply(await photoSourceAction({body,db,user,role:member.role,env}));
     if(registrationActions.includes(body.action)){
+      if(!['admin','owner'].includes(member.role))return reply({error:'Somente administradores podem importar produtos.'},403);
       try{return reply(await registrationAction({body,db,user}));}
       catch(error){return reply({error:error instanceof Error?error.message:'Não foi possível importar.'},409);}
     }

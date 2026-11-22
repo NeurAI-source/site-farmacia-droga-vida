@@ -1,25 +1,56 @@
-# Neur.AI — Cadastro e Central de Fotos (MVP)
+# Neur.AI — Agente de Cadastro e Central de Fotos
 
-## Uso no painel
-Para administrador/proprietário, após login:
-1. **Importar da Trier**: consultar por código reduzido/EAN ou listar, selecionar itens, revisar categorias, preços e duplicidades; salvar em lotes de até 30 no `catalog_draft`.
-2. **Central de fotos**: escolher até 30 imagens JPG/PNG/WebP de até 5 MB cada. O nome do arquivo pode conter o código reduzido ou o EAN (exemplo `7891234567890_frente.jpg`) para uma associação sugerida; correspondências ambíguas exigem seleção manual.
-3. **Preparar fotos 1200 × 1200**: imagens originais são mantidas somente no navegador durante a revisão, e o sistema gera PNG quadrado com preenchimento branco, sem refazer embalagem ou rótulos.
-4. Selecionar manualmente o produto para cada imagem, **marcar a conferência visual** e clicar em **Vincular fotos aprovadas**.
-5. Conferir os cadastros e usar o mecanismo de publicação existente. Importação e foto não publicam produtos automaticamente.
+Implementação na branch `feat/neurai-cadastro-fotos-mvp-20261122`, PR #83. Não implantar ou publicar em produção sem aprovação do responsável.
 
-## Segurança
-- Código da Trier e estoque sempre vêm do backend existente.
-- Vínculos de foto só são salvos em produtos sem imagem/pendentes; não sobrescrevem fotos existentes.
-- Na etapa de salvar, o catálogo é recarregado; `save_catalog` mantém verificação de versão.
-- Upload usa `admin-api` e `product-images` já existentes; não cria credenciais, storage policies ou tabelas.
-- Se houver falha depois do upload e antes do salvamento, os arquivos podem permanecer não vinculados no armazenamento e precisam de limpeza administrativa posterior.
-- A remoção automática de fundos complexos, etiquetas de preço e a procura de imagens oficiais na internet **não estão implementadas nesta primeira fase**. Essas operações precisam de tratamento visual especializado e verificação de fonte, licença e identidade.
+## Usar o agente
 
-## Testes
-- `npm test` inclui `tests/photo-queue.test.mjs` com casos de fila pendente, EAN/código exatos e ambiguidades.
-- `npm run build` deve empacotar `admin/photo-queue.js` no bundle e copiar `admin/photo-queue.css`.
-- Antes de entrar em produção: validar manualmente login admin, consulta Trier, 1 importação em rascunho, 1 upload/associação de foto, prévia, edição e publicação.
+1. Entre como administrador ou proprietário e abra **Neur.AI · Cadastro Automático**.
+2. Peça `Preparar 50 produtos de perfumaria` ou use **Buscar produtos na Trier**. Quantidades: 10, 30, 50 ou 100. O filtro conservador usa as regras de categorias existentes, consulta apenas a filial 2, ignora identificadores oficiais já cadastrados e examina até 2.000 registros / 40 páginas por solicitação.
+3. Revise a janela de importação, categorias, possíveis duplicidades, promoções e vínculos de variantes. Confirme os itens desejados: o fluxo existente salva rascunhos inativos em lotes de até 30. Não une variantes por semelhança de nome nem publica. Consultas e sugestões não salvam sem confirmação.
+4. Abra **Central de fotos** e selecione pendências. **Encontrar fotos automaticamente** consulta por EAN exato, até 30 imagens por etapa; para mais produtos, conclua a etapa e continue. Também é possível enviar até 30 arquivos JPG/PNG/WebP de até 5 MB cada. Nome de arquivo com código ou EAN sugere somente um destino inequívoco, inclusive a variação exata.
+5. Use **Preparar imagens**. Confira original e PNG final lado a lado, volume, tamanho, quantidade e tonalidade. Cada foto precisa de aprovação visual e de autorização de uso. Rejeite candidatas inadequadas. Trocar uma foto existente exige uma autorização adicional.
+6. **Salvar aprovados** faz upload autenticado e salva somente os vínculos aprovados no rascunho. Preços, estoque, IDs, disponibilidade e ativação são preservados. Depois revise os cadastros e utilize o fluxo normal de publicação, somente com aprovação.
 
-## Próxima fase
-Busca de fotos oficiais autorizadas por EAN/marca/apresentação, com proveniência, licença, score de correspondência e aprovação obrigatória; além de tratamento de fundo avançado sem recriar rótulos.
+## Fonte externa verificada e configuração
+
+A API pública **Open Beauty Facts** foi consultada com sucesso em 22/11/2026. É uma base colaborativa de cosméticos, não um contrato com fabricantes ou distribuidores. A cobertura brasileira pode ser pequena; nenhum resultado é garantia de embalagem correta. Não há API de imagens documentada no DTO de produto da Trier consultado. Não foi criada integração fictícia com fornecedores.
+
+- Documentação oficial: https://openfoodfacts.github.io/openfoodfacts-server/api/tutorials/scanning-cosmetics-pet-food-and-other-products/
+- Licenças: https://openfoodfacts.github.io/openfoodfacts-server/api/tutorials/license-be-on-the-legal-side/
+- Imagens: CC BY-SA 3.0, com atribuição, indicação das alterações e mesma licença para a foto preparada. Créditos são exibidos junto às novas imagens no catálogo, detalhes e carrinho; a origem e o autor ficam no histórico. Não equivale a uma autorização de uso de marcas de terceiros.
+- Não há scraping, busca geral de imagens, conta nova, contratação ou serviço pago.
+
+A fonte é **desativada por padrão**. Após aprovação da implantação, publicar o código atualizado da Edge Function `admin-api` pelo processo existente e configurar somente no servidor:
+
+```text
+PHOTO_OPENBEAUTY_ENABLED=true
+```
+
+Não exige novo token, migration, tabela, política RLS ou bucket. Reutiliza o cache privado `trier_registration_cache` (candidatas e resultados negativos: 24 horas), upload `product-images`, `save_catalog` com versão esperada, e o histórico `registration_history`. Não alterar os secrets já existentes. Não colocar credenciais da Trier, service role ou tokens GitHub no frontend. Antes de habilitar em produção, confirmar a implantação e a aprovação do uso da fonte/licença pelo responsável.
+
+Limites: metadados por EAN com User-Agent da aplicação, timeout de 10 segundos, no máximo uma leitura a cada janela global de seis segundos, compartilhada entre administradores; resultado de erro não vira foto aprovada. Só permite imagens HTTPS do host e caminho do EAN autorizados; não aceita URL arbitrária do navegador nem redirecionamentos. A imagem é baixada pelo backend, limitada a 3 MB e inspecionada. Upload local/final limitado a 5 MB. Se o cache da candidata expirar, é preciso consultar novamente.
+
+## Preparação de imagens e limites reais
+
+Gera PNG 1200 × 1200, enquadramento central, margens brancas e proporção preservada, com recorte opcional de bordas externas. Detecta baixa resolução e não afirma recuperar detalhes ausentes. Não recria rótulos, altera cores, apaga textos ou inventa fotos.
+
+**Ainda depende de revisão/processamento externo:** remoção de fundos complexos, etiquetas sobre a embalagem e nitidez avançada. Um fundo originalmente colorido não é apagado pelo enquadramento branco. Nesses casos, rejeite a imagem ou forneça uma foto já adequada. Não há contratação automática de ferramenta de IA. Fotos confiáveis não encontradas continuam pendentes.
+
+A central pode verificar carregamento e resolução de até 100 destinos por operação, filtrar erros/baixa resolução e sinalizar EAN divergente do vínculo anterior. Não existe reconhecimento visual que comprove a embalagem; a conferência humana continua obrigatória. Produtos e variantes têm destinos próprios; foto de variante nunca preenche silenciosamente a foto geral do produto.
+
+## Concorrência, recuperação e histórico
+
+- Durante as consultas/preparação mantenha a aba aberta; o processamento não é um serviço autônomo em segundo plano. Parar preserva a fila atual. Limpar/recarregar a página descarta os arquivos e a revisão que ainda estão somente no navegador.
+- Na confirmação recarrega o catálogo, compara foto/EAN/código com a revisão e verifica a versão novamente depois do upload. `save_catalog` bloqueia concorrência remota.
+- Falha preserva a fila aberta e URLs de uploads já confirmados. Tente novamente sem repetir o cadastro/importação. Se a resposta do salvamento se perder, o identificador da operação na foto permite reconhecer o salvamento no catálogo e não aplicá-lo duas vezes. Lotes Trier usam o mecanismo existente de recuperação/idempotência.
+- A auditoria existente registra ator, horário, versão e produto antes/depois, incluindo origem, licença, aprovação, processamento e imagem anterior. Consulte **Revisão Inteligente → Histórico de cadastros**.
+- Arquivos enviados antes de uma falha definitiva podem ficar sem vínculo no Storage. Não há limpeza destrutiva automática.
+- A interface e as ações de fotos/importação exigem admin/owner. O cadastro manual e sua consulta individual continuam com as permissões existentes. Nenhum acesso adicional foi concedido.
+
+## Validação
+
+`npm test`, `npm run build`, `npm run test:ui`. A suíte de interface do PR foi corrigida para refletir o retorno das telas de importação/revisão, mantendo o teste real do cadastro manual. Foram acrescentados testes de importação pelo agente, fotos PNG reais, variações, aprovação/rejeição, substituição, conflito, recuperação de resposta perdida e permissões. Integrações externas são isoladas por fixtures nos testes de escrita; nenhum produto fictício é salvo no Supabase da farmácia.
+
+Estado consultado do banco em 22/11/2026: versão 724, 325 produtos principais e 118 variações. Consulta somente leitura, sem migrations ou alterações comerciais. Validar novamente antes de implantar; essa contagem é um registro da consulta, não uma constante do sistema.
+
+Para homologação real autenticada: usar ambiente isolado ou cadastros aprovados pelo responsável. A validação automatizada com fixtures não significa que a nova Edge Function já esteja implantada, que uma foto da farmácia foi licenciada/aprovada ou que houve publicação em produção.

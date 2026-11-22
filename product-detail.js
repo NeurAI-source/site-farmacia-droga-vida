@@ -1,3 +1,4 @@
+import {photoCredit} from './photo-credits.js';
 import {isShade,variantLabel,variantImage,variantPrompt} from './product-variants.js';
 import { stockMarkup, stockState } from './product-stock.js';
 import { money, unitPrice, priceHtml } from './catalog-utils.js';
@@ -11,7 +12,7 @@ export function productDetailMarkup(p) {
       <div class="product-page-media"><img src="${esc(imageUrl(p.imageUrl))}" alt="${esc(p.name)}" loading="eager"></div>
       <section class="product-page-summary" aria-label="Informações do produto">
         <p class="product-page-brand">${esc(p.brand||p.category)}</p>
-        <h1>${esc(p.name)}</h1>
+        <h1>${esc(p.name)}</h1><div data-page-photo-credit>${photoCredit(p)}</div>
         ${p.detail?`<p class="product-page-presentation">${esc(p.detail)}</p>`:''}
         <p class="product-page-codes">${p.shortCode?`Código: ${esc(p.shortCode)}`:''}${p.shortCode&&p.ean?' · ':''}${p.ean?`EAN: ${esc(p.ean)}`:''}</p>
         ${isShade(p)?'<p id="shade-photo-info" class="product-page-warning">Foto geral da linha. Selecione uma tonalidade.</p>':''}<div class="product-page-price" id="product-page-price">${priceHtml(p)}</div>
