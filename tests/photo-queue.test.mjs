@@ -31,3 +31,8 @@ test('credits are conditional, escaped, licensed and follow the actually display
  const p={imageUrl:'root.png',photoReview:review,variants:[{size:'G',imageUrl:'assets/G.png'}]};
  const html=photoCredit(p);assert.match(html,/CC BY-SA 3.0/);assert.match(html,/&lt;img/);assert.match(html,/Recorte/);assert.equal(photoCredit(p,'G'),'');
 });
+
+test('a weight variation uses its own presentation rather than the parent presentation',()=>{
+ const [parent,variant]=photoTargets({products:[{id:5,name:'Fórmula',detail:'400 g',brand:'Marca',variants:[{id:8,size:'800 g',ean:'7890000000001'}]}]});
+ assert.equal(parent.detail,'400 g');assert.equal(variant.detail,'800 g');assert.equal(photoIdentity(variant,{ean:variant.ean,name:'Fórmula 800 g',brand:'Marca',quantity:'800 g'}).blocked,false);assert.equal(photoIdentity(variant,{ean:variant.ean,name:'Fórmula 400 g',brand:'Marca',quantity:'400 g'}).blocked,true);
+});

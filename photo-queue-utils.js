@@ -3,7 +3,7 @@ export const isPhotoPending = p => Boolean(p && (p.imagePending === true || !Str
 export const canManageRegistration = role => ['admin','owner'].includes(role);
 export const photoKey = (p,v) => `${p.id}:${v?.id||0}`;
 export function photoTargets(catalog){
- return (catalog?.products||[]).flatMap(p=>[{key:photoKey(p),productId:p.id,variantId:null,name:p.name,brand:p.brand,detail:p.detail,ean:p.ean,shortCode:p.shortCode,imageUrl:p.imageUrl,pending:isPhotoPending(p)},...(p.variants||[]).map(v=>({key:photoKey(p,v),productId:p.id,variantId:v.id,name:p.name+' · '+[v.size,v.shadeName].filter(Boolean).join(' — '),brand:p.brand,detail:p.detail,ean:v.ean,shortCode:v.shortCode,imageUrl:v.imageUrl,pending:isPhotoPending(v),packageQuantity:v.packageQuantity,size:p.variantType==='shade'?'':v.size,shade:p.variantType==='shade'?v.size:'',fallbackImage:p.imageUrl}))]);
+ return (catalog?.products||[]).flatMap(p=>[{key:photoKey(p),productId:p.id,variantId:null,name:p.name,brand:p.brand,detail:p.detail,ean:p.ean,shortCode:p.shortCode,imageUrl:p.imageUrl,pending:isPhotoPending(p)},...(p.variants||[]).map(v=>({key:photoKey(p,v),productId:p.id,variantId:v.id,name:p.name+' · '+[v.size,v.shadeName].filter(Boolean).join(' — '),brand:p.brand,detail:v.detail||(/\b\d+(?:[.,]\d+)?\s*(?:ml|kg|mg|g|l)\b/i.test(v.size||'')?v.size:p.detail),ean:v.ean,shortCode:v.shortCode,imageUrl:v.imageUrl,pending:isPhotoPending(v),packageQuantity:v.packageQuantity,size:p.variantType==='shade'?'':v.size,shade:p.variantType==='shade'?v.size:'',fallbackImage:p.imageUrl}))]);
 }
 export function photoTarget(catalog,key){return photoTargets(catalog).find(t=>t.key===key);}
 export function matchPhotoTarget(filename,targets){
